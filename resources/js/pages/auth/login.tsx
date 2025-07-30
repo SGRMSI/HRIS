@@ -36,7 +36,12 @@ export default function Login({ status, canResetPassword }: LoginProps) {
     };
 
     return (
-        <AuthLayout title="Hello!" description="Enter your email and password below to log in">
+             
+        <AuthLayout title="" description="">
+            <div className="">
+                <p className="text-2xl mb-4 font-black tracking-tight items-center">Southeast Global Resoucing Managment Services Inc.</p>
+                <p className="text-xl">Hello!</p>
+                <p className="text-sm text-muted-foreground">Enter your email and password below to log in.</p> </div>
             <Head title="Log in" />
 
             <form className="flex flex-col gap-6" onSubmit={submit}>
