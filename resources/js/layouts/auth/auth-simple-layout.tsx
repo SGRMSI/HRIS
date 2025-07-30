@@ -1,5 +1,5 @@
 // import AppLogoIcon from '@/components/app-logo-icon';
-import { Link } from '@inertiajs/react';
+// import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 interface AuthLayoutProps {
@@ -10,21 +10,16 @@ interface AuthLayoutProps {
 
 export default function AuthSimpleLayout({ children, title, description }: PropsWithChildren<AuthLayoutProps>) {
     return (
-        <div className="flex min-h-svh flex-col items-end justify-center gap-6 bg-dark-background">
-            <div className="w-full max-w-md min-h-svh flex flex-col items-center justify-center bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border">
-                <div className="flex flex-col gap-8">
-                    <div className="flex flex-col items-center gap-4">
-                        <Link href={route('home')} className="flex flex-col items-center gap-2 font-medium">
-                            {/* <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md">
-                                <AppLogoIcon className="size-9 fill-current text-[var(--foreground)] dark:text-white" />
-                            </div> */}
-                            <span className="sr-only">{title}</span>
-                        </Link>
+        <div className="flex min-h-svh items-center justify-between gap-6 bg-dark-background">
+            <div className="flex h-full w-full flex-1 items-center justify-center p-20">
+                <img src="/undraw_report_k55w.svg" alt="Illustration" className="max-h-svh max-w-svh object-contain" />
+            </div>
 
-                        <div className="space-y-2 text-center">
-                            <h1 className="text-xl font-medium">{title}</h1>
-                            <p className="text-center text-sm text-muted-foreground">{description}</p>
-                        </div>
+            <div className="flex min-h-screen w-full max-w-lg flex-col justify-center rounded-l-lg rounded-r-none border bg-background p-16 shadow-lg dark:bg-gray-800">
+                <div className="flex flex-col gap-8">
+                    <div className="space-y-2 text-start">
+                        <h1 className="text-xl font-medium">{title}</h1>
+                        <p className="text-start text-sm text-muted-foreground">{description}</p>
                     </div>
                     {children}
                 </div>
