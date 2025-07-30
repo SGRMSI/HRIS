@@ -17,6 +17,7 @@
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
+    --color-dark-background: #1E293B;
 
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
