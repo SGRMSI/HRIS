@@ -17,7 +17,7 @@
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-    --color-dark-background: #1E293B;
+    --color-dark-background: #1e293b;
 
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
@@ -86,14 +86,14 @@
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
     --radius: 0.625rem;
-    --sidebar: #1E293B;
+    --sidebar: #1e293b;
     --sidebar-foreground: #f8fafc;
-    --sidebar-primary: #1E293B;
+    --sidebar-primary: #1e293b;
     --sidebar-primary-foreground: #f8fafc;
-    --sidebar-accent: #1E293B;
-    --sidebar-accent-foreground: #f8fafc;
-    --sidebar-border: #1E293B;
-    --sidebar-ring: #1E293B;
+    --sidebar-accent: #334155; /* This should be different from sidebar background */
+    --sidebar-accent-foreground: #f1f5f9;
+    --sidebar-border: #334155;
+    --sidebar-ring: #334155;
 }
 
 .dark {
