@@ -15,7 +15,7 @@ export default function AuthSimpleLayout({ children, title, description }: Props
                 <img src="/undraw_report_k55w.svg" alt="Illustration" className="max-w-[60%]" />
             </div>
 
-            <div className="flex min-h-screen w-full max-w-lg flex-col justify-center rounded-l-lg rounded-r-none border bg-background p-16 shadow-lg dark:bg-gray-800">
+            <div className="flex min-h-screen w-full max-w-lg flex-col justify-center rounded-l-lg rounded-r-none border bg-background p-16 shadow-lg">
                 <div className="flex flex-col gap-8">
                     <div className="space-y-2 text-start">
                         <h1 className="text-xl font-medium">{title}</h1>
