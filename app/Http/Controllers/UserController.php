@@ -63,4 +63,20 @@ class UserController extends Controller
 
         return redirect()->route('user.index')->with('success', 'User created successfully!');
     }
+
+    public function destroy(User $user)
+    {
+        try {
+            // Prevent deleting yourself
+            if ($user->user_id === auth()->user()->user_id) {
+                return back()->with('error', 'You cannot delete yourself!');
+            }
+
+            $user->delete();
+
+            return back()->with('success', 'User deleted successfully!');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to delete user. Please try again.');
+        }
+    }
 }

@@ -16,8 +16,9 @@ Route::middleware(['auth', 'verified',])->group(function () {
 
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('user', [UserController::class, 'index'])->name('user.index');
-    Route::get('user/create', [UserController::class, 'create'])->name('user.create'); // Add this
-    Route::post('user', [UserController::class, 'store'])->name('user.store'); // Add this for form submission
+    Route::get('user/create', [UserController::class, 'create'])->name('user.create');
+    Route::post('user', [UserController::class, 'store'])->name('user.store');
+    Route::delete('user/{user}', [UserController::class, 'destroy'])->name('user.destroy');
 });
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('employee', function () {
