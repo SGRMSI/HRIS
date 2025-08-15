@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return Inertia::render('auth/login' );
@@ -14,9 +15,7 @@ Route::middleware(['auth', 'verified',])->group(function () {
 });
 
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
-    Route::get('user', function () {
-        return Inertia::render('user');
-    })->name('user');
+    Route::get('user', [UserController::class, 'index'])->name('user');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
