@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -24,5 +27,40 @@ class UserController extends Controller
         return Inertia::render('user', [
             'users' => $users
         ]);
+    }
+
+    public function create()
+    {
+        $roles = Role::all()->map(function ($role) {
+            return [
+                'value' => $role->role_id,
+                'label' => $role->label,
+            ];
+        });
+
+        return Inertia::render('user/create', [
+            'roles' => $roles
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'role_id' => 'required|exists:roles,role_id',
+            'is_active' => 'boolean',
+        ]);
+
+        User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role_id' => $validated['role_id'],
+            'is_active' => $validated['is_active'] ?? true,
+        ]);
+
+        return redirect()->route('user.index')->with('success', 'User created successfully!');
     }
 }

@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Link } from '@inertiajs/react'; 
 import {
     ColumnDef,
     flexRender,
@@ -37,13 +38,17 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <div className="flex flex-1 items-center space-x-2">
+                <div className="flex flex-1 items-center justify-between space-x-2">
                     <Input
                         placeholder="Search users..."
                         value={globalFilter}
                         onChange={(event) => setGlobalFilter(event.target.value)}
                         className="max-w-sm"
                     />
+                    {/* Update the Add User button */}
+                    <Button asChild>
+                        <Link href="/user/create">Add User</Link>
+                    </Button>
                 </div>
             </div>
             <div className="rounded-md border">

@@ -22,7 +22,7 @@ export default function User({ users }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="User" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="flex items-center justify-end">
+                <div className="flex items-center justify-end py-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>Total Users</CardTitle>
