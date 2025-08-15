@@ -10,9 +10,9 @@ interface AuthLayoutProps {
 
 export default function AuthSimpleLayout({ children, title, description }: PropsWithChildren<AuthLayoutProps>) {
     return (
-        <div className="flex min-h-svh items-center justify-between gap-6 bg-dark-background">
+        <div className="flex min-h-svh items-center justify-between gap-6 bg-white">
             <div className="flex h-full w-full flex-1 items-center justify-center p-20">
-                <img src="/undraw_report_k55w.svg" alt="Illustration" className="max-w-[60%]" />
+                <img src="/sglogo.svg" alt="Illustration" className="max-w-[60%]" />
             </div>
 
             <div className="flex min-h-screen w-full max-w-lg flex-col justify-center rounded-l-lg rounded-r-none border bg-background p-16 shadow-lg">
