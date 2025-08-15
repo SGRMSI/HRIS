@@ -36,21 +36,38 @@ class HandleInertiaRequests extends Middleware
      * @return array<string, mixed>
      */
     public function share(Request $request): array
-    {
-        [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
+{
+    [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
-        return [
-            ...parent::share($request),
-            'name' => config('app.name'),
-            'quote' => ['message' => trim($message), 'author' => trim($author)],
-            'auth' => [
-                'user' => $request->user(),
-            ],
-            'ziggy' => fn (): array => [
-                ...(new Ziggy)->toArray(),
-                'location' => $request->url(),
-            ],
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-        ];
+    $user = $request->user();
+    if ($user) {
+        // Force load the role relationship
+        $user->load('role');
     }
+
+    return [
+        ...parent::share($request),
+        'name' => config('app.name'),
+        'quote' => ['message' => trim($message), 'author' => trim($author)],
+        'auth' => [
+            'user' => $user ? [
+                'id' => $user->user_id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role_id' => $user->role_id, // Add this for debugging
+                'role' => $user->role ? [
+                    'id' => $user->role->role_id,
+                    'name' => $user->role->name,
+                    'label' => $user->role->label,
+                ] : null,
+                'is_active' => $user->is_active,
+            ] : null,
+        ],
+        'ziggy' => fn (): array => [
+            ...(new Ziggy)->toArray(),
+            'location' => $request->url(),
+        ],
+        'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+    ];
+}
 }

@@ -20,6 +20,7 @@ export interface NavItem {
     href: string;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    requiredRole?: string;
 }
 
 export interface SharedData {
@@ -35,9 +36,17 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    avatar?: string;
-    email_verified_at: string | null;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown; // This allows for additional properties...
+    role_id: number;
+    role: {
+        id: number;
+        name: string;
+        label: string;
+    } | null;
+    is_active: boolean;
+}
+
+export interface PageProps {
+    auth: {
+        user: User | null;
+    };
 }
