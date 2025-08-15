@@ -71,19 +71,6 @@ export function AppSidebar() {
         });
     }, [auth.user?.role?.name]);
 
-    // Debug logs - check what we're actually getting
-    console.log('=== DEBUG AUTH DATA ===');
-    console.log('Full auth object:', JSON.stringify(auth, null, 2));
-    console.log('User exists:', !!auth.user);
-    console.log('User role_id:', auth.user?.role_id);
-    console.log('User role object:', auth.user?.role);
-    console.log('Role name:', auth.user?.role?.name);
-    console.log('Is admin check:', auth.user?.role?.name === 'admin');
-    console.log(
-        'Filtered items:',
-        filteredNavItems.map((item) => item.title),
-    );
-    console.log('========================');
 
     return (
         <Sidebar collapsible="icon" variant="inset">
