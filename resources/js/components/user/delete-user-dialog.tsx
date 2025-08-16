@@ -24,17 +24,29 @@ export function DeleteUserDialog({ user, open, onOpenChange }: DeleteUserDialogP
         router.delete(`/user/${user.id}`, {
             onSuccess: () => {
                 console.log('User deleted successfully');
-                onOpenChange(false);
+                handleClose();
             },
             onError: (errors) => {
                 console.error('Failed to delete user:', errors);
-                onOpenChange(false);
+                handleClose();
             },
         });
     };
 
+    const handleClose = () => {
+        onOpenChange(false);
+        // Fix pointer events after dialog closes
+        setTimeout(() => {
+            document.body.style.pointerEvents = '';
+        }, 500);
+    };
+
+    const handleCancel = () => {
+        handleClose();
+    };
+
     return (
-        <AlertDialog open={open} onOpenChange={onOpenChange}>
+        <AlertDialog open={open} onOpenChange={handleClose}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -44,7 +56,7 @@ export function DeleteUserDialog({ user, open, onOpenChange }: DeleteUserDialogP
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
                         Delete User
                     </AlertDialogAction>
