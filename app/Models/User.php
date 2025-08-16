@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class User extends Authenticatable
 {
     protected $table = 'users';
-    protected $primaryKey = 'user_id'; // Add this line
+    protected $primaryKey = 'user_id';
     
     protected $fillable = [
         'name',
@@ -29,7 +29,11 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_active' => 'boolean',
     ];
-
+    
+     public function getRouteKeyName()
+    {
+        return 'user_id';
+    }
     /**
      * Get the role that belongs to the user.
      */

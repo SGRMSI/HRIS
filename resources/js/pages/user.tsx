@@ -3,8 +3,11 @@ import { columns, type User } from '@/components/user/columns';
 import { DataTable } from '@/components/user/data-table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
+import { type PageProps } from '@inertiajs/core';
 import { Users } from 'lucide-react';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -15,9 +18,31 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface Props {
     users: User[];
+    flash: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
 export default function User({ users }: Props) {
+   const { props } = usePage<PageProps & Props>(); 
+
+    useEffect(() => {
+        if (props.flash?.success) {
+            toast.success(props.flash.success);
+        }
+        if (props.flash?.error) {
+            toast.error(props.flash.error);
+        }
+        if (props.flash?.warning) {
+            toast.warning(props.flash.warning);
+        }
+        if (props.flash?.info) {
+            toast.info(props.flash.info);
+        }
+    }, [props.flash]);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="User" />
@@ -25,12 +50,11 @@ export default function User({ users }: Props) {
                 <div className="flex items-center justify-end py-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Total Users</CardTitle>
-                            <div className='flex gap-2'>
-                                <Users className='h-4 w-4' />
-
-                                <CardDescription>{users.length}</CardDescription>
+                            <div className="flex gap-2">
+                                <Users className="h-4 w-4" />
+                                <CardTitle>{users.length}</CardTitle>
                             </div>
+                            <CardDescription>Total Users</CardDescription>
                         </CardHeader>
                     </Card>
                 </div>
