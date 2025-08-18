@@ -20,7 +20,7 @@ class EmployeeController extends Controller
                     'full_name' => trim($employee->first_name . ' ' . ($employee->middle_name ? $employee->middle_name . ' ' : '') . $employee->last_name),
                     'company' => $employee->company ? $employee->company->name : 'N/A',
                     'department' => $employee->department ? $employee->department->name : null,
-                    'position' => $employee->position ? $employee->position->name : 'N/A',
+                    'position' => $employee->position ? $employee->position->title : 'N/A',
                     'employment_status' => $employee->employment_status,
                     'date_hired' => $employee->date_hired->format('Y-m-d'),
                     'contact_number' => $employee->contact_number,
