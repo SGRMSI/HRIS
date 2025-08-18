@@ -14,7 +14,11 @@ return new class extends Migration
     Schema::create('companies', function (Blueprint $table) {
         $table->id('company_id');
         $table->string('name');
-        $table->enum('industry', ['IT', 'BPO', 'Manufacturing', 'Retail', 'Other']); // adjust as needed
+        $table->enum('industry', [
+            'TechHub',
+            'Coffee Shop',    
+            'Call Center',    
+        ]);
         $table->timestamps();
     });
 }

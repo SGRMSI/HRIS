@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
+    use HasFactory, Notifiable;
+
     protected $table = 'users';
     protected $primaryKey = 'user_id';
     
@@ -14,7 +18,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'employee_id',
         'role_id',
         'is_active',
     ];
@@ -24,13 +27,16 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'is_active' => 'boolean',
-    ];
-    
-     public function getRouteKeyName()
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'is_active' => 'boolean',
+        ];
+    }
+
+    public function getRouteKeyName()
     {
         return 'user_id';
     }
@@ -41,4 +47,6 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
     }
+
+    // No employee relationship - keeping them separate
 }

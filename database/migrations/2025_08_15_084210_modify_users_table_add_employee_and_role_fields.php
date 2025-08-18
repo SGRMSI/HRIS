@@ -16,8 +16,6 @@ return new class extends Migration
             // Rename id to user_id
             $table->renameColumn('id', 'user_id');
             
-            // Add new columns
-            $table->unsignedBigInteger('employee_id')->nullable()->unique()->after('user_id');
             $table->foreignId('role_id')->after('password')->constrained('roles', 'role_id')->onDelete('restrict');
             $table->boolean('is_active')->default(true)->after('role_id');
             
@@ -35,10 +33,7 @@ return new class extends Migration
             // Drop foreign keys first
             $table->dropForeign(['role_id']);
             // $table->dropForeign(['employee_id']); // if employees table exists
-            
-            // Drop columns
-            $table->dropColumn(['employee_id', 'role_id', 'is_active']);
-            
+        
             // Rename back
             $table->renameColumn('user_id', 'id');
         });

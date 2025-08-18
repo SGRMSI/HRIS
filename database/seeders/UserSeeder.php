@@ -2,11 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
@@ -19,7 +17,7 @@ class UserSeeder extends Seeder
         $adminRole = DB::table('roles')->where('name', 'admin')->first();
         $hrRole = DB::table('roles')->where('name', 'hr')->first();
         $managerRole = DB::table('roles')->where('name', 'manager')->first();
-        $employeeRole = DB::table('roles')->where('name', 'employee')->first();
+        // $employeeRole = DB::table('roles')->where('name', 'employee')->first();
 
         // Create default users
         $users = [
@@ -28,7 +26,6 @@ class UserSeeder extends Seeder
                 'email' => 'admin@hris.local',
                 'password' => Hash::make('password123'),
                 'role_id' => $adminRole->role_id,
-                'employee_id' => null, // Admin might not be an employee
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
@@ -39,7 +36,6 @@ class UserSeeder extends Seeder
                 'email' => 'hr@hris.local',
                 'password' => Hash::make('password123'),
                 'role_id' => $hrRole->role_id,
-                'employee_id' => 1001,
                 'is_active' => true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
