@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\EmployeeController;
 
 Route::get('/', function () {
     return Inertia::render('auth/login' );
@@ -24,9 +25,10 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('employee', function () {
-        return Inertia::render('employee');
-    })->name('employee');
+    Route::get('employee', [EmployeeController::class, 'index'])->name('employee.index');
+    Route::get('employee/{employee}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
+    Route::put('employee/{employee}', [EmployeeController::class, 'update'])->name('employee.update');
+    Route::delete('employee/{employee}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
