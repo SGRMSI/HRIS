@@ -32,7 +32,7 @@ interface GlobalPageProps extends PageProps {
 export default function Employee({ employees }: Props) {
     const { props } = usePage<GlobalPageProps>();
 
-    const uniqueDepartments = [...new Set(employees.map((emp) => emp.department).filter(Boolean))];
+    const uniqueCompanies = [...new Set(employees.map((emp) => emp.company).filter(Boolean))];
 
     useEffect(() => {
         if (props.flash?.success) {
@@ -58,9 +58,9 @@ export default function Employee({ employees }: Props) {
                         <CardHeader>
                             <div className="flex gap-2">
                                 <Warehouse className="h-4 w-4" />
-                                <CardTitle>{uniqueDepartments.length}</CardTitle>
+                                <CardTitle>{uniqueCompanies.length}</CardTitle>
                             </div>
-                            <CardDescription>Departments</CardDescription>
+                            <CardDescription>Companies</CardDescription>
                         </CardHeader>
                     </Card>
                     <Card>
