@@ -76,7 +76,6 @@ export const columns: ColumnDef<User>[] = [
     },
     {
         id: 'actions',
-        header: 'Actions',
         cell: ({ row }) => {
             const user = row.original;
             return <ActionsCell user={user} />;
