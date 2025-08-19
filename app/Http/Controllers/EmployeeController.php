@@ -85,7 +85,7 @@ class EmployeeController extends Controller
             'hdmf_number' => 'nullable|string|max:20',
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
-            'date_regularized' => 'nullable|date|after:date_hired',
+            'date_regularized' => 'nullable|date|after_or_equal:date_hired', // Changed from 'after' to 'after_or_equal'
             'employment_status' => 'required|in:Probationary,Regular,Contractual,Terminated',
             'remarks' => 'nullable|string',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -134,7 +134,6 @@ class EmployeeController extends Controller
         }
     }
 
-
     public function show(Employee $employee)
     {
         $employeeData = [
@@ -163,6 +162,7 @@ class EmployeeController extends Controller
             'employee' => $employeeData,
         ]);
     }
+
 
     public function destroy(Employee $employee)
     {
