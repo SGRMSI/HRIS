@@ -26,6 +26,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('employee', [EmployeeController::class, 'index'])->name('employee.index');
+    Route::get('employee/{employee}', [EmployeeController::class, 'show'])->name('employee.show');
     Route::get('employee/{employee}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
     Route::put('employee/{employee}', [EmployeeController::class, 'update'])->name('employee.update');
     Route::delete('employee/{employee}', [EmployeeController::class, 'destroy'])->name('employee.destroy');

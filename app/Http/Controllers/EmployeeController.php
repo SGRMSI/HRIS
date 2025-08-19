@@ -35,6 +35,35 @@ class EmployeeController extends Controller
         ]);
     }
 
+    public function show(Employee $employee)
+    {
+        $employeeData = [
+            'employee_id' => $employee->employee_id,
+            'id_number' => $employee->id_number,
+            'first_name' => $employee->first_name,
+            'middle_name' => $employee->middle_name,
+            'last_name' => $employee->last_name,
+            'full_name' => trim($employee->first_name . ' ' . ($employee->middle_name ? $employee->middle_name . ' ' : '') . $employee->last_name),
+            'company' => $employee->company ? $employee->company->name : 'N/A',
+            'department' => $employee->department ? $employee->department->name : 'N/A',
+            'position' => $employee->position ? $employee->position->title : 'N/A',
+            'employment_status' => $employee->employment_status,
+            'date_hired' => $employee->date_hired->format('Y-m-d'),
+            'contact_number' => $employee->contact_number,
+            'email' => $employee->email,
+            'address' => $employee->address,
+            'date_of_birth' => $employee->date_of_birth ? $employee->date_of_birth->format('Y-m-d') : null,
+            'gender' => $employee->gender,
+            'civil_status' => $employee->civil_status,
+            'emergency_contact_name' => $employee->emergency_contact_name,
+            'emergency_contact_number' => $employee->emergency_contact_number,
+        ];
+
+        return Inertia::render('employee/show', [
+            'employee' => $employeeData,
+        ]);
+    }
+
     public function destroy(Employee $employee)
     {
         try {
