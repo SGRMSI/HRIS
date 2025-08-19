@@ -14,6 +14,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Link } from '@inertiajs/react';
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
@@ -41,13 +42,17 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
 
     return (
         <div className="w-full">
-            <div className="flex items-center py-4">
+            <div className="flex items-center py-4 justify-between">
                 <Input
                     placeholder="Search employees..."
                     value={(table.getColumn('full_name')?.getFilterValue() as string) ?? ''}
                     onChange={(event) => table.getColumn('full_name')?.setFilterValue(event.target.value)}
                     className="max-w-sm"
                 />
+
+                <Button asChild>
+                    <Link href="/employee/create">Add Employee</Link>
+                </Button>
             </div>
             <div className="rounded-md border">
                 <Table>
