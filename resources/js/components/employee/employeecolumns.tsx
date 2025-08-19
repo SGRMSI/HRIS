@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { router } from '@inertiajs/react';
 import { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Eye, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export type Employee = {
@@ -22,8 +22,8 @@ export type Employee = {
 const ActionsCell = ({ employee }: { employee: Employee }) => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-    const handleEdit = () => {
-        router.visit(`/employee/${employee.employee_id}/edit`);
+    const handleView = () => {
+        router.visit(`/employee/${employee.employee_id}`);
     };
 
     return (
@@ -36,9 +36,9 @@ const ActionsCell = ({ employee }: { employee: Employee }) => {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleEdit}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
+                    <DropdownMenuItem onClick={handleView}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        View
                     </DropdownMenuItem>
                     <DropdownMenuItem className="text-red-600" onClick={() => setDeleteDialogOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" />
