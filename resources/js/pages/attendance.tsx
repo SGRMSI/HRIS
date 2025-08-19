@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserCheck, UserX, Clock, CalendarIcon } from 'lucide-react';
 import { DateRangePicker } from '@/components/attendance/date-range-picker';
+import { AttendanceDataTable } from '@/components/attendance/attendance-data-table';
+import { columns, type AttendanceRecord } from '@/components/attendance/attendance-columns';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -15,9 +17,9 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-// interface Props {
-//     attendance: Attendance[];
-// }
+interface Props {
+    attendanceRecords: AttendanceRecord[];
+}
 
 interface GlobalPageProps extends PageProps {
     flash?: {
@@ -33,12 +35,79 @@ export default function Attendance() {
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
 
-    // Mock data - replace with actual attendance data
+    // Mock data - replace with actual attendance data from backend
+    const attendanceRecords: AttendanceRecord[] = [
+        {
+            id: 1,
+            employee_id: 101,
+            full_name: 'John Doe',
+            time_in: '08:00:00',
+            time_out: '17:00:00',
+            date: '2025-08-19',
+            status: 'On Time'
+        },
+        {
+            id: 2,
+            employee_id: 102,
+            full_name: 'Jane Smith',
+            time_in: '08:30:00',
+            time_out: '17:30:00',
+            date: '2025-08-19',
+            status: 'Late'
+        },
+        {
+            id: 3,
+            employee_id: 103,
+            full_name: 'Mike Johnson',
+            time_in: null,
+            time_out: null,
+            date: '2025-08-19',
+            status: 'Absent'
+        },
+        {
+            id: 4,
+            employee_id: 104,
+            full_name: 'Sarah Williams',
+            time_in: '07:45:00',
+            time_out: '16:45:00',
+            date: '2025-08-19',
+            status: 'Present'
+        },
+        {
+            id: 5,
+            employee_id: 105,
+            full_name: 'David Brown',
+            time_in: '08:15:00',
+            time_out: null,
+            date: '2025-08-19',
+            status: 'Incomplete'
+        },
+        {
+            id: 6,
+            employee_id: 106,
+            full_name: 'Emily Davis',
+            time_in: '08:00:00',
+            time_out: '17:00:00',
+            date: '2025-08-18',
+            status: 'On Time'
+        },
+        {
+            id: 7,
+            employee_id: 107,
+            full_name: 'Robert Wilson',
+            time_in: '09:00:00',
+            time_out: '18:00:00',
+            date: '2025-08-18',
+            status: 'Late'
+        }
+    ];
+
+    // Mock data - replace with actual attendance statistics
     const attendanceStats = {
-        present: 45,
-        absent: 5,
-        onTime: 40,
-        late: 10
+        present: attendanceRecords.filter(r => r.status === 'Present' || r.status === 'On Time').length,
+        absent: attendanceRecords.filter(r => r.status === 'Absent').length,
+        onTime: attendanceRecords.filter(r => r.status === 'On Time').length,
+        late: attendanceRecords.filter(r => r.status === 'Late').length
     };
 
     const handleApplyFilter = () => {
@@ -129,7 +198,14 @@ export default function Attendance() {
                         </CardHeader>
                     </Card>
                 </div>
-                {/* <EmployeeDataTable columns={columns} data={employees} /> */}
+                
+                {/* Attendance Data Table */}
+                <AttendanceDataTable 
+                    columns={columns} 
+                    data={attendanceRecords} 
+                    showImportButton={true}
+                    onImportClick={() => console.log('Import CSV clicked')}
+                />
             </div>
         </AppLayout>
     );
