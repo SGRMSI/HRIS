@@ -12,30 +12,12 @@ class Employee extends Model
     protected $primaryKey = 'employee_id';
 
     protected $fillable = [
-        'id_number',
-        'last_name',
-        'first_name',
-        'middle_name',
-        'gender',
-        'birth_date',
-        'age',
-        'civil_status',
-        'address',
-        'contact_number',
-        'company_id',
-        'department_id',
-        'position_id',
-        'account_id',
-        'sss_number',
-        'phic_number',
-        'hdmf_number',
-        'tin_number',
-        'date_hired',
-        'date_regularized',
-        'employment_status',
-        'remarks',
-        'date_separated',
-        'profile_picture',
+        'id_number', 'first_name', 'last_name', 'middle_name', 'gender',
+        'birth_date', 'age', 'civil_status', 'address', 'contact_number',
+        'company_id', 'department_id', 'position_id', 'account_id',
+        'sss_number', 'phic_number', 'hdmf_number', 'tin_number',
+        'date_hired', 'date_regularized', 'employment_status',
+        'remarks', 'profile_picture'
     ];
 
     protected $casts = [
