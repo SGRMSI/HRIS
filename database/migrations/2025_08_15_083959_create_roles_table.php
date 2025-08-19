@@ -22,8 +22,7 @@ return new class extends Migration
         DB::table('roles')->insert([
             ['name' => 'admin', 'label' => 'Administrator', 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'hr', 'label' => 'Human Resources', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'manager', 'label' => 'Manager', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'employee', 'label' => 'Employee', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'accounting', 'label' => 'Accounting', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 

@@ -18,7 +18,6 @@ return new class extends Migration
         $table->string('file_type');
         $table->text('file_path');
         $table->enum('category', ['Resume', 'NBI', 'SSS', 'PHIC', 'HDMF', 'TIN', 'Other']);
-        $table->foreignId('uploaded_by')->nullable()->constrained('users', 'id')->nullOnDelete();
         $table->timestamp('uploaded_at')->useCurrent();
         $table->text('remarks')->nullable();
         $table->timestamps();
