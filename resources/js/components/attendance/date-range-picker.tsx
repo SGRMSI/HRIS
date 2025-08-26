@@ -1,25 +1,33 @@
 import { Button } from '@/components/ui/button';
 import { CalendarIcon, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { DateRangeCalendar } from './date-range-calendar';
+import { DateTimeRangeCalendar } from './date-range-calendar';
 
-interface DateRangePickerProps {
+interface DateTimeRangePickerProps {
     startDate: string;
     endDate: string;
+    startTime: string;
+    endTime: string;
     onStartDateChange: (date: string) => void;
     onEndDateChange: (date: string) => void;
+    onStartTimeChange: (time: string) => void;
+    onEndTimeChange: (time: string) => void;
     onApply?: () => void;
     onClear?: () => void;
 }
 
-export function DateRangePicker({
+export function DateTimeRangePicker({
     startDate,
     endDate,
+    startTime,
+    endTime,
     onStartDateChange,
     onEndDateChange,
+    onStartTimeChange,
+    onEndTimeChange,
     onApply,
     onClear,
-}: DateRangePickerProps) {
+}: DateTimeRangePickerProps) {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [selectingFor, setSelectingFor] = useState<'start' | 'end' | null>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
@@ -39,29 +47,55 @@ export function DateRangePicker({
     }, [isPopoverOpen]);
 
     const formatDateRange = () => {
-        if (!startDate && !endDate) return 'Select date range';
-        
-        const formatDisplayDate = (dateStr: string) => {
+        const formatDisplayDateTime = (dateStr: string, timeStr: string) => {
+            if (!dateStr) return '';
             const [year, month, day] = dateStr.split('-').map(Number);
             const date = new Date(year, month - 1, day);
-            return date.toLocaleDateString('en-US', { 
+            const dateFormatted = date.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric', 
                 year: 'numeric' 
             });
-        };
-        
-        if (startDate && endDate) {
-            // If same date, show single date
-            if (startDate === endDate) {
-                return formatDisplayDate(startDate);
+            
+            if (timeStr) {
+                const [hours, minutes] = timeStr.split(':');
+                const hour24 = parseInt(hours);
+                const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+                const ampm = hour24 >= 12 ? 'PM' : 'AM';
+                return `${dateFormatted} ${hour12}:${minutes} ${ampm}`;
             }
-            // Different dates, show range
-            return `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`;
+            
+            return dateFormatted;
+        };
+
+        if (!startDate && !endDate) {
+            return 'Select date & time range';
         }
-        if (startDate) return `From ${formatDisplayDate(startDate)}`;
-        if (endDate) return `Until ${formatDisplayDate(endDate)}`;
-        return 'Select date range';
+
+        if (startDate && !endDate) {
+            return `From ${formatDisplayDateTime(startDate, startTime)}`;
+        }
+
+        if (!startDate && endDate) {
+            return `Until ${formatDisplayDateTime(endDate, endTime)}`;
+        }
+
+        if (startDate === endDate) {
+            const baseDate = formatDisplayDateTime(startDate, '');
+            if (startTime && endTime && startTime !== endTime) {
+                const formatTime = (timeStr: string) => {
+                    const [hours, minutes] = timeStr.split(':');
+                    const hour24 = parseInt(hours);
+                    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+                    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+                    return `${hour12}:${minutes} ${ampm}`;
+                };
+                return `${baseDate} ${formatTime(startTime)} - ${formatTime(endTime)}`;
+            }
+            return formatDisplayDateTime(startDate, startTime);
+        }
+
+        return `${formatDisplayDateTime(startDate, startTime)} to ${formatDisplayDateTime(endDate, endTime)}`;
     };
 
     const handleApplyFilter = () => {
@@ -74,12 +108,14 @@ export function DateRangePicker({
         setSelectingFor(null);
     };
 
+    const hasSelection = startDate || endDate || startTime || endTime;
+
     return (
         <div className="relative" ref={popoverRef}>
             <Button
                 variant="outline"
                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-                className="justify-between min-w-[240px]"
+                className="justify-between min-w-[320px]"
             >
                 <span className="truncate">{formatDateRange()}</span>
                 <ChevronDown className={`h-4 w-4 transition-transform ${isPopoverOpen ? 'rotate-180' : ''}`} />
@@ -88,11 +124,15 @@ export function DateRangePicker({
             {isPopoverOpen && (
                 <div className="absolute top-full left-0 mt-2 z-50 w-96 rounded-md border bg-popover p-4 text-popover-foreground shadow-md">
                     <div className="space-y-4">
-                        <DateRangeCalendar
+                        <DateTimeRangeCalendar
                             startDate={startDate}
                             endDate={endDate}
+                            startTime={startTime}
+                            endTime={endTime}
                             onStartDateChange={onStartDateChange}
                             onEndDateChange={onEndDateChange}
+                            onStartTimeChange={onStartTimeChange}
+                            onEndTimeChange={onEndTimeChange}
                             selectingFor={selectingFor}
                             onSelectingForChange={setSelectingFor}
                         />
@@ -109,7 +149,7 @@ export function DateRangePicker({
                             <Button
                                 size="sm"
                                 onClick={handleApplyFilter}
-                                disabled={!startDate && !endDate}
+                                disabled={!hasSelection}
                             >
                                 Apply Filter
                             </Button>

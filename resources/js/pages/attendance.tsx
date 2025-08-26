@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserCheck, UserX, Clock, CalendarIcon } from 'lucide-react';
-import { DateRangePicker } from '@/components/attendance/date-range-picker';
+import { DateTimeRangePicker } from '@/components/attendance/date-range-picker';
 import { AttendanceDataTable } from '@/components/attendance/attendance-data-table';
 import { columns, type AttendanceRecord } from '@/components/attendance/attendance-columns';
 
@@ -34,6 +34,8 @@ export default function Attendance() {
     const { props } = usePage<GlobalPageProps>();
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const [startTime, setStartTime] = useState<string>('');
+    const [endTime, setEndTime] = useState<string>('');
 
     // Mock data - replace with actual attendance data from backend
     const attendanceRecords: AttendanceRecord[] = [
@@ -112,16 +114,18 @@ export default function Attendance() {
 
     const handleApplyFilter = () => {
         // Add your filter logic here
-        console.log('Applying filter:', { startDate, endDate });
+        console.log('Applying filter:', { startDate, endDate, startTime, endTime });
         // You can add a toast notification here
-        if (startDate || endDate) {
-            toast.success('Date filter applied successfully');
+        if (startDate || endDate || startTime || endTime) {
+            toast.success('Date and time filter applied successfully!');
         }
     };
 
     const handleClearFilter = () => {
         setStartDate('');
         setEndDate('');
+        setStartTime('');
+        setEndTime('');
     };
 
     useEffect(() => {
@@ -149,11 +153,15 @@ export default function Attendance() {
                         <span className="text-sm font-medium">Date Range:</span>
                     </div>
                     
-                    <DateRangePicker
+                    <DateTimeRangePicker
                         startDate={startDate}
                         endDate={endDate}
+                        startTime={startTime}
+                        endTime={endTime}
                         onStartDateChange={setStartDate}
                         onEndDateChange={setEndDate}
+                        onStartTimeChange={setStartTime}
+                        onEndTimeChange={setEndTime}
                         onApply={handleApplyFilter}
                         onClear={handleClearFilter}
                     />
