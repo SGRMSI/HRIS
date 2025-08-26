@@ -134,7 +134,6 @@ export const columns: ColumnDef<Employee>[] = [
     },
     {
         id: 'actions',
-        header: 'Actions',
         cell: ({ row }) => {
             const employee = row.original;
             return <ActionsCell employee={employee} />;
