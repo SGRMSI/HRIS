@@ -1,7 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
@@ -33,6 +31,10 @@ interface Employee {
     work_shift?: string;
     absents?: number;
     infractions?: number;
+    sss_number?: string;
+    phic_number?: string;
+    hdmf_number?: string;
+    tin_number?: string;
 }
 
 interface Props {
@@ -201,57 +203,38 @@ export default function EmployeeShow({ employee }: Props) {
                     <div className="space-y-6 lg:col-span-2">
                         {/* Personal Details */}
                         <Card className="overflow-hidden border-0 shadow-sm">
-                            <CardHeader className="bg-gray-800 py-4 text-white">
+                            <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Personal Details</CardTitle>
                             </CardHeader>
                             <CardContent className="p-6">
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                     <div>
-                                        <Label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Name
-                                        </Label>
-                                        <Input id="name" value={employee.full_name} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Name</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.full_name}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="age" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Age
-                                        </Label>
-                                        <Input id="age" value={employee.age?.toString() || ''} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Age</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.age || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="sex" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Sex
-                                        </Label>
-                                        <Input id="sex" value={employee.gender || ''} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Sex</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.gender || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="birthdate" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Birthdate
-                                        </Label>
-                                        <Input id="birthdate" value={employee.date_of_birth || ''} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Birthdate</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.date_of_birth || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="civil-status" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Civil Status
-                                        </Label>
-                                        <Input
-                                            id="civil-status"
-                                            value={employee.civil_status || ''}
-                                            readOnly
-                                            className="border-gray-200 bg-gray-50"
-                                        />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Civil Status</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.civil_status || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="contact" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Contact No.
-                                        </Label>
-                                        <Input id="contact" value={employee.contact_number || ''} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Contact No.</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.contact_number || 'N/A'}</p>
                                     </div>
                                     <div className="md:col-span-2">
-                                        <Label htmlFor="address" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Address
-                                        </Label>
-                                        <Input id="address" value={employee.address || ''} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Address</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.address || 'N/A'}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -259,68 +242,69 @@ export default function EmployeeShow({ employee }: Props) {
 
                         {/* Employment Details */}
                         <Card className="overflow-hidden border-0 shadow-sm">
-                            <CardHeader className="bg-gray-800 py-4 text-white">
+                            <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Employment Details</CardTitle>
                             </CardHeader>
                             <CardContent className="p-6">
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                     <div>
-                                        <Label htmlFor="employee-id" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Employee ID
-                                        </Label>
-                                        <Input id="employee-id" value={employee.id_number} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Employee ID</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.id_number}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="company" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Company
-                                        </Label>
-                                        <Input id="company" value={employee.company} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Company</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.company}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="department" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Department
-                                        </Label>
-                                        <Input id="department" value={employee.department} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Department</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.department}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="position" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Position
-                                        </Label>
-                                        <Input id="position" value={employee.position} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Position</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.position}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="date-hired" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Date Hired
-                                        </Label>
-                                        <Input id="date-hired" value={employee.date_hired} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Date Hired</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.date_hired}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="status" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Status
-                                        </Label>
-                                        <Input id="status" value={employee.employment_status} readOnly className="border-gray-200 bg-gray-50" />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.employment_status}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="date-regularized" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Date Regularized
-                                        </Label>
-                                        <Input
-                                            id="date-regularized"
-                                            value={employee.date_regularized || ''}
-                                            readOnly
-                                            className="border-gray-200 bg-gray-50"
-                                        />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Date Regularized</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.date_regularized || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <Label htmlFor="date-separated" className="mb-1 block text-sm font-medium text-gray-700">
-                                            Date Separated
-                                        </Label>
-                                        <Input
-                                            id="date-separated"
-                                            value={employee.date_separated || ''}
-                                            readOnly
-                                            className="border-gray-200 bg-gray-50"
-                                        />
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Date Separated</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.date_separated || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Government Details */}
+                        <Card className="overflow-hidden border-0 shadow-sm">
+                            <CardHeader className="bg-gray-800 py-2 text-white">
+                                <CardTitle className="text-lg font-medium">Government Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                    <div>
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">SSS Number</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.sss_number || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">PhilHealth Number</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.phic_number || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">Pag-IBIG Number</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.hdmf_number || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">TIN Number</label>
+                                        <p className="text-sm font-bold text-gray-900">{employee.tin_number || 'N/A'}</p>
                                     </div>
                                 </div>
                             </CardContent>
