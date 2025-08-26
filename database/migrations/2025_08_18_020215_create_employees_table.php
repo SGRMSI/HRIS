@@ -35,8 +35,9 @@ return new class extends Migration
         $table->string('tin_number')->nullable();
 
         $table->date('date_hired');
+        $table->date('evaluation_end_date')->nullable();
         $table->date('date_regularized')->nullable();
-        $table->enum('employment_status', ['Probationary', 'Regular', 'Contractual', 'Resigned', 'Terminated']);
+        $table->enum('employment_status', ['Probationary', 'Regular', 'Resigned', 'Terminated']);
         $table->text('remarks')->nullable();
         $table->date('date_separated')->nullable();
         $table->text('profile_picture')->nullable();

@@ -11,7 +11,7 @@ export type AttendanceRecord = {
     time_in: string | null;
     time_out: string | null;
     date: string;
-    status: 'Present' | 'Absent' | 'Late' | 'On Time' | 'Incomplete';
+    status: 'Work' | 'Break' | 'Incomplete';
 };
 
 const ActionsCell = ({ record }: { record: AttendanceRecord }) => {
@@ -50,15 +50,12 @@ const ActionsCell = ({ record }: { record: AttendanceRecord }) => {
 const StatusBadge = ({ status }: { status: AttendanceRecord['status'] }) => {
     const getStatusVariant = (status: AttendanceRecord['status']) => {
         switch (status) {
-            case 'Present':
-            case 'On Time':
+            case 'Work':
                 return 'default'; // Green
-            case 'Late':
+            case 'Break':
                 return 'secondary'; // Orange/Yellow
-            case 'Absent':
-                return 'destructive'; // Red
             case 'Incomplete':
-                return 'outline'; // Gray
+                return 'destructive'; // Red
             default:
                 return 'outline';
         }
@@ -72,70 +69,6 @@ const StatusBadge = ({ status }: { status: AttendanceRecord['status'] }) => {
 };
 
 export const columns: ColumnDef<AttendanceRecord>[] = [
-    {
-        accessorKey: 'id',
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className="p-0 h-auto font-medium"
-                >
-                    ID
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-        cell: ({ row }) => <div className="font-medium">{row.getValue('id')}</div>,
-    },
-    {
-        accessorKey: 'full_name',
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className="p-0 h-auto font-medium"
-                >
-                    Full Name
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-        cell: ({ row }) => <div className="font-medium">{row.getValue('full_name')}</div>,
-    },
-    {
-        accessorKey: 'time_in',
-        header: 'Time In',
-        cell: ({ row }) => {
-            const timeIn = row.getValue('time_in') as string | null;
-            return (
-                <div className={timeIn ? 'text-foreground' : 'text-muted-foreground'}>
-                    {timeIn ? new Date(`2000-01-01T${timeIn}`).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        hour12: true 
-                    }) : '—'}
-                </div>
-            );
-        },
-    },
-    {
-        accessorKey: 'time_out',
-        header: 'Time Out',
-        cell: ({ row }) => {
-            const timeOut = row.getValue('time_out') as string | null;
-            return (
-                <div className={timeOut ? 'text-foreground' : 'text-muted-foreground'}>
-                    {timeOut ? new Date(`2000-01-01T${timeOut}`).toLocaleTimeString('en-US', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        hour12: true 
-                    }) : '—'}
-                </div>
-            );
-        },
-    },
     {
         accessorKey: 'date',
         header: ({ column }) => {
@@ -159,6 +92,70 @@ export const columns: ColumnDef<AttendanceRecord>[] = [
                         month: 'short', 
                         day: 'numeric' 
                     })}
+                </div>
+            );
+        },
+    },
+    {
+        accessorKey: 'employee_id',
+        header: ({ column }) => {
+            return (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="p-0 h-auto font-medium"
+                >
+                    Employee ID
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            );
+        },
+        cell: ({ row }) => <div className="font-medium">{row.getValue('employee_id')}</div>,
+    },
+    {
+        accessorKey: 'full_name',
+        header: ({ column }) => {
+            return (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="p-0 h-auto font-medium"
+                >
+                    Employee Name
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            );
+        },
+        cell: ({ row }) => <div className="font-medium">{row.getValue('full_name')}</div>,
+    },
+    {
+        accessorKey: 'time_in',
+        header: 'Time-In',
+        cell: ({ row }) => {
+            const timeIn = row.getValue('time_in') as string | null;
+            return (
+                <div className={timeIn ? 'text-foreground' : 'text-muted-foreground'}>
+                    {timeIn ? new Date(`2000-01-01T${timeIn}`).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: true 
+                    }) : '—'}
+                </div>
+            );
+        },
+    },
+    {
+        accessorKey: 'time_out',
+        header: 'Time-Out',
+        cell: ({ row }) => {
+            const timeOut = row.getValue('time_out') as string | null;
+            return (
+                <div className={timeOut ? 'text-foreground' : 'text-muted-foreground'}>
+                    {timeOut ? new Date(`2000-01-01T${timeOut}`).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: true 
+                    }) : '—'}
                 </div>
             );
         },

@@ -1,27 +1,36 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
-interface DateRangeCalendarProps {
+interface DateTimeRangeCalendarProps {
     startDate: string;
     endDate: string;
+    startTime: string;
+    endTime: string;
     onStartDateChange: (date: string) => void;
     onEndDateChange: (date: string) => void;
+    onStartTimeChange: (time: string) => void;
+    onEndTimeChange: (time: string) => void;
     selectingFor: 'start' | 'end' | null;
     onSelectingForChange: (mode: 'start' | 'end' | null) => void;
 }
 
-export function DateRangeCalendar({
+export function DateTimeRangeCalendar({
     startDate,
     endDate,
+    startTime,
+    endTime,
     onStartDateChange,
     onEndDateChange,
+    onStartTimeChange,
+    onEndTimeChange,
     selectingFor,
     onSelectingForChange,
-}: DateRangeCalendarProps) {
+}: DateTimeRangeCalendarProps) {
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
-    // Calendar helper functions
     const getDaysInMonth = (date: Date) => {
         return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
     };
@@ -35,6 +44,25 @@ export function DateRangeCalendar({
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    };
+
+    const formatDisplayDate = (dateStr: string) => {
+        if (!dateStr) return '';
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    };
+
+    const formatDisplayTime = (timeStr: string) => {
+        if (!timeStr) return '';
+        const [hours, minutes] = timeStr.split(':');
+        const hour24 = parseInt(hours);
+        const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+        const ampm = hour24 >= 12 ? 'PM' : 'AM';
+        return `${hour12}:${minutes} ${ampm}`;
     };
 
     const isDateSelected = (day: number) => {
@@ -173,24 +201,58 @@ export function DateRangeCalendar({
             <div className="flex gap-2 text-sm">
                 <button
                     onClick={() => onSelectingForChange('start')}
-                    className={`px-3 py-1 rounded-md border ${
+                    className={`px-3 py-2 rounded-md border flex-1 text-left ${
                         selectingFor === 'start' 
                             ? 'bg-primary text-primary-foreground' 
                             : 'bg-background hover:bg-accent'
                     }`}
                 >
-                    Start Date {startDate && `(${startDate})`}
+                    <div className="font-medium">Start</div>
+                    <div className="text-xs">
+                        {startDate ? `${formatDisplayDate(startDate)} ${formatDisplayTime(startTime)}` : 'Select date & time'}
+                    </div>
                 </button>
                 <button
                     onClick={() => onSelectingForChange('end')}
-                    className={`px-3 py-1 rounded-md border ${
+                    className={`px-3 py-2 rounded-md border flex-1 text-left ${
                         selectingFor === 'end' 
                             ? 'bg-primary text-primary-foreground' 
                             : 'bg-background hover:bg-accent'
                     }`}
                 >
-                    End Date {endDate && `(${endDate})`}
+                    <div className="font-medium">End</div>
+                    <div className="text-xs">
+                        {endDate ? `${formatDisplayDate(endDate)} ${formatDisplayTime(endTime)}` : 'Select date & time'}
+                    </div>
                 </button>
+            </div>
+
+            {/* Time Selection */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="start-time" className="text-sm font-medium">
+                        Start Time
+                    </Label>
+                    <Input
+                        id="start-time"
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => onStartTimeChange(e.target.value)}
+                        className="w-full"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="end-time" className="text-sm font-medium">
+                        End Time
+                    </Label>
+                    <Input
+                        id="end-time"
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => onEndTimeChange(e.target.value)}
+                        className="w-full"
+                    />
+                </div>
             </div>
 
             {/* Calendar */}
