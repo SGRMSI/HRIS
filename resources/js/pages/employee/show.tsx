@@ -141,17 +141,17 @@ export default function EmployeeShow({ employee }: Props) {
                                     <div className="text-sm font-medium">{employee.id_number}</div>
                                 </div>
                                 </div>
-                                <div className="text-md mt-4 inline-block rounded bg-gray-800 p-4 text-white">
-                                    At work for: {getWorkDuration(employee.date_hired)}
+                                <div className="text-sm mt-4 inline-block rounded bg-gray-800 px-4 py-2 text-white">
+                                    At work for: <span className="font-medium">{getWorkDuration(employee.date_hired)}</span>
                                 </div>
                             </CardContent>
                         </Card>
 
                         {/* Status Card */}
-                        <Card className="border-0 shadow-sm">
+                        <Card className="border-0 shadow-sm items-center">
                             <CardContent className="p-6">
                                 <div className="flex flex-row items-center gap-12">
-                                    <div className="flex flex-col">
+                                    <div className="flex flex-col items-center">
                                         <div
                                             className={`inline-flex items-center rounded-lg p-5 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
                                         >
@@ -192,17 +192,16 @@ export default function EmployeeShow({ employee }: Props) {
 
                         {/* Action Buttons */}
                         <div className="space-y-3">
-                            <Button variant="destructive" className="w-full py-3">
+                            <Button variant="default" className="w-full py-3">
                                 Delete
                             </Button>
-                            <Button className="w-full bg-blue-600 py-3 hover:bg-blue-700">Edit</Button>
                         </div>
                     </div>
 
                     {/* Right Column - Details */}
                     <div className="space-y-6 lg:col-span-2">
                         {/* Personal Details */}
-                        <Card className="overflow-hidden border-0 shadow-sm">
+                        <Card className="overflow-hidden border-0 shadow-sm py-0">
                             <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Personal Details</CardTitle>
                             </CardHeader>
@@ -241,7 +240,7 @@ export default function EmployeeShow({ employee }: Props) {
                         </Card>
 
                         {/* Employment Details */}
-                        <Card className="overflow-hidden border-0 shadow-sm">
+                        <Card className="overflow-hidden border-0 shadow-sm py-0">
                             <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Employment Details</CardTitle>
                             </CardHeader>
@@ -284,7 +283,7 @@ export default function EmployeeShow({ employee }: Props) {
                         </Card>
 
                         {/* Government Details */}
-                        <Card className="overflow-hidden border-0 shadow-sm">
+                        <Card className="overflow-hidden border-0 shadow-sm py-0">
                             <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Government Details</CardTitle>
                             </CardHeader>
