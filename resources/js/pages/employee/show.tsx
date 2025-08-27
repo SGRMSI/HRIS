@@ -201,11 +201,11 @@ export default function EmployeeShow({ employee }: Props) {
                     {/* Right Column - Details */}
                     <div className="space-y-6 lg:col-span-2">
                         {/* Personal Details */}
-                        <Card className="overflow-hidden border-0 shadow-sm py-0">
+                        <Card className="overflow-hidden border-0 shadow-sm py-0 gap-2">
                             <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Personal Details</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-6">
+                            <CardContent className="p-6 pt-2">
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-gray-700">Name</label>
@@ -240,11 +240,11 @@ export default function EmployeeShow({ employee }: Props) {
                         </Card>
 
                         {/* Employment Details */}
-                        <Card className="overflow-hidden border-0 shadow-sm py-0">
+                        <Card className="overflow-hidden border-0 shadow-sm py-0 gap-2">
                             <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Employment Details</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-6">
+                            <CardContent className="p-6 pt-2">
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-gray-700">Employee ID</label>
@@ -283,11 +283,11 @@ export default function EmployeeShow({ employee }: Props) {
                         </Card>
 
                         {/* Government Details */}
-                        <Card className="overflow-hidden border-0 shadow-sm py-0">
+                        <Card className="overflow-hidden border-0 shadow-sm py-0 gap-2">
                             <CardHeader className="bg-gray-800 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Government Details</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-6">
+                            <CardContent className="p-6 pt-2">
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-gray-700">SSS Number</label>
