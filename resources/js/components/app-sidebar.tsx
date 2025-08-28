@@ -1,9 +1,10 @@
+import { NavAdmin } from '@/components/nav-admin';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { KeyRound, LayoutGrid, Notebook, User, Wallet } from 'lucide-react';
+import { Building2, KeyRound, LayoutGrid, Notebook, User, Wallet } from 'lucide-react';
 import { useMemo } from 'react';
 import AppLogo from './app-logo';
 
@@ -35,12 +36,6 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'User',
-        href: '/user',
-        icon: KeyRound,
-        requiredRole: 'admin', // Add this property
-    },
-    {
         title: 'Employee',
         href: '/employee',
         icon: User,
@@ -57,20 +52,26 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
+const adminNavItems: NavItem[] = [
+    {
+        title: 'User Management',
+        href: '/user',
+        icon: KeyRound,
+    },
+    {
+        title: 'Company Management',
+        href: '/company',
+        icon: Building2,
+    },
+];
+
 export function AppSidebar() {
     const { auth } = usePage<PageProps>().props;
 
-    // Filter nav items based on user role
-    const filteredNavItems = useMemo(() => {
-        return mainNavItems.filter((item) => {
-            if (!item.requiredRole) return true;
-
-            // Check if user has the required role
-            const userRole = auth.user?.role?.name;
-            return userRole === item.requiredRole;
-        });
+    // Check if user is admin
+    const isAdmin = useMemo(() => {
+        return auth.user?.role?.name === 'admin';
     }, [auth.user?.role?.name]);
-
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -87,7 +88,11 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={filteredNavItems} />
+                {/* Main Navigation */}
+                <NavMain items={mainNavItems} />
+
+                {/* Admin Navigation - Only show for admins */}
+                {isAdmin && <NavAdmin items={adminNavItems} />}
             </SidebarContent>
 
             <SidebarFooter>
