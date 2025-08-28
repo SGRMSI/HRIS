@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\CompanyController;
 
 Route::get('/', function () {
     return Inertia::render('auth/login' );
@@ -22,6 +23,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('user/{user}/edit', [UserController::class, 'edit'])->name('user.edit');
     Route::put('user/{user}', [UserController::class, 'update'])->name('user.update');
     Route::delete('user/{user}', [UserController::class, 'destroy'])->name('user.destroy');
+});
+
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+    Route::get('company', [CompanyController::class, 'index'])->name('company.index');
+    Route::get('company/create', [CompanyController::class, 'create'])->name('company.create');
+    Route::post('company', [CompanyController::class, 'store'])->name('company.store');
+    Route::get('company/{company}', [CompanyController::class, 'show'])->name('company.show');
+    Route::get('company/{company}/edit', [CompanyController::class, 'edit'])->name('company.edit');
+    Route::put('company/{company}', [CompanyController::class, 'update'])->name('company.update');
+    Route::delete('company/{company}', [CompanyController::class, 'destroy'])->name('company.destroy');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
