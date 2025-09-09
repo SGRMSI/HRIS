@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Briefcase, Building2, Edit, Phone, SquareUserRound, Users } from 'lucide-react';
+import DepartmentTable from '@/components/departments/DepartmentTable';
 
 interface Company {
     company_id: number;
@@ -146,6 +147,13 @@ export default function ViewCompany({ company, departments = [], positions = [],
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Department Table */}
+                <DepartmentTable 
+                    company={company} 
+                    departments={departments} 
+                    isCallCenter={isCallCenter} 
+                />
             </div>
         </AppLayout>
     );
