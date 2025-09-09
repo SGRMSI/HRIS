@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Briefcase, Building2, CreditCard, Edit, Phone, Plus, Users } from 'lucide-react';
+import { ArrowLeft, Briefcase, Building2, CreditCard, Edit, Phone, Plus, SquareUserRound, Users } from 'lucide-react';
 
 interface Company {
     company_id: number;
@@ -109,7 +109,7 @@ export default function ViewCompany({ company, departments = [], positions = [],
                         <CardDescription>Company Information & Operations</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
                             <div>
                                 <span className="text-sm font-medium text-muted-foreground">Industry</span>
                                 <div className="mt-1">
@@ -117,70 +117,41 @@ export default function ViewCompany({ company, departments = [], positions = [],
                                 </div>
                             </div>
                             <div>
-                                <span className="text-sm font-medium text-muted-foreground">Total Agents</span>
-                                <p className="mt-1 text-lg font-semibold">{employees?.length || 0}</p>
+                                <span className="text-sm font-medium text-muted-foreground">Total Employees</span>
+
+                                <div className="mt-1 flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-muted-foreground" />
+                                    <p className="mt-1 text-lg font-semibold">{employees?.length || 0}</p>
+                                </div>
                             </div>
                             <div>
-                                <span className="text-sm font-medium text-muted-foreground">Active Accounts</span>
-                                <p className="mt-1 text-lg font-semibold text-green-600">{accounts?.filter((acc) => acc.active).length || 0}</p>
+                                <span className="text-sm font-medium text-muted-foreground">Total Departments</span>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                                    <p className="mt-1 text-lg font-semibold">{departments?.length || 0}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <span className="text-sm font-medium text-muted-foreground">Total Positions</span>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                                    <p className="mt-1 text-lg font-semibold">{positions?.length || 0}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <span className="text-sm font-medium text-muted-foreground">Total Accounts</span>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <SquareUserRound className="h-4 w-4 text-muted-foreground" />
+                                    <p className="mt-1 text-lg font-semibold">{company.has_account ? accounts?.length || 0 : 'N/A'}</p>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Statistics Cards */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{isCallCenter ? 'Agents' : 'Employees'}</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{employees?.length || 0}</div>
-                            <p className="text-xs text-muted-foreground">Total workforce</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Departments</CardTitle>
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{departments?.length || 0}</div>
-                            <p className="text-xs text-muted-foreground">{isCallCenter ? 'Service teams' : 'Business units'}</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Positions</CardTitle>
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{positions?.length || 0}</div>
-                            <p className="text-xs text-muted-foreground">{isCallCenter ? 'Role types' : 'Job roles'}</p>
-                        </CardContent>
-                    </Card>
-
-                    {/* Only show Accounts card if has_account is true */}
-                    {company.has_account && (
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">{isCallCenter ? 'Client Accounts' : 'Accounts'}</CardTitle>
-                                <CreditCard className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{accounts?.length || 0}</div>
-                                <p className="text-xs text-muted-foreground">{accounts?.filter((acc) => acc.active).length || 0} active</p>
-                            </CardContent>
-                        </Card>
-                    )}
-                </div>
-
                 {/* Tabs for Call Center specific view */}
                 {isCallCenter ? (
-                    <Tabs defaultValue={company.has_account ? "accounts" : "departments"} className="w-full">
+                    <Tabs defaultValue={company.has_account ? 'accounts' : 'departments'} className="w-full">
                         <TabsList className={`grid w-full ${company.has_account ? 'grid-cols-4' : 'grid-cols-3'}`}>
                             {company.has_account && <TabsTrigger value="accounts">Client Accounts</TabsTrigger>}
                             <TabsTrigger value="departments">Service Teams</TabsTrigger>
