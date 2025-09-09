@@ -1,3 +1,6 @@
+import AccountTable from '@/components/accounts/AccountTable';
+import DepartmentTable from '@/components/departments/DepartmentTable';
+import PositionTable from '@/components/positions/PositionTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +8,6 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Briefcase, Building2, Edit, Phone, SquareUserRound, Users } from 'lucide-react';
-import DepartmentTable from '@/components/departments/DepartmentTable';
 
 interface Company {
     company_id: number;
@@ -148,12 +150,15 @@ export default function ViewCompany({ company, departments = [], positions = [],
                     </CardContent>
                 </Card>
 
-                {/* Department Table */}
-                <DepartmentTable 
-                    company={company} 
-                    departments={departments} 
-                    isCallCenter={isCallCenter} 
-                />
+                {/* Add tables in a flex or grid layout */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <DepartmentTable company={company} departments={departments} isCallCenter={isCallCenter} />
+
+                    <PositionTable company={company} positions={positions} isCallCenter={isCallCenter} />
+
+                    {/* AccountTable will only render if company.has_account is true */}
+                    <AccountTable company={company} accounts={accounts} isCallCenter={isCallCenter} />
+                </div>
             </div>
         </AppLayout>
     );
