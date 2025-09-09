@@ -12,9 +12,9 @@ class HRISSeeder extends Seeder
     {
         // --- Companies ---
         $companies = [
-            ['name' => 'Tom N Toms', 'industry' => 'Coffee Shop'],        
-            ['name' => 'TechHub', 'industry' => 'Call Center'],          
-            ['name' => 'SteamTrain', 'industry' => 'Coffee Shop'],      
+            ['name' => 'Tom N Toms', 'industry' => 'Coffee Shop', 'has_account' => false],        
+            ['name' => 'TechHub', 'industry' => 'Call Center', 'has_account' => true],          
+            ['name' => 'SteamTrain', 'industry' => 'Coffee Shop', 'has_account' => false],      
         ];
 
         DB::table('companies')->insert($companies);

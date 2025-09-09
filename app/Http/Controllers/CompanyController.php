@@ -42,6 +42,7 @@ class CompanyController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:companies,name',
             'industry' => 'required|string|max:255',
+            'has_account' => 'boolean',  
         ]);
 
         Company::create($validated);
@@ -96,6 +97,7 @@ class CompanyController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:companies,name,' . $company->company_id . ',company_id',
             'industry' => 'required|string|max:255',
+            'has_account' => 'boolean',  // Add this line
         ]);
 
         $company->update($validated);

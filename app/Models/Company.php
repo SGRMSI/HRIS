@@ -15,6 +15,7 @@ class Company extends Model
     protected $fillable = [
         'name',
         'industry',
+        'has_account',
     ];
 
     /**

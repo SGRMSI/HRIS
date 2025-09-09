@@ -14,6 +14,7 @@ interface Company {
     industry: string;
     created_at: string;
     updated_at: string;
+    has_account?: boolean;
 }
 
 interface Department {
@@ -162,90 +163,95 @@ export default function ViewCompany({ company, departments = [], positions = [],
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">{isCallCenter ? 'Client Accounts' : 'Accounts'}</CardTitle>
-                            <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{accounts?.length || 0}</div>
-                            <p className="text-xs text-muted-foreground">{accounts?.filter((acc) => acc.active).length || 0} active</p>
-                        </CardContent>
-                    </Card>
+                    {/* Only show Accounts card if has_account is true */}
+                    {company.has_account && (
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{isCallCenter ? 'Client Accounts' : 'Accounts'}</CardTitle>
+                                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{accounts?.length || 0}</div>
+                                <p className="text-xs text-muted-foreground">{accounts?.filter((acc) => acc.active).length || 0} active</p>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Tabs for Call Center specific view */}
                 {isCallCenter ? (
-                    <Tabs defaultValue="accounts" className="w-full">
-                        <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="accounts">Client Accounts</TabsTrigger>
+                    <Tabs defaultValue={company.has_account ? "accounts" : "departments"} className="w-full">
+                        <TabsList className={`grid w-full ${company.has_account ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                            {company.has_account && <TabsTrigger value="accounts">Client Accounts</TabsTrigger>}
                             <TabsTrigger value="departments">Service Teams</TabsTrigger>
                             <TabsTrigger value="positions">Roles & Levels</TabsTrigger>
                             <TabsTrigger value="agents">Agents</TabsTrigger>
                         </TabsList>
 
-                        {/* Client Accounts Tab */}
-                        <TabsContent value="accounts">
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <CardTitle>Client Accounts</CardTitle>
-                                            <CardDescription>Call center client accounts and contracts</CardDescription>
+                        {/* Client Accounts Tab - only show if has_account is true */}
+                        {company.has_account && (
+                            <TabsContent value="accounts">
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <CardTitle>Client Accounts</CardTitle>
+                                                <CardDescription>Call center client accounts and contracts</CardDescription>
+                                            </div>
+                                            <Button size="sm" asChild>
+                                                <Link href={route('company.account.create', company.company_id)}>
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Add Client Account
+                                                </Link>
+                                            </Button>
                                         </div>
-                                        <Button size="sm" asChild>
-                                            <Link href={route('company.account.create', company.company_id)}>
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                Add Client Account
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    {accounts && accounts.length > 0 ? (
-                                        <div className="rounded-md border">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Client Name</TableHead>
-                                                        <TableHead>Type</TableHead>
-                                                        <TableHead>Contract Value</TableHead>
-                                                        <TableHead>Start Date</TableHead>
-                                                        <TableHead className="text-center">Status</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {accounts.map((account) => (
-                                                        <TableRow key={account.account_id}>
-                                                            <TableCell className="font-medium">{account.name}</TableCell>
-                                                            <TableCell>
-                                                                <Badge variant="outline">{account.client_type || 'Standard'}</Badge>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {account.contract_value ? `$${account.contract_value.toLocaleString()}` : 'N/A'}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {account.start_date ? new Date(account.start_date).toLocaleDateString() : 'N/A'}
-                                                            </TableCell>
-                                                            <TableCell className="text-center">
-                                                                <Badge variant={account.active ? 'default' : 'secondary'}>
-                                                                    {account.active ? 'Active' : 'Inactive'}
-                                                                </Badge>
-                                                            </TableCell>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {accounts && accounts.length > 0 ? (
+                                            <div className="rounded-md border">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Client Name</TableHead>
+                                                            <TableHead>Type</TableHead>
+                                                            <TableHead>Contract Value</TableHead>
+                                                            <TableHead>Start Date</TableHead>
+                                                            <TableHead className="text-center">Status</TableHead>
                                                         </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    ) : (
-                                        <div className="py-8 text-center text-muted-foreground">
-                                            <CreditCard className="mx-auto mb-2 h-8 w-8" />
-                                            <p>No client accounts found</p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {accounts.map((account) => (
+                                                            <TableRow key={account.account_id}>
+                                                                <TableCell className="font-medium">{account.name}</TableCell>
+                                                                <TableCell>
+                                                                    <Badge variant="outline">{account.client_type || 'Standard'}</Badge>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {account.contract_value ? `$${account.contract_value.toLocaleString()}` : 'N/A'}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {account.start_date ? new Date(account.start_date).toLocaleDateString() : 'N/A'}
+                                                                </TableCell>
+                                                                <TableCell className="text-center">
+                                                                    <Badge variant={account.active ? 'default' : 'secondary'}>
+                                                                        {account.active ? 'Active' : 'Inactive'}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        ) : (
+                                            <div className="py-8 text-center text-muted-foreground">
+                                                <CreditCard className="mx-auto mb-2 h-8 w-8" />
+                                                <p>No client accounts found</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        )}
 
                         {/* Service Teams Tab */}
                         <TabsContent value="departments">

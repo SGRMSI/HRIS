@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id('company_id');
             $table->string('name');
             $table->string('industry'); 
+            $table->boolean('has_account')->default(false);
             $table->timestamps();
         });
     }

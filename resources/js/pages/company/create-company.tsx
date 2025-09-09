@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -18,10 +19,18 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+type CompanyForm = {
+  name: string;
+  industry: string;
+  has_account: boolean;
+};
+
+
 export default function CreateCompany() {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors } = useForm<CompanyForm>({
         name: '',
         industry: '',
+        has_account: false, 
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -76,6 +85,20 @@ export default function CreateCompany() {
                                 />
                                 {errors.industry && <p className="text-sm text-red-600">{errors.industry}</p>}
                             </div>
+                            
+                            {/* Add toggle for has_account */}
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    id="has-account"
+                                    checked={data.has_account}
+                                    onCheckedChange={(checked) => setData('has_account', checked)}
+                                />
+                                <Label htmlFor="has-account">Has Accounts</Label>
+                                {errors.has_account && <p className="text-sm text-red-600">{errors.has_account}</p>}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                Enable this for call centers or companies that manage client accounts
+                            </p>
 
                             <div className="flex justify-end gap-2">
                                 <Button type="button" variant="outline" asChild>
