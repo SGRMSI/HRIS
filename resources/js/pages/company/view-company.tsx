@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { type PageProps } from '@inertiajs/core';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Briefcase, Building2, Edit, Phone, SquareUserRound, Users } from 'lucide-react';
+import { useEffect } from 'react';
+import { toast } from 'sonner'; // Or your toast library
 
 interface Company {
     company_id: number;
@@ -58,6 +61,12 @@ interface Props {
     positions?: Position[];
     accounts?: Account[];
     employees?: Employee[];
+    flash: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
 export default function ViewCompany({ company, departments = [], positions = [], accounts = [], employees = [] }: Props) {
@@ -76,6 +85,23 @@ export default function ViewCompany({ company, departments = [], positions = [],
         company.industry.toLowerCase().includes('call center') ||
         company.industry.toLowerCase().includes('bpo') ||
         company.industry.toLowerCase().includes('customer service');
+
+    const { props } = usePage<PageProps & Props>();
+
+    useEffect(() => {
+        if (props.flash?.success) {
+            toast.success(props.flash.success);
+        }
+        if (props.flash?.error) {
+            toast.error(props.flash.error);
+        }
+        if (props.flash?.warning) {
+            toast.warning(props.flash.warning);
+        }
+        if (props.flash?.info) {
+            toast.info(props.flash.info);
+        }
+    }, [props.flash]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
