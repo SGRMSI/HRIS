@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Link, router } from '@inertiajs/react';
+import { Link} from '@inertiajs/react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
