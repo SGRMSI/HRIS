@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { Link, useForm } from '@inertiajs/react';
+import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface Department {
     department_id: number;
@@ -25,6 +27,22 @@ interface DepartmentTableProps {
 }
 
 export default function DepartmentTable({ company, departments, isCallCenter = false }: DepartmentTableProps) {
+    const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+    const { delete: destroyDepartment, processing } = useForm();
+
+    const handleDelete = () => {
+        if (departmentToDelete) {
+            destroyDepartment(`/company/${company.company_id}/department/${departmentToDelete.department_id}`, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setDepartmentToDelete(null);
+                },
+            });
+        }
+    };
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -53,6 +71,7 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Employees</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -60,12 +79,46 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                                 <TableRow key={department.department_id}>
                                     <TableCell className="font-medium">{department.name}</TableCell>
                                     <TableCell>{department.employees_count || 0}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-destructive"
+                                            onClick={() => {
+                                                setDepartmentToDelete(department);
+                                                setIsDeleteDialogOpen(true);
+                                            }}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">Delete</span>
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 )}
             </CardContent>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Department</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete the department "{departmentToDelete?.name}"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={processing}>
+                            {processing ? 'Deleting...' : 'Delete Department'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

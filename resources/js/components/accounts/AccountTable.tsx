@@ -1,9 +1,11 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { Link, useForm } from '@inertiajs/react';
+import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface Account {
     account_id: number;
@@ -28,6 +30,21 @@ interface AccountTableProps {
 }
 
 export default function AccountTable({ company, accounts, isCallCenter = false }: AccountTableProps) {
+    const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+    const { delete: destroyAccount, processing } = useForm();
+
+    const handleDelete = () => {
+        if (accountToDelete) {
+            destroyAccount(`/company/${company.company_id}/account/${accountToDelete.account_id}`, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setAccountToDelete(null);
+                },
+            });
+        }
+    };
 
     // More flexible check that handles different data types
     const hasAccount =
@@ -37,7 +54,6 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
         String(company.has_account).toLowerCase() === 'true';
 
     if (!hasAccount) {
-        console.log('Not showing account table for', company.name);
         return null;
     }
 
@@ -69,6 +85,7 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -76,12 +93,46 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                                 <TableRow key={account.account_id}>
                                     <TableCell className="font-medium">{account.name}</TableCell>
                                     <TableCell>{account.active ? <Badge>Active</Badge> : <Badge variant="destructive">Inactive</Badge>}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-destructive"
+                                            onClick={() => {
+                                                setAccountToDelete(account);
+                                                setIsDeleteDialogOpen(true);
+                                            }}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span className="sr-only">Delete</span>
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 )}
             </CardContent>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Account</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete the account "{accountToDelete?.name}"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete} disabled={processing}>
+                            {processing ? 'Deleting...' : 'Delete Account'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }
