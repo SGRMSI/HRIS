@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'User',
+        title: 'User Management',
         href: '/user',
     },
 ];
@@ -45,7 +45,7 @@ export default function User({ users }: Props) {
     }, [props.flash]);
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="User" />
+            <Head title="User Management" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-end py-4">
                     <Card>
