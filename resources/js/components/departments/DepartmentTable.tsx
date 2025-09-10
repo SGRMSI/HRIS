@@ -54,8 +54,7 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                 </div>
                 <Button size="sm" asChild>
                     <Link href={`/company/${company.company_id}/department/create`}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Department
+                        <Plus className="h-4 w-4" />
                     </Link>
                 </Button>
             </CardHeader>

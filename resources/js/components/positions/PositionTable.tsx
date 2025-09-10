@@ -55,8 +55,7 @@ export default function PositionTable({ company, positions, isCallCenter = false
                 </div>
                 <Button size="sm" asChild>
                     <Link href={`/company/${company.company_id}/position/create`}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Position
+                        <Plus className="h-4 w-4" />
                     </Link>
                 </Button>
             </CardHeader>

@@ -68,8 +68,7 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                 </div>
                 <Button size="sm" asChild>
                     <Link href={`/company/${company.company_id}/account/create`}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Account
+                        <Plus className="h-4 w-4" />
                     </Link>
                 </Button>
             </CardHeader>
