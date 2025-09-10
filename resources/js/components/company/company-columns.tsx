@@ -4,6 +4,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Link, router } from '@inertiajs/react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Edit, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import {DeleteCompanyDialog} from '@/components/company/delete-company-dialog';
 
 export interface Company {
     company_id: number;
@@ -15,6 +17,52 @@ export interface Company {
     accounts_count?: number;
     created_at: string;
     updated_at: string;
+}
+
+// Create a component for the Actions cell to manage dialog state
+function ActionsCell({ company }: { company: Company }) {
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+    return (
+        <>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                        <Link href={route('company.show', company.company_id)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href={route('company.edit', company.company_id)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                        className="text-red-600" 
+                        onClick={() => setDeleteDialogOpen(true)} 
+                        disabled={company.employees_count > 0}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {company.employees_count > 0 ? 'Cannot Delete' : 'Delete'}
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DeleteCompanyDialog
+                company={company}
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+            />
+        </>
+    );
 }
 
 export const columns: ColumnDef<Company>[] = [
@@ -87,41 +135,7 @@ export const columns: ColumnDef<Company>[] = [
         header: 'Actions',
         cell: ({ row }) => {
             const company = row.original;
-
-            const handleDelete = () => {
-                if (confirm(`Are you sure you want to delete ${company.name}? This action cannot be undone.`)) {
-                    router.delete(route('company.destroy', company.company_id));
-                }
-            };
-
-            return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                            <Link href={route('company.show', company.company_id)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                            </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <Link href={route('company.edit', company.company_id)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                            </Link>
-                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600" onClick={handleDelete} disabled={company.employees_count > 0}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {company.employees_count > 0 ? 'Cannot Delete' : 'Delete'}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            );
+            return <ActionsCell company={company} />;
         },
     },
 ];
