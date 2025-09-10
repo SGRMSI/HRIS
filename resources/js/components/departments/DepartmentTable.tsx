@@ -2,15 +2,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link, useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { CreateDepartmentDialog } from './CreateDepartmentDialog';
 
 interface Department {
     department_id: number;
     name: string;
     employees_count: number;
-    description?: string;
 }
 
 interface Company {
@@ -27,11 +27,16 @@ interface DepartmentTableProps {
 }
 
 export default function DepartmentTable({ company, departments, isCallCenter = false }: DepartmentTableProps) {
+    // Delete functionality state (existing)
     const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-    const { delete: destroyDepartment, processing } = useForm();
+    // Add functionality state (new)
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
+    const { delete: destroyDepartment, processing: deleteProcessing } = useForm();
+
+    // Delete handler (existing)
     const handleDelete = () => {
         if (departmentToDelete) {
             destroyDepartment(`/company/${company.company_id}/department/${departmentToDelete.department_id}`, {
@@ -52,10 +57,8 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                         {isCallCenter ? 'Service teams' : 'Business units'} within {company.name}
                     </CardDescription>
                 </div>
-                <Button size="sm" asChild>
-                    <Link href={`/company/${company.company_id}/department/create`}>
-                        <Plus className="h-4 w-4" />
-                    </Link>
+                <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+                    <Plus className="h-4 w-4" />
                 </Button>
             </CardHeader>
             <CardContent>
@@ -99,6 +102,11 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                 )}
             </CardContent>
 
+            {/* Add Department Dialog - Now using the separate component */}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <CreateDepartmentDialog company={company} onOpenChange={setIsAddDialogOpen} />
+            </Dialog>
+
             {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent>
@@ -112,8 +120,8 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={processing}>
-                            {processing ? 'Deleting...' : 'Delete Department'}
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleteProcessing}>
+                            {deleteProcessing ? 'Deleting...' : 'Delete Department'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

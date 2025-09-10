@@ -5,6 +5,8 @@ use Inertia\Inertia;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\DepartmentController;
+
 
 Route::get('/', function () {
     return Inertia::render('auth/login' );
@@ -33,6 +35,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('company/{company}/edit', [  CompanyController::class, 'edit'])->name('company.edit');
     Route::put('company/{company}', [CompanyController::class, 'update'])->name('company.update');
     Route::delete('company/{company}', [CompanyController::class, 'destroy'])->name('company.destroy');
+});
+
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+    // Department management
+    Route::prefix('company/{company}')->group(function () {
+        Route::post('/department', [DepartmentController::class, 'store'])
+            ->name('company.department.store');
+        Route::delete('/department/{department}', [DepartmentController::class, 'destroy'])
+            ->name('company.department.destroy');
+    });
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
