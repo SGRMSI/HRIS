@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
+import debounce from 'lodash/debounce';
 import { Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { CreateAccountDialog } from './CreateAccountDialog';
 
 interface Account {
@@ -25,11 +26,6 @@ interface Company {
     has_account?: boolean | number | string;
 }
 
-// Define a type for your status toggle form
-type StatusToggleForm = {
-    active: boolean;
-};
-
 interface AccountTableProps {
     company: Company;
     accounts: Account[];
@@ -41,10 +37,37 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
+    // Track accounts with pending status changes
+    const pendingStatusChanges = useRef<Record<number, boolean>>({});
+
+    // For delete functionality
     const { delete: destroyAccount, processing: deleteProcessing } = useForm();
 
-    // Use the typed form for status toggling
-    const { put, processing: updateProcessing, setData} = useForm<StatusToggleForm>();
+    // Create a debounced function for toggling status
+    const debouncedToggle = useCallback(
+        debounce((accountId: number, newStatus: boolean) => {
+            // Use router directly instead of useForm for this one-off operation
+            router.put(
+                `/company/${company.company_id}/account/${accountId}/toggle-status`,
+                { active: newStatus },
+                {
+                    onSuccess: () => {
+                        // Clear the pending status after success
+                        const newPending = { ...pendingStatusChanges.current };
+                        delete newPending[accountId];
+                        pendingStatusChanges.current = newPending;
+                    },
+                    onError: () => {
+                        // Clear the pending status after error
+                        const newPending = { ...pendingStatusChanges.current };
+                        delete newPending[accountId];
+                        pendingStatusChanges.current = newPending;
+                    },
+                },
+            );
+        }, 300),
+        [company.company_id],
+    );
 
     const handleDelete = () => {
         if (accountToDelete) {
@@ -58,11 +81,19 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
     };
 
     const handleStatusToggle = (account: Account, checked: boolean) => {
-        // First set the data
-        setData({ active: checked });
+        // Don't allow toggling if there's a pending change for this account
+        if (pendingStatusChanges.current[account.account_id] !== undefined) {
+            return;
+        }
 
-        // Then make the request
-        put(`/company/${company.company_id}/account/${account.account_id}/toggle-status`);
+        // Track this pending status change
+        pendingStatusChanges.current = {
+            ...pendingStatusChanges.current,
+            [account.account_id]: checked,
+        };
+
+        // Call the debounced function
+        debouncedToggle(account.account_id, checked);
     };
 
     // More flexible check that handles different data types
@@ -78,7 +109,6 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
 
     return (
         <Card>
-            {/* Card header remains the same */}
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Accounts</CardTitle>
@@ -112,13 +142,26 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                                     <TableCell className="font-medium">{account.name}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            {/* Updated Switch using the same pattern as CreateAccountDialog */}
                                             <Switch
-                                                checked={account.active}
+                                                checked={
+                                                    pendingStatusChanges.current[account.account_id] !== undefined
+                                                        ? pendingStatusChanges.current[account.account_id]
+                                                        : account.active
+                                                }
                                                 onCheckedChange={(checked) => handleStatusToggle(account, checked)}
-                                                disabled={updateProcessing}
+                                                disabled={deleteProcessing || pendingStatusChanges.current[account.account_id] !== undefined}
                                             />
-                                            {account.active ? <Badge>Active</Badge> : <Badge variant="destructive">Inactive</Badge>}
+                                            {pendingStatusChanges.current[account.account_id] !== undefined ? (
+                                                pendingStatusChanges.current[account.account_id] ? (
+                                                    <Badge>Active</Badge>
+                                                ) : (
+                                                    <Badge variant="destructive">Inactive</Badge>
+                                                )
+                                            ) : account.active ? (
+                                                <Badge>Active</Badge>
+                                            ) : (
+                                                <Badge variant="destructive">Inactive</Badge>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -142,7 +185,6 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                 )}
             </CardContent>
 
-            {/* Dialogs remain the same */}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <CreateAccountDialog company={company} onOpenChange={setIsAddDialogOpen} />
             </Dialog>
