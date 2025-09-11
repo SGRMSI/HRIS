@@ -2,9 +2,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link, useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { CreatePositionDialog } from './CreatePositionDialog';
 
 interface Position {
     position_id: number;
@@ -30,8 +31,9 @@ interface PositionTableProps {
 export default function PositionTable({ company, positions, isCallCenter = false }: PositionTableProps) {
     const [positionToDelete, setPositionToDelete] = useState<Position | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-    const { delete: destroyPosition, processing } = useForm();
+    const { delete: destroyPosition, processing: deleteProcessing } = useForm();
 
     const handleDelete = () => {
         if (positionToDelete) {
@@ -53,10 +55,8 @@ export default function PositionTable({ company, positions, isCallCenter = false
                         {isCallCenter ? 'Roles & Levels' : 'Job positions'} within {company.name}
                     </CardDescription>
                 </div>
-                <Button size="sm" asChild>
-                    <Link href={`/company/${company.company_id}/position/create`}>
-                        <Plus className="h-4 w-4" />
-                    </Link>
+                <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+                    <Plus className="h-4 w-4" />
                 </Button>
             </CardHeader>
             <CardContent>
@@ -83,7 +83,7 @@ export default function PositionTable({ company, positions, isCallCenter = false
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="text-destructive"
+                                            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                                             onClick={() => {
                                                 setPositionToDelete(position);
                                                 setIsDeleteDialogOpen(true);
@@ -100,6 +100,11 @@ export default function PositionTable({ company, positions, isCallCenter = false
                 )}
             </CardContent>
 
+            {/* Add Position Dialog */}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <CreatePositionDialog company={company} onOpenChange={setIsAddDialogOpen} />
+            </Dialog>
+
             {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent>
@@ -113,8 +118,8 @@ export default function PositionTable({ company, positions, isCallCenter = false
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={processing}>
-                            {processing ? 'Deleting...' : 'Delete Position'}
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleteProcessing}>
+                            {deleteProcessing ? 'Deleting...' : 'Delete Position'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
