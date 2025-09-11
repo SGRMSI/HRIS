@@ -15,12 +15,12 @@ class AccountController extends Controller
     public function store(Request $request, Company $company)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+        'name' => 'required|string|max:255',
+        'active' => 'boolean',
         ]);
 
         $account = new Account($validated);
         $account->company_id = $company->company_id;
-        $account->active = true; 
         $account->save();
 
         return redirect()->back()->with('success', 'Account created successfully');
