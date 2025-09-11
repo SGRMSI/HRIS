@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\PositionController;
 
 
 Route::get('/', function () {
@@ -44,6 +45,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
             ->name('company.department.store');
         Route::delete('/department/{department}', [DepartmentController::class, 'destroy'])
             ->name('company.department.destroy');
+    });
+});
+
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+    // Position management
+    Route::prefix('company/{company}')->group(function () {
+        Route::post('/position', [PositionController::class, 'store'])
+            ->name('company.position.store');
+        Route::delete('/position/{position}', [PositionController::class, 'destroy'])
+            ->name('company.position.destroy');
     });
 });
 
