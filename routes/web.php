@@ -62,6 +62,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     // Account management
     Route::prefix('company/{company}')->group(function () {
+        // Add this new route
+        Route::put('/account/{account}/toggle-status', [AccountController::class, 'toggleStatus'])
+            ->name('company.account.toggle-status');
+        
+        // Existing routes
         Route::post('/account', [AccountController::class, 'store'])
             ->name('company.account.store');
         Route::delete('/account/{account}', [AccountController::class, 'destroy'])

@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useForm } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
@@ -24,6 +25,11 @@ interface Company {
     has_account?: boolean | number | string;
 }
 
+// Define a type for your status toggle form
+type StatusToggleForm = {
+    active: boolean;
+};
+
 interface AccountTableProps {
     company: Company;
     accounts: Account[];
@@ -35,7 +41,10 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-    const { delete: destroyAccount, processing } = useForm();
+    const { delete: destroyAccount, processing: deleteProcessing } = useForm();
+
+    // Use the typed form for status toggling
+    const { put, processing: updateProcessing, setData} = useForm<StatusToggleForm>();
 
     const handleDelete = () => {
         if (accountToDelete) {
@@ -46,6 +55,14 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                 },
             });
         }
+    };
+
+    const handleStatusToggle = (account: Account, checked: boolean) => {
+        // First set the data
+        setData({ active: checked });
+
+        // Then make the request
+        put(`/company/${company.company_id}/account/${account.account_id}/toggle-status`);
     };
 
     // More flexible check that handles different data types
@@ -61,6 +78,7 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
 
     return (
         <Card>
+            {/* Card header remains the same */}
             <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                     <CardTitle>Accounts</CardTitle>
@@ -69,9 +87,9 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                     </CardDescription>
                 </div>
                 <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
-                    <Plus className="h-4 w-4" />
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Account
                 </Button>
-
             </CardHeader>
             <CardContent>
                 {accounts.length === 0 ? (
@@ -92,7 +110,17 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                             {accounts.map((account) => (
                                 <TableRow key={account.account_id}>
                                     <TableCell className="font-medium">{account.name}</TableCell>
-                                    <TableCell>{account.active ? <Badge>Active</Badge> : <Badge variant="destructive">Inactive</Badge>}</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            {/* Updated Switch using the same pattern as CreateAccountDialog */}
+                                            <Switch
+                                                checked={account.active}
+                                                onCheckedChange={(checked) => handleStatusToggle(account, checked)}
+                                                disabled={updateProcessing}
+                                            />
+                                            {account.active ? <Badge>Active</Badge> : <Badge variant="destructive">Inactive</Badge>}
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Button
                                             variant="ghost"
@@ -114,12 +142,11 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                 )}
             </CardContent>
 
-            {/* Add Account Dialog */}
+            {/* Dialogs remain the same */}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <CreateAccountDialog company={company} onOpenChange={setIsAddDialogOpen} />
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -132,8 +159,8 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={processing}>
-                            {processing ? 'Deleting...' : 'Delete Account'}
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleteProcessing}>
+                            {deleteProcessing ? 'Deleting...' : 'Delete Account'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

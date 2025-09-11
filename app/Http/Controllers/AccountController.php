@@ -21,7 +21,7 @@ class AccountController extends Controller
 
         $account = new Account($validated);
         $account->company_id = $company->company_id;
-        $account->save();
+            $account->save();
 
         return redirect()->back()->with('success', 'Account created successfully');
     }
@@ -44,5 +44,32 @@ class AccountController extends Controller
         $account->delete();
 
         return redirect()->back()->with('success', 'Account deleted successfully');
+    }
+
+    /**
+     * Toggle the status of the specified account.
+     */
+    public function toggleStatus(Request $request, Company $company, Account $account)
+    {
+        // Check if account belongs to the company
+        if ($account->company_id !== $company->company_id) {
+            return redirect()->back()->with('error', 'Account does not belong to this company');
+        }
+
+        // Log the request data to debug
+        \Log::info('Toggle status request', [
+            'request_data' => $request->all(),
+            'account_id' => $account->account_id,
+            'current_active' => $account->active
+        ]);
+
+        // Use a default value if active is null
+        $newStatus = $request->has('active') ? (bool)$request->active : !$account->active;
+        
+        // Update with the new status
+        $account->active = $newStatus;
+        $account->save();
+
+        return redirect()->back()->with('success', 'Account status updated successfully');
     }
 }
