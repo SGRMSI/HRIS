@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Link, useForm } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { CreateAccountDialog } from './CreateAccountDialog';
 
 interface Account {
     account_id: number;
@@ -32,6 +33,7 @@ interface AccountTableProps {
 export default function AccountTable({ company, accounts, isCallCenter = false }: AccountTableProps) {
     const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
     const { delete: destroyAccount, processing } = useForm();
 
@@ -66,11 +68,10 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                         {isCallCenter ? 'Client accounts' : 'Business accounts'} for {company.name}
                     </CardDescription>
                 </div>
-                <Button size="sm" asChild>
-                    <Link href={`/company/${company.company_id}/account/create`}>
-                        <Plus className="h-4 w-4" />
-                    </Link>
+                <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+                    <Plus className="h-4 w-4" />
                 </Button>
+
             </CardHeader>
             <CardContent>
                 {accounts.length === 0 ? (
@@ -112,6 +113,11 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                     </Table>
                 )}
             </CardContent>
+
+            {/* Add Account Dialog */}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <CreateAccountDialog company={company} onOpenChange={setIsAddDialogOpen} />
+            </Dialog>
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

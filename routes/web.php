@@ -7,6 +7,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PositionController;
+use App\Http\Controllers\AccountController;
 
 
 Route::get('/', function () {
@@ -55,6 +56,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
             ->name('company.position.store');
         Route::delete('/position/{position}', [PositionController::class, 'destroy'])
             ->name('company.position.destroy');
+    });
+});
+
+Route::middleware(['auth', 'verified', 'admin'])->group(function () {
+    // Account management
+    Route::prefix('company/{company}')->group(function () {
+        Route::post('/account', [AccountController::class, 'store'])
+            ->name('company.account.store');
+        Route::delete('/account/{account}', [AccountController::class, 'destroy'])
+            ->name('company.account.destroy');
     });
 });
 
