@@ -51,13 +51,13 @@ export function DeleteEmployeeDialog({ employee, open, onOpenChange }: DeleteEmp
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete <strong>{employee.name}</strong>
+                        This action cannot be undone. This will permanently delete <br /> <strong>{employee.name}</strong> <span></span>  
                         and remove their data from our servers.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                    <AlertDialogAction onClick={handleDelete} className="bg-primary text-primary-foreground shadow-xs hover:bg-primary/90">
                         Delete Employee
                     </AlertDialogAction>
                 </AlertDialogFooter>
