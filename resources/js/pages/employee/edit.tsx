@@ -173,7 +173,6 @@ export default function EditEmployee({ employee, companies, departments, positio
                         <Button 
                             onClick={handleSubmit} 
                             disabled={processing}
-                            className="bg-blue-600 hover:bg-blue-700"
                         >
                             {processing ? 'Saving...' : 'Save Changes'}
                         </Button>
