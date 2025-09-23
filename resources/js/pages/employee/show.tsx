@@ -76,16 +76,16 @@ export default function EmployeeShow({ employee }: Props) {
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Regular':
-                return 'bg-green-100 text-green-800 border border-green-200';
+                return 'bg-green-100 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800';
             case 'Probationary':
-                return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+                return 'bg-yellow-100 text-yellow-800 border border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
             case 'Contractual':
-                return 'bg-blue-100 text-blue-800 border border-blue-200';
+                return 'bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
             case 'Resigned':
             case 'Terminated':
-                return 'bg-red-100 text-red-800 border border-red-200';
+                return 'bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
             default:
-                return 'bg-gray-100 text-gray-800 border border-gray-200';
+                return 'bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
         }
     };
 
@@ -128,7 +128,7 @@ export default function EmployeeShow({ employee }: Props) {
                 {/* Header */}
                 <div className="mb-6 flex items-center gap-4">
                     <Link href="/employee">
-                        <Button variant="ghost" size="sm" className="flex items-center gap-2 text-gray-600 hover:text-gray-800">
+                        <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
                             <ArrowLeft className="h-4 w-4" />
                             View Employees
                         </Button>
@@ -139,21 +139,21 @@ export default function EmployeeShow({ employee }: Props) {
                     {/* Left Column - Profile */}
                     <div className="space-y-4">
                         {/* Profile Card */}
-                        <Card className="border-0 shadow-sm">
+                        <Card className="border shadow-sm">
                             <CardContent className="p-6 text-center">
                                 {/* Profile Picture with Initials Fallback */}
                                 <div className="mx-auto mb-4 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 text-3xl font-bold text-white shadow-lg">
                                     {getInitials(employee.full_name)}
                                 </div>
                                 <div className="flex flex-col items-center">
-                                <h2 className="mb-1 text-2xl font-semibold text-gray-900">{employee.full_name}</h2>
-                                <p className="mb-4 text-xl text-gray-600">{employee.position}</p>
+                                <h2 className="mb-1 text-2xl font-semibold text-foreground">{employee.full_name}</h2>
+                                <p className="mb-4 text-xl text-muted-foreground">{employee.position}</p>
                                 <div className="flex items-end gap-2">
-                                    <p className="mt-2 text-sm text-gray-600">Employee ID :</p>
-                                    <div className="text-sm font-medium">{employee.id_number}</div>
+                                    <p className="mt-2 text-sm text-muted-foreground">Employee ID :</p>
+                                    <div className="text-sm font-medium text-foreground">{employee.id_number}</div>
                                 </div>
                                 </div>
-                                <div className="text-sm mt-4 inline-block rounded bg-gray-800 px-4 py-2 text-white">
+                                <div className="text-sm mt-4 inline-block rounded bg-slate-800 dark:bg-slate-700 px-4 py-2 text-white">
                                     At work for: <span className="font-medium">{getWorkDuration(employee.date_hired)}</span>
                                 </div>
                             </CardContent>
@@ -162,7 +162,7 @@ export default function EmployeeShow({ employee }: Props) {
                         {/* Status and Work Schedule Row */}
                         <div className="flex gap-4">
                             {/* Status Card */}
-                            <Card className="border-0 shadow-sm flex-1">
+                            <Card className="border shadow-sm flex-1">
                                 <CardContent className="p-6">
                                     <div className="flex flex-col items-center">
                                         <div
@@ -171,18 +171,18 @@ export default function EmployeeShow({ employee }: Props) {
                                             <User className="mr-2 h-4 w-4" />
                                             {employee.employment_status}
                                         </div>
-                                        <p className="mt-2 text-sm text-gray-600">Status</p>
+                                        <p className="mt-2 text-sm text-muted-foreground">Status</p>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Work Schedule Card */}
-                            <Card className="border-0 shadow-sm flex-1">
+                            <Card className="border shadow-sm flex-1">
                                 <CardContent className="p-4 h-full">
                                     <div className='flex flex-col justify-center h-full items-center'>
                                         <div className="text-center">
-                                            <p className="font-medium text-gray-900">{employee.work_shift || 'Graveyard'}</p>
-                                            <p className="mb-1 text-sm text-gray-600">Work Schedule</p>
+                                            <p className="font-medium text-foreground">{employee.work_shift || 'Graveyard'}</p>
+                                            <p className="mb-1 text-sm text-muted-foreground">Work Schedule</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -191,16 +191,16 @@ export default function EmployeeShow({ employee }: Props) {
 
                         {/* Stats */}
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="border-0 shadow-sm">
+                            <Card className="border shadow-sm">
                                 <CardContent className="p-4 text-center">
-                                    <div className="text-3xl font-bold text-gray-900">{employee.absents || 2}</div>
-                                    <div className="text-sm text-gray-600">Absents</div>
+                                    <div className="text-3xl font-bold text-foreground">{employee.absents || 2}</div>
+                                    <div className="text-sm text-muted-foreground">Absents</div>
                                 </CardContent>
                             </Card>
-                            <Card className="border-0 shadow-sm">
+                            <Card className="border shadow-sm">
                                 <CardContent className="p-4 text-center">
-                                    <div className="text-3xl font-bold text-gray-900">{employee.infractions || 1}</div>
-                                    <div className="text-sm text-gray-600">Infractions</div>
+                                    <div className="text-3xl font-bold text-foreground">{employee.infractions || 1}</div>
+                                    <div className="text-sm text-muted-foreground">Infractions</div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -233,82 +233,82 @@ export default function EmployeeShow({ employee }: Props) {
                         {/* First Row - Personal Details and Employment Details */}
                         <div className="flex gap-6 flex-col xl:flex-row">
                             {/* Personal Details */}
-                            <Card className="overflow-hidden border-0 shadow-sm py-0 gap-2 flex-1">
-                                <CardHeader className="bg-gray-800 py-2 text-white">
+                            <Card className="overflow-hidden border shadow-sm py-0 gap-2 flex-1">
+                                <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white">
                                     <CardTitle className="text-lg font-medium">Personal Details</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-6 pt-2">
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Name</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.full_name}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Name</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.full_name}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Age</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.age || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Age</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.age || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Sex</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.gender || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Sex</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.gender || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Birthdate</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.date_of_birth || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Birthdate</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.date_of_birth || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Civil Status</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.civil_status || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Civil Status</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.civil_status || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Contact No.</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.contact_number || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Contact No.</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.contact_number || 'N/A'}</p>
                                         </div>
                                         <div className="sm:col-span-2">
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Address</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.address || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Address</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.address || 'N/A'}</p>
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Employment Details */}
-                            <Card className="overflow-hidden border-0 shadow-sm py-0 gap-2 flex-1">
-                                <CardHeader className="bg-gray-800 py-2 text-white">
+                            <Card className="overflow-hidden border shadow-sm py-0 gap-2 flex-1">
+                                <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white">
                                     <CardTitle className="text-lg font-medium">Employment Details</CardTitle>
                                 </CardHeader>
                                 <CardContent className="p-6 pt-2">
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Employee ID</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.id_number}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Employee ID</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.id_number}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Company</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.company}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Company</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.company}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Department</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.department}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Department</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.department}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Position</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.position}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Position</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.position}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Date Hired</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.date_hired}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Date Hired</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.date_hired}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.employment_status}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Status</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.employment_status}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Date Regularized</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.date_regularized || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Date Regularized</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.date_regularized || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <label className="mb-2 block text-sm font-medium text-gray-700">Date Separated</label>
-                                            <p className="text-sm font-bold text-gray-900">{employee.date_separated || 'N/A'}</p>
+                                            <label className="mb-2 block text-sm font-medium text-muted-foreground">Date Separated</label>
+                                            <p className="text-sm font-bold text-foreground">{employee.date_separated || 'N/A'}</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -316,27 +316,27 @@ export default function EmployeeShow({ employee }: Props) {
                         </div>
 
                         {/* Second Row - Government Details */}
-                        <Card className="overflow-hidden border-0 shadow-sm py-0 gap-2">
-                            <CardHeader className="bg-gray-800 py-2 text-white">
+                        <Card className="overflow-hidden border shadow-sm py-0 gap-2">
+                            <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white">
                                 <CardTitle className="text-lg font-medium">Government Details</CardTitle>
                             </CardHeader>
                             <CardContent className="p-6 pt-2">
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">SSS Number</label>
-                                        <p className="text-sm font-bold text-gray-900">{employee.sss_number || 'N/A'}</p>
+                                        <label className="mb-2 block text-sm font-medium text-muted-foreground">SSS Number</label>
+                                        <p className="text-sm font-bold text-foreground">{employee.sss_number || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">PhilHealth Number</label>
-                                        <p className="text-sm font-bold text-gray-900">{employee.phic_number || 'N/A'}</p>
+                                        <label className="mb-2 block text-sm font-medium text-muted-foreground">PhilHealth Number</label>
+                                        <p className="text-sm font-bold text-foreground">{employee.phic_number || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">Pag-IBIG Number</label>
-                                        <p className="text-sm font-bold text-gray-900">{employee.hdmf_number || 'N/A'}</p>
+                                        <label className="mb-2 block text-sm font-medium text-muted-foreground">Pag-IBIG Number</label>
+                                        <p className="text-sm font-bold text-foreground">{employee.hdmf_number || 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">TIN Number</label>
-                                        <p className="text-sm font-bold text-gray-900">{employee.tin_number || 'N/A'}</p>
+                                        <label className="mb-2 block text-sm font-medium text-muted-foreground">TIN Number</label>
+                                        <p className="text-sm font-bold text-foreground">{employee.tin_number || 'N/A'}</p>
                                     </div>
                                 </div>
                             </CardContent>
