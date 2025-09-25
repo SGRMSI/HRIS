@@ -211,7 +211,7 @@ export default function EmployeeShow({ employee }: Props) {
                                 onClick={handleEditEmployee}
                                 variant="outline" 
                                 size="sm" 
-                                className="flex-1 flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300"
+                                className="flex-1 flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600"
                             >
                                 <Edit className="h-4 w-4" />
                                 Edit
