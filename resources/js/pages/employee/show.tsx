@@ -7,6 +7,7 @@ import { ArrowLeft, User, Edit, Trash2, FileUp, ExternalLink, Trash } from 'luci
 import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dialog';
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 import { useState } from 'react';
+import { DeleteDocumentDialog } from '@/components/employee/delete-document-dialog';
 
 interface Employee {
     employee_id: number;
@@ -56,8 +57,10 @@ interface Props {
 }
 
 export default function EmployeeShow({ employee, documents }: Props) {
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleteDocumentDialogOpen, setDeleteDocumentDialogOpen] = useState(false);
+    const [selectedDocument, setSelectedDocument] = useState<{ document_id: number; file_name: string } | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other'>('Government_Documents');
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -425,18 +428,22 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                                                         <ExternalLink className="h-4 w-4" />
                                                                     </Button>
                                                                 </a>
-                                                                <form action={`/employee/documents/${doc.document_id}`} method="POST" onSubmit={(e) => {
-                                                                    e.preventDefault();
-                                                                    if (confirm('Are you sure you want to delete this document?')) {
-                                                                        e.currentTarget.submit();
-                                                                    }
-                                                                }}>
-                                                                    <input type="hidden" name="_method" value="DELETE" />
-                                                                    <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
-                                                                    <Button type="submit" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" title="Delete">
-                                                                        <Trash className="h-4 w-4" />
-                                                                    </Button>
-                                                                </form>
+                                                                <Button 
+                                                                    type="button" 
+                                                                    variant="ghost" 
+                                                                    size="sm" 
+                                                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
+                                                                    title="Delete"
+                                                                    onClick={() => {
+                                                                        setSelectedDocument({
+                                                                            document_id: doc.document_id,
+                                                                            file_name: doc.file_name
+                                                                        });
+                                                                        setDeleteDocumentDialogOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <Trash className="h-4 w-4" />
+                                                                </Button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -468,6 +475,15 @@ export default function EmployeeShow({ employee, documents }: Props) {
                 onOpenChange={setUploadDialogOpen}
                 initialCategory={selectedCategory}
             />
+            
+            {/* Document Delete Confirmation Dialog */}
+            {selectedDocument && (
+                <DeleteDocumentDialog
+                    document={selectedDocument}
+                    open={deleteDocumentDialogOpen}
+                    onOpenChange={setDeleteDocumentDialogOpen}
+                />
+            )}
         </AppLayout>
     );
 }
