@@ -64,5 +64,10 @@ class Employee extends Model
     {
         return $this->belongsTo(Account::class, 'account_id', 'account_id');
     }
+    
+    public function documents()
+    {
+        return $this->hasMany(EmployeeDocument::class, 'employee_id', 'employee_id');
+    }
 }
 

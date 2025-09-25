@@ -82,6 +82,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('employee/{employee}/edit', [EmployeeController::class, 'edit'])->name('employee.edit');
     Route::put('employee/{employee}', [EmployeeController::class, 'update'])->name('employee.update');
     Route::delete('employee/{employee}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
+    
+    // Employee Documents routes
+    Route::post('employee/{employee}/documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'store'])->name('employee.documents.store');
+    Route::delete('employee/documents/{document}', [\App\Http\Controllers\EmployeeDocumentController::class, 'destroy'])->name('employee.documents.destroy');
+    Route::get('employee/documents/{document}/download', [\App\Http\Controllers\EmployeeDocumentController::class, 'download'])->name('employee.documents.download');
+    Route::get('employee/documents/{document}/view', [\App\Http\Controllers\EmployeeDocumentController::class, 'view'])->name('employee.documents.view');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

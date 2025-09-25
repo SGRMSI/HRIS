@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, User, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, User, Edit, Trash2, FileUp, ExternalLink, Trash } from 'lucide-react';
 import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dialog';
+import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 import { useState } from 'react';
 
 interface Employee {
@@ -39,12 +40,25 @@ interface Employee {
     tin_number?: string;
 }
 
-interface Props {
-    employee: Employee;
+interface EmployeeDocument {
+    document_id: number;
+    file_name: string;
+    category: 'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other';
+    uploaded_by: string;
+    uploaded_at: string;
+    remarks?: string;
+    file_path: string;
 }
 
-export default function EmployeeShow({ employee }: Props) {
+interface Props {
+    employee: Employee;
+    documents: EmployeeDocument[];
+}
+
+export default function EmployeeShow({ employee, documents }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState<'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other'>('Government_Documents');
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -341,6 +355,98 @@ export default function EmployeeShow({ employee }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+                        
+                        {/* Employee Documents */}
+                        <Card className="overflow-hidden border shadow-sm py-0 gap-2 mt-6">
+                            <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white flex flex-row justify-between items-center">
+                                <CardTitle className="text-lg font-medium">Employee Documents</CardTitle>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="bg-white text-slate-800 hover:bg-slate-100 hover:text-slate-900"
+                                    onClick={() => setUploadDialogOpen(true)}
+                                >
+                                    <FileUp className="h-4 w-4 mr-2" />
+                                    Upload File
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full">
+                                        <thead>
+                                            <tr className="border-b dark:border-slate-700">
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Category
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Filename
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Uploaded by
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Date
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {documents.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="text-center py-4 text-muted-foreground">
+                                                        No documents found
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                documents.map((doc) => (
+                                                    <tr key={doc.document_id} className="border-b dark:border-slate-700">
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.category.replace(/_/g, ' ')}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.file_name}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.uploaded_by}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.uploaded_at}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            <div className="flex space-x-2">
+                                                                <a 
+                                                                    href={`/employee/documents/${doc.document_id}/view`} 
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                >
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Document">
+                                                                        <ExternalLink className="h-4 w-4" />
+                                                                    </Button>
+                                                                </a>
+                                                                <form action={`/employee/documents/${doc.document_id}`} method="POST" onSubmit={(e) => {
+                                                                    e.preventDefault();
+                                                                    if (confirm('Are you sure you want to delete this document?')) {
+                                                                        e.currentTarget.submit();
+                                                                    }
+                                                                }}>
+                                                                    <input type="hidden" name="_method" value="DELETE" />
+                                                                    <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
+                                                                    <Button type="submit" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" title="Delete">
+                                                                        <Trash className="h-4 w-4" />
+                                                                    </Button>
+                                                                </form>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>
@@ -353,6 +459,14 @@ export default function EmployeeShow({ employee }: Props) {
                 }}
                 open={deleteDialogOpen}
                 onOpenChange={setDeleteDialogOpen}
+            />
+            
+            {/* Upload Document Dialog */}
+            <UploadDocumentDialog
+                employeeId={employee.employee_id}
+                open={uploadDialogOpen}
+                onOpenChange={setUploadDialogOpen}
+                initialCategory={selectedCategory}
             />
         </AppLayout>
     );

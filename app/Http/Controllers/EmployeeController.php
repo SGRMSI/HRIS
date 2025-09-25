@@ -147,12 +147,12 @@ class EmployeeController extends Controller
             'department' => $employee->department ? $employee->department->name : 'N/A',
             'position' => $employee->position ? $employee->position->title : 'N/A',
             'employment_status' => $employee->employment_status,
-            'date_hired' => $employee->date_hired->format('Y-m-d'),
-            'date_regularized' => $employee->date_regularized ? $employee->date_regularized->format('Y-m-d') : null,
+            'date_hired' => $employee->date_hired ? date('Y-m-d', strtotime($employee->date_hired)) : null,
+            'date_regularized' => $employee->date_regularized ? date('Y-m-d', strtotime($employee->date_regularized)) : null,
             'contact_number' => $employee->contact_number,
             'email' => $employee->email,
             'address' => $employee->address,
-            'date_of_birth' => $employee->birth_date ? $employee->birth_date->format('Y-m-d') : null,
+            'date_of_birth' => $employee->birth_date ? date('Y-m-d', strtotime($employee->birth_date)) : null,
             'gender' => $employee->gender,
             'civil_status' => $employee->civil_status,
             'age' => $employee->age,
@@ -163,9 +163,30 @@ class EmployeeController extends Controller
             'emergency_contact_name' => $employee->emergency_contact_name,
             'emergency_contact_number' => $employee->emergency_contact_number,
         ];
+        
+        // Get employee documents with uploader information
+        $documents = $employee->documents()
+            ->with('uploader')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($document) {
+                return [
+                    'document_id' => $document->document_id,
+                    'file_name' => $document->file_name,
+                    'category' => $document->category,
+                    'uploaded_by' => $document->uploader ? $document->uploader->name : 'Unknown',
+                    'uploaded_at' => $document->uploaded_at ? date('Y-m-d H:i', strtotime($document->uploaded_at)) : date('Y-m-d H:i', strtotime($document->created_at)),
+                    'remarks' => $document->remarks,
+                    'file_path' => $document->file_path,
+                ];
+            });
+            
+        // Count infractions documents
+        $infractionCount = $documents->where('category', 'Infractions')->count();
 
         return Inertia::render('employee/show', [
-            'employee' => $employeeData,
+            'employee' => array_merge($employeeData, ['infractions' => $infractionCount]),
+            'documents' => $documents,
         ]);
     }
 
@@ -238,12 +259,33 @@ class EmployeeController extends Controller
             'remarks' => $employee->remarks,
         ];
 
+        // Get employee documents
+        $documents = $employee->documents()
+            ->with('uploader')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($document) {
+                return [
+                    'document_id' => $document->document_id,
+                    'file_name' => $document->file_name,
+                    'category' => $document->category,
+                    'uploaded_by' => $document->uploader ? $document->uploader->name : 'Unknown',
+                    'uploaded_at' => $document->uploaded_at ? date('Y-m-d H:i', strtotime($document->uploaded_at)) : date('Y-m-d H:i', strtotime($document->created_at)),
+                    'remarks' => $document->remarks,
+                    'file_path' => $document->file_path,
+                ];
+            });
+            
+        // Count infractions documents
+        $infractionCount = $documents->where('category', 'Infractions')->count();
+
         return Inertia::render('employee/edit', [
-            'employee' => $employeeData,
+            'employee' => array_merge($employeeData, ['infractions' => $infractionCount]),
             'companies' => $companies,
             'departments' => $departments,
             'positions' => $positions,
             'accounts' => $accounts,
+            'documents' => $documents,
         ]);
     }
 

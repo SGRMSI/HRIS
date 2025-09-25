@@ -7,8 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileUp, ExternalLink, Trash } from 'lucide-react';
 import { useState } from 'react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 
 interface Company {
     company_id: number;
@@ -64,15 +66,27 @@ interface Employee {
     remarks?: string;
 }
 
+interface EmployeeDocument {
+    document_id: number;
+    file_name: string;
+    category: 'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other';
+    uploaded_by: string;
+    uploaded_at: string;
+    remarks?: string;
+    file_path: string;
+}
+
 interface Props {
     employee: Employee;
     companies: Company[];
     departments: Department[];
     positions: Position[];
     accounts: Account[];
+    documents: EmployeeDocument[];
 }
 
-export default function EditEmployee({ employee, companies, departments, positions, accounts }: Props) {
+export default function EditEmployee({ employee, companies, departments, positions, accounts, documents }: Props) {
+    const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Employee',
@@ -179,7 +193,14 @@ export default function EditEmployee({ employee, companies, departments, positio
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <Tabs defaultValue="details" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="details">Employee Details</TabsTrigger>
+                        <TabsTrigger value="documents">Documents</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="details">
+                        <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Personal Information */}
                     <Card>
                         <CardHeader>
@@ -510,7 +531,105 @@ export default function EditEmployee({ employee, companies, departments, positio
                         </CardContent>
                     </Card>
                 </form>
+                    </TabsContent>
+                    
+                    <TabsContent value="documents">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle>Employee Documents</CardTitle>
+                                    <CardDescription>Manage employee documents and files</CardDescription>
+                                </div>
+                                <Button 
+                                    onClick={() => setUploadDialogOpen(true)}
+                                    className="flex items-center gap-2"
+                                >
+                                    <FileUp className="h-4 w-4" />
+                                    Upload Document
+                                </Button>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full">
+                                        <thead>
+                                            <tr className="border-b dark:border-slate-700">
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" />
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Category
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Filename
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Uploaded by
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {documents.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="text-center py-4 text-muted-foreground">
+                                                        No documents found
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                documents.map((doc) => (
+                                                    <tr key={doc.document_id} className="border-b dark:border-slate-700">
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" />
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.category.replace('_', ' ')}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.file_name}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.uploaded_by}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
+                                                            <div className="flex space-x-2">
+                                                                <a 
+                                                                    href={`/employee/documents/${doc.document_id}/download`} 
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                >
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Download">
+                                                                        <ExternalLink className="h-4 w-4" />
+                                                                    </Button>
+                                                                </a>
+                                                                <form action={`/employee/documents/${doc.document_id}`} method="POST">
+                                                                    <input type="hidden" name="_method" value="DELETE" />
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" title="Delete">
+                                                                        <Trash className="h-4 w-4" />
+                                                                    </Button>
+                                                                </form>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </div>
+            
+            {/* Upload Document Dialog */}
+            <UploadDocumentDialog
+                employeeId={employee.employee_id}
+                open={uploadDialogOpen}
+                onOpenChange={setUploadDialogOpen}
+                initialCategory="Government_Documents"
+            />
         </AppLayout>
     );
 }
