@@ -554,9 +554,6 @@ export default function EditEmployee({ employee, companies, departments, positio
                                         <thead>
                                             <tr className="border-b dark:border-slate-700">
                                                 <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                                    <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" />
-                                                </th>
-                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                     Category
                                                 </th>
                                                 <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -564,6 +561,9 @@ export default function EditEmployee({ employee, companies, departments, positio
                                                 </th>
                                                 <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                     Uploaded by
+                                                </th>
+                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                    Date
                                                 </th>
                                                 <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                                     Actions
@@ -581,10 +581,7 @@ export default function EditEmployee({ employee, companies, departments, positio
                                                 documents.map((doc) => (
                                                     <tr key={doc.document_id} className="border-b dark:border-slate-700">
                                                         <td className="py-3 px-4 whitespace-nowrap">
-                                                            <input type="checkbox" className="rounded border-gray-300 text-primary focus:ring-primary" />
-                                                        </td>
-                                                        <td className="py-3 px-4 whitespace-nowrap">
-                                                            {doc.category.replace('_', ' ')}
+                                                            {doc.category.replace(/_/g, ' ')}
                                                         </td>
                                                         <td className="py-3 px-4 whitespace-nowrap">
                                                             {doc.file_name}
@@ -593,19 +590,28 @@ export default function EditEmployee({ employee, companies, departments, positio
                                                             {doc.uploaded_by}
                                                         </td>
                                                         <td className="py-3 px-4 whitespace-nowrap">
+                                                            {doc.uploaded_at}
+                                                        </td>
+                                                        <td className="py-3 px-4 whitespace-nowrap">
                                                             <div className="flex space-x-2">
                                                                 <a 
-                                                                    href={`/employee/documents/${doc.document_id}/download`} 
+                                                                    href={`/employee/documents/${doc.document_id}/view`} 
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Download">
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Document">
                                                                         <ExternalLink className="h-4 w-4" />
                                                                     </Button>
                                                                 </a>
-                                                                <form action={`/employee/documents/${doc.document_id}`} method="POST">
+                                                                <form action={`/employee/documents/${doc.document_id}`} method="POST" onSubmit={(e) => {
+                                                                    e.preventDefault();
+                                                                    if (confirm('Are you sure you want to delete this document?')) {
+                                                                        e.currentTarget.submit();
+                                                                    }
+                                                                }}>
                                                                     <input type="hidden" name="_method" value="DELETE" />
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" title="Delete">
+                                                                    <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''} />
+                                                                    <Button type="submit" variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" title="Delete">
                                                                         <Trash className="h-4 w-4" />
                                                                     </Button>
                                                                 </form>

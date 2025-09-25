@@ -22,20 +22,31 @@ class EmployeeDocumentController extends Controller
             'category' => 'required|in:Government_Documents,Company_Documents,Infractions,Other',
             'remarks' => 'nullable|string|max:255',
         ]);
+        
+        // Load the company relationship
+        $employee->load('company');
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $fileName = time() . '_' . $file->getClientOriginalName();
+            
+            // Get company name for folder organization
+            $companyName = $employee->company ? str_replace(' ', '_', $employee->company->name) : 'No_Company';
+            
+            // Create a more organized filename with employee ID
+            $fileName = 'EMP' . $employee->id_number . '_' . time() . '_' . $file->getClientOriginalName();
+            
+            // Create a more organized path structure: company/employee_id/
+            $relativePath = 'employee_documents/' . $companyName . '/' . $employee->id_number;
             
             // For local development, ensure the storage directory exists
-            $storagePath = storage_path('app/public/employee_documents/' . $employee->employee_id);
+            $storagePath = storage_path('app/public/' . $relativePath);
             if (!file_exists($storagePath)) {
                 mkdir($storagePath, 0755, true);
             }
             
-            // Store in the employee's folder using the public disk
+            // Store in the company/employee folder using the public disk
             $path = $file->storeAs(
-                'employee_documents/' . $employee->employee_id, 
+                $relativePath, 
                 $fileName, 
                 'public'
             );
@@ -129,6 +140,13 @@ class EmployeeDocumentController extends Controller
                     ]
                 );
             }
+        } else {
+            // Log error for debugging
+            \Log::error('Document file not found', [
+                'document_id' => $document->document_id,
+                'file_path' => $document->file_path,
+                'full_path' => storage_path('app/public/' . $document->file_path)
+            ]);
         }
         
         return Redirect::back()->with('error', 'File not found.');
