@@ -83,11 +83,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('employee/{employee}', [EmployeeController::class, 'update'])->name('employee.update');
     Route::delete('employee/{employee}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
     
-    // Employee Documents routes
-    Route::post('employee/{employee}/documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'store'])->name('employee.documents.store');
-    Route::delete('employee/documents/{document}', [\App\Http\Controllers\EmployeeDocumentController::class, 'destroy'])->name('employee.documents.destroy');
-    Route::get('employee/documents/{document}/download', [\App\Http\Controllers\EmployeeDocumentController::class, 'download'])->name('employee.documents.download');
-    Route::get('employee/documents/{document}/view', [\App\Http\Controllers\EmployeeDocumentController::class, 'view'])->name('employee.documents.view');
+    // Employee Documents routes with additional authorization
+    Route::middleware(['auth', 'verified'])->group(function () {
+        // Only authenticated users can upload, delete, download, or view documents
+        Route::post('employee/{employee}/documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'store'])->name('employee.documents.store');
+        Route::delete('employee/documents/{document}', [\App\Http\Controllers\EmployeeDocumentController::class, 'destroy'])->name('employee.documents.destroy');
+        Route::get('employee/documents/{document}/download', [\App\Http\Controllers\EmployeeDocumentController::class, 'download'])->name('employee.documents.download');
+        Route::get('employee/documents/{document}/view', [\App\Http\Controllers\EmployeeDocumentController::class, 'view'])->name('employee.documents.view');
+    });
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -100,5 +103,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('payroll');
     })->name('payroll');
 });
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

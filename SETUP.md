@@ -69,19 +69,45 @@ php artisan db:seed
 
 ## Step 6: Set Up Storage
 
-Create symbolic link for storage:
+### Private File Storage
+
+Create required directories with proper permissions:
 
 ```bash
-php artisan storage:link
-```
-
-Ensure proper permissions for storage directories:
-
-```bash
+mkdir -p storage/app/private/employee_documents
+chmod -R 755 storage/app/private
 chmod -R 755 storage bootstrap/cache
-# For more permissive permissions during development only:
-chmod -R 777 storage/app/public
 ```
+
+On Windows, ensure these directories exist and have proper permissions through File Explorer.
+
+### Storage Configuration
+
+Verify that your `config/filesystems.php` has the correct configuration for the 'local' disk:
+
+```php
+'local' => [
+    'driver' => 'local',
+    'root' => storage_path('app/private'),  // Points directly to private folder
+    'serve' => true,
+    'throw' => false,
+    'report' => false,
+],
+```
+
+### Important Notes
+
+- Employee documents are stored EXCLUSIVELY in the private storage area
+- DO NOT use the public storage area for any document files
+- No symbolic link is required for document storage since we don't use public URLs
+- When storing or retrieving files, the path should be relative to the disk root (without 'private/' prefix)
+- Example file path: `employee_documents/CompanyName/EmployeeID/FileName.pdf`
+
+### Diagnostics
+
+To verify your storage setup is working correctly, try uploading a test document through the application interface. 
+
+You can also check the Laravel logs in `storage/logs/laravel.log` for any errors related to file storage operations.
 
 ## Step 7: Install Frontend Dependencies
 
@@ -159,9 +185,10 @@ Key models:
 ### Storage Issues
 
 If uploaded files are not accessible:
-- Verify that storage link exists: `php artisan storage:link`
+- Check private directory exists: `mkdir -p storage/app/private`
 - Check directory permissions: `chmod -R 755 storage`
-- Ensure the web server can write to storage: `chmod -R 777 storage/app/public` (development only)
+- For development, you may need: `chmod -R 775 storage/app/private` 
+- Make sure your web server has the proper permissions to write to the storage directory
 
 ### Database Issues
 

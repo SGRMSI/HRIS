@@ -38,18 +38,27 @@ class EmployeeDocumentController extends Controller
             // Create a more organized path structure: company/employee_id/
             $relativePath = 'employee_documents/' . $companyName . '/' . $employee->id_number;
             
-            // For local development, ensure the storage directory exists
-            $storagePath = storage_path('app/public/' . $relativePath);
-            if (!file_exists($storagePath)) {
-                mkdir($storagePath, 0755, true);
+            try {
+                // First make sure the directory exists using Storage facade
+                // This uses the local disk which is already configured to point to storage/app/private
+                if (!Storage::disk('local')->exists($relativePath)) {
+                    Storage::disk('local')->makeDirectory($relativePath);
+                    \Log::info("Created directory using Storage facade: {$relativePath}");
+                }
+                
+                // Store in the company/employee folder using the local disk
+                $path = $file->storeAs(
+                    $relativePath, 
+                    $fileName, 
+                    'local' // Using the local disk which points to private storage
+                );
+                
+                \Log::info("File stored successfully at: {$path}");
+            } catch (\Exception $e) {
+                \Log::error("Error storing file: " . $e->getMessage());
+                \Log::error("Exception trace: " . $e->getTraceAsString());
+                return Redirect::back()->with('error', 'Failed to upload document: ' . $e->getMessage());
             }
-            
-            // Store in the company/employee folder using the public disk
-            $path = $file->storeAs(
-                $relativePath, 
-                $fileName, 
-                'public'
-            );
 
             // Create document record
             $document = new EmployeeDocument([
@@ -77,6 +86,8 @@ class EmployeeDocumentController extends Controller
     public function destroy(EmployeeDocument $document)
     {
         try {
+            \Log::info("Attempting to delete document: " . $document->document_id . ", Path: " . $document->file_path);
+            
             // Get the file path
             $filePath = $document->file_path;
             
@@ -84,12 +95,24 @@ class EmployeeDocumentController extends Controller
             $document->delete();
             
             // Then try to delete the file if it exists
-            if (Storage::disk('public')->exists($filePath)) {
-                Storage::disk('public')->delete($filePath);
+            if (Storage::disk('local')->exists($filePath)) {
+                \Log::info("Deleting file: " . $filePath);
+                Storage::disk('local')->delete($filePath);
+            } else {
+                \Log::warning("File not found for deletion: " . $filePath);
+                
+                // Check if the file exists in the old path format (with 'private/' prefix)
+                $oldPath = str_replace('private/', '', $filePath);
+                if (Storage::disk('local')->exists($oldPath)) {
+                    \Log::info("Found file at old path, deleting: " . $oldPath);
+                    Storage::disk('local')->delete($oldPath);
+                }
             }
             
             return Redirect::back()->with('success', 'Document deleted successfully.');
         } catch (\Exception $e) {
+            \Log::error("Error deleting document: " . $e->getMessage());
+            \Log::error("Exception trace: " . $e->getTraceAsString());
             return Redirect::back()->with('error', 'Error deleting document: ' . $e->getMessage());
         }
     }
@@ -99,13 +122,16 @@ class EmployeeDocumentController extends Controller
      */
     public function download(EmployeeDocument $document)
     {
-        // Check if file exists using the public disk
-        if (Storage::disk('public')->exists($document->file_path)) {
-            // Generate file path for download
-            $filePath = storage_path('app/public/' . $document->file_path);
+        try {
+            \Log::info("Attempting to download document: " . $document->document_id . ", Path: " . $document->file_path);
             
-            // Make sure the file exists on disk
-            if (file_exists($filePath)) {
+            // Check if file exists using the local disk
+            if (Storage::disk('local')->exists($document->file_path)) {
+                // We can use the Storage::disk('local')->path() method to get the full path
+                $filePath = Storage::disk('local')->path($document->file_path);
+                
+                \Log::info("File exists, serving for download: " . $filePath);
+                
                 return response()->download(
                     $filePath, 
                     $document->file_name, 
@@ -114,10 +140,32 @@ class EmployeeDocumentController extends Controller
                         'Content-Disposition' => 'attachment; filename="' . $document->file_name . '"',
                     ]
                 );
+            } else {
+                \Log::warning("File not found on disk: " . $document->file_path);
+                
+                // Check if the file exists in the old path format (with 'private/' prefix)
+                $oldPath = str_replace('private/', '', $document->file_path);
+                if (Storage::disk('local')->exists($oldPath)) {
+                    \Log::info("Found file at old path: " . $oldPath);
+                    
+                    $filePath = Storage::disk('local')->path($oldPath);
+                    return response()->download(
+                        $filePath, 
+                        $document->file_name, 
+                        [
+                            'Content-Type' => 'application/pdf',
+                            'Content-Disposition' => 'attachment; filename="' . $document->file_name . '"',
+                        ]
+                    );
+                }
             }
+            
+            return Redirect::back()->with('error', 'File not found.');
+        } catch (\Exception $e) {
+            \Log::error("Error downloading file: " . $e->getMessage());
+            \Log::error("Exception trace: " . $e->getTraceAsString());
+            return Redirect::back()->with('error', 'Error downloading file: ' . $e->getMessage());
         }
-        
-        return Redirect::back()->with('error', 'File not found.');
     }
     
     /**
@@ -125,13 +173,16 @@ class EmployeeDocumentController extends Controller
      */
     public function view(EmployeeDocument $document)
     {
-        // Check if file exists using the public disk
-        if (Storage::disk('public')->exists($document->file_path)) {
-            // Generate file path for viewing
-            $filePath = storage_path('app/public/' . $document->file_path);
+        try {
+            \Log::info("Attempting to view document: " . $document->document_id . ", Path: " . $document->file_path);
             
-            // Make sure the file exists on disk
-            if (file_exists($filePath)) {
+            // Check if file exists using the local disk
+            if (Storage::disk('local')->exists($document->file_path)) {
+                // We can use the Storage::disk('local')->path() method to get the full path
+                $filePath = Storage::disk('local')->path($document->file_path);
+                
+                \Log::info("File exists, serving for view: " . $filePath);
+                
                 return response()->file(
                     $filePath, 
                     [
@@ -139,16 +190,37 @@ class EmployeeDocumentController extends Controller
                         'Content-Disposition' => 'inline; filename="' . $document->file_name . '"',
                     ]
                 );
+            } else {
+                // Log error for debugging
+                \Log::warning("File not found at path: " . $document->file_path);
+                
+                // Check if the file exists in the old path format (with 'private/' prefix)
+                $oldPath = str_replace('private/', '', $document->file_path);
+                if (Storage::disk('local')->exists($oldPath)) {
+                    \Log::info("Found file at old path: " . $oldPath);
+                    
+                    $filePath = Storage::disk('local')->path($oldPath);
+                    return response()->file(
+                        $filePath, 
+                        [
+                            'Content-Type' => 'application/pdf',
+                            'Content-Disposition' => 'inline; filename="' . $document->file_name . '"',
+                        ]
+                    );
+                }
+                
+                \Log::error('Document file not found', [
+                    'document_id' => $document->document_id,
+                    'file_path' => $document->file_path,
+                    'storage_disk_root' => config('filesystems.disks.local.root')
+                ]);
             }
-        } else {
-            // Log error for debugging
-            \Log::error('Document file not found', [
-                'document_id' => $document->document_id,
-                'file_path' => $document->file_path,
-                'full_path' => storage_path('app/public/' . $document->file_path)
-            ]);
+            
+            return Redirect::back()->with('error', 'File not found.');
+        } catch (\Exception $e) {
+            \Log::error("Error viewing file: " . $e->getMessage());
+            \Log::error("Exception trace: " . $e->getTraceAsString());
+            return Redirect::back()->with('error', 'Error viewing file: ' . $e->getMessage());
         }
-        
-        return Redirect::back()->with('error', 'File not found.');
     }
 }

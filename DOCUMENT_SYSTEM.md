@@ -14,15 +14,39 @@ The Document Management System allows HR staff to upload, view, and manage emplo
 
 ## Storage Structure
 
-Documents are stored in a structured format:
+Documents are stored securely in a structured format in private storage:
 ```
-storage/app/public/employee_documents/{CompanyName}/{EmployeeID}/EMP{id}_{timestamp}_{filename}
+storage/app/private/employee_documents/{CompanyName}/{EmployeeID}/EMP{id}_{timestamp}_{filename}
 ```
 
 For example:
 ```
-storage/app/public/employee_documents/TomNToms/1001/EMP1001_1758795678_employee_contract.pdf
+storage/app/private/employee_documents/Tom_N_Toms/TNT002/EMPTNT002_1758795678_employee_contract.pdf
 ```
+
+This private storage location is not directly accessible via URLs, adding an important layer of security for sensitive employee documents.
+
+### Important Storage Configuration Note
+
+The system uses Laravel's filesystem with the 'local' disk configured to point directly to the private storage area:
+
+```php
+// config/filesystems.php
+'local' => [
+    'driver' => 'local',
+    'root' => storage_path('app/private'),  // Points directly to private folder
+    'serve' => true,
+    'throw' => false,
+    'report' => false,
+],
+```
+
+This means that when using `Storage::disk('local')`, the root is already set to `storage/app/private`. 
+When storing or retrieving files, you don't need to include 'private/' in the path.
+
+### Document Directory Structure
+
+All documents are now exclusively stored in the private storage area. We no longer use the public storage area for documents, ensuring better security for sensitive employee files.
 
 ## Technical Implementation
 
@@ -68,6 +92,15 @@ The document system is integrated into two main pages:
 1. Click the trash icon next to any document
 2. Confirm deletion when prompted
 
+## Security
+
+Files are stored securely in Laravel's private storage area (`storage/app/private`), ensuring they are not directly accessible via public URLs. All document access is controlled through proper authentication and authorization:
+
+1. Files can only be accessed through specific controller routes
+2. All document routes require authenticated users
+3. Authorization checks ensure users can only access documents they are permitted to see
+4. Files are served programmatically after permission checks rather than via direct URL access
+
 ## Important Notes
 
 - The infraction counter on employee profiles will automatically update based on documents in the "Infractions" category
@@ -77,13 +110,26 @@ The document system is integrated into two main pages:
 ## Troubleshooting
 
 If document uploads fail:
-1. Check storage permissions
-2. Verify symbolic link is created (`php artisan storage:link`)
-3. Make sure the PDF is less than 10MB
+1. Check storage permissions (should be at least 755)
+2. Make sure the PDF is less than 10MB
+3. Ensure the `storage/app/private` directory exists and is writable
+4. Check Laravel logs at `storage/logs/laravel.log` for specific errors
 
 If document viewing doesn't work:
 1. Check browser PDF settings
 2. Verify file exists in storage path
+3. Run the diagnostic route at `/test-storage` to verify storage functionality
+4. Check the file_path in the database to ensure it doesn't have duplicate 'private/' prefix
+5. For Windows environments, check that path separators are handled correctly
+
+### Path Troubleshooting
+
+If you're having issues with file paths, verify:
+
+1. The file_path stored in the database is relative to the disk root (`employee_documents/...`)
+2. The system can properly resolve the full path with `Storage::disk('local')->path($relativePath)`
+3. Permissions are set correctly on all directories in the path
+4. The disk configuration in `config/filesystems.php` points to the correct location
 
 ## Future Enhancements
 
