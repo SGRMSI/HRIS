@@ -40,7 +40,7 @@ const ActionsCell = ({ employee }: { employee: Employee }) => {
                         <Eye className="mr-2 h-4 w-4" />
                         View
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600" onClick={() => setDeleteDialogOpen(true)}>
+                    <DropdownMenuItem className="text-ghost" onClick={() => setDeleteDialogOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                     </DropdownMenuItem>
