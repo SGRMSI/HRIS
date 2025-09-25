@@ -213,7 +213,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
                             </Card>
                             <Card className="border shadow-sm">
                                 <CardContent className="p-4 text-center">
-                                    <div className="text-3xl font-bold text-foreground">{employee.infractions || 1}</div>
+                                    <div className="text-3xl font-bold text-foreground">{employee.infractions || 0}</div>
                                     <div className="text-sm text-muted-foreground">Infractions</div>
                                 </CardContent>
                             </Card>
