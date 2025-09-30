@@ -117,8 +117,7 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                     </CardDescription>
                 </div>
                 <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Account
+                    <Plus className="h-4 w-4" />
                 </Button>
             </CardHeader>
             <CardContent>
