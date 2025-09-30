@@ -51,13 +51,13 @@ export function DeleteUserDialog({ user, open, onOpenChange }: DeleteUserDialogP
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete <strong>{user.name}</strong>
+                        This action cannot be undone. This will permanently delete <strong>{user.name} </strong>
                         and remove their data from our servers.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                    <AlertDialogAction onClick={handleDelete} className="bg-primary text-primary-foreground shadow-xs hover:bg-primary/90">
                         Delete User
                     </AlertDialogAction>
                 </AlertDialogFooter>

@@ -83,7 +83,7 @@ export default function PositionTable({ company, positions, isCallCenter = false
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                            className="text-primary"
                                             onClick={() => {
                                                 setPositionToDelete(position);
                                                 setIsDeleteDialogOpen(true);
@@ -118,7 +118,7 @@ export default function PositionTable({ company, positions, isCallCenter = false
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleteProcessing}>
+                        <Button variant="default" onClick={handleDelete} disabled={deleteProcessing}>
                             {deleteProcessing ? 'Deleting...' : 'Delete Position'}
                         </Button>
                     </DialogFooter>

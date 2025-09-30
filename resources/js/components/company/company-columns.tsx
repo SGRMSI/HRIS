@@ -46,7 +46,7 @@ function ActionsCell({ company }: { company: Company }) {
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                        className="text-red-600" 
+                        className="text-primary" 
                         onClick={() => setDeleteDialogOpen(true)} 
                         disabled={company.employees_count > 0}
                     >

@@ -155,12 +155,12 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                                                 pendingStatusChanges.current[account.account_id] ? (
                                                     <Badge>Active</Badge>
                                                 ) : (
-                                                    <Badge variant="destructive">Inactive</Badge>
+                                                    <Badge variant="secondary">Inactive</Badge>
                                                 )
                                             ) : account.active ? (
                                                 <Badge>Active</Badge>
                                             ) : (
-                                                <Badge variant="destructive">Inactive</Badge>
+                                                <Badge variant="secondary">Inactive</Badge>
                                             )}
                                         </div>
                                     </TableCell>
@@ -168,7 +168,7 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="text-destructive"
+                                            className="text-primary"
                                             onClick={() => {
                                                 setAccountToDelete(account);
                                                 setIsDeleteDialogOpen(true);
@@ -201,7 +201,7 @@ export default function AccountTable({ company, accounts, isCallCenter = false }
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleteProcessing}>
+                        <Button variant="default" onClick={handleDelete} disabled={deleteProcessing}>
                             {deleteProcessing ? 'Deleting...' : 'Delete Account'}
                         </Button>
                     </DialogFooter>

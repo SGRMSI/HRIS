@@ -37,7 +37,7 @@ const ActionsCell = ({ user }: { user: User }) => {
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600" onClick={() => setDeleteDialogOpen(true)}>
+                    <DropdownMenuItem className="text-primary" onClick={() => setDeleteDialogOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                     </DropdownMenuItem>

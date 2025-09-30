@@ -85,7 +85,7 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="text-destructive"
+                                            className="text-primary"
                                             onClick={() => {
                                                 setDepartmentToDelete(department);
                                                 setIsDeleteDialogOpen(true);
@@ -120,7 +120,7 @@ export default function DepartmentTable({ company, departments, isCallCenter = f
                         <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                             Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleteProcessing}>
+                        <Button variant="default" onClick={handleDelete} disabled={deleteProcessing}>
                             {deleteProcessing ? 'Deleting...' : 'Delete Department'}
                         </Button>
                     </DialogFooter>
