@@ -17,6 +17,7 @@ export type Employee = {
     employment_status: 'Probationary' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated';
     date_hired: string;
     contact_number?: string;
+    created_at: string;
 };
 
 const ActionsCell = ({ employee }: { employee: Employee }) => {

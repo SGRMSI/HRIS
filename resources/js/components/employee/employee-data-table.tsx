@@ -25,6 +25,7 @@ interface DataTableProps<TData, TValue> {
 export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+    const [recentlyAddedFilter, setRecentlyAddedFilter] = React.useState<string>('all');
 
     // Extract unique companies for the filter dropdown
     const uniqueCompanies = React.useMemo(() => {
@@ -34,8 +35,36 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
         return [...new Set(companies)].sort();
     }, [data]);
 
+    // Filter and sort data based on recently added
+    const filteredData = React.useMemo(() => {
+        let filtered = [...data];
+        
+        // Filter by date range if not "all"
+        if (recentlyAddedFilter !== 'all') {
+            const now = new Date();
+            const daysAgo = parseInt(recentlyAddedFilter);
+            const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+            
+            filtered = filtered.filter((row) => {
+                const createdAt = (row as { created_at?: string }).created_at;
+                if (!createdAt) return false;
+                return new Date(createdAt) >= cutoffDate;
+            });
+        }
+        
+        // Always sort by created_at descending (latest first)
+        filtered.sort((a, b) => {
+            const dateA = (a as { created_at?: string }).created_at;
+            const dateB = (b as { created_at?: string }).created_at;
+            if (!dateA || !dateB) return 0;
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
+        
+        return filtered;
+    }, [data, recentlyAddedFilter]);
+
     const table = useReactTable({
-        data,
+        data: filteredData,
         columns,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
@@ -52,12 +81,12 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
     return (
         <div className="w-full">
             <div className="flex items-center py-4 justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     <Input
                         placeholder="Search by name..."
                         value={(table.getColumn('full_name')?.getFilterValue() as string) ?? ''}
                         onChange={(event) => table.getColumn('full_name')?.setFilterValue(event.target.value)}
-                        className="max-w-sm"
+                        className="w-[250px]"
                     />
                     
                     <Select
@@ -66,7 +95,7 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                             table.getColumn('company')?.setFilterValue(value === 'all' ? '' : value)
                         }
                     >
-                        <SelectTrigger className="w-[300px]">
+                        <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Filter by company" />
                         </SelectTrigger>
                         <SelectContent>
@@ -76,6 +105,21 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                                     {company}
                                 </SelectItem>
                             ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select
+                        value={recentlyAddedFilter}
+                        onValueChange={setRecentlyAddedFilter}
+                    >
+                        <SelectTrigger className="w-[150px]">
+                            <SelectValue placeholder="Recently added" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="7">Last 7 Days</SelectItem>
+                            <SelectItem value="30">Last 30 Days</SelectItem>
+                            <SelectItem value="90">Last 90 Days</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

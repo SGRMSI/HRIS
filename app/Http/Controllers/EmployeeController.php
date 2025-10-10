@@ -39,6 +39,7 @@ class EmployeeController extends Controller
                     'employment_status' => $employee->employment_status,
                     'date_hired' => $employee->date_hired->format('Y-m-d'),
                     'contact_number' => $employee->contact_number,
+                    'created_at' => $employee->created_at->toISOString(),
                 ];
             });
 
