@@ -175,8 +175,8 @@ class EmployeeController extends Controller
                     'file_name' => $document->file_name,
                     'category' => $document->category,
                     'uploaded_by' => $document->uploader ? $document->uploader->name : 'Unknown',
-                    'uploaded_at' => $document->uploaded_at ? date('Y-m-d H:i', strtotime($document->uploaded_at)) : date('Y-m-d H:i', strtotime($document->created_at)),
-                    'remarks' => $document->remarks,
+                    'uploaded_at' => $document->uploaded_at ? date('Y-m-d', strtotime($document->uploaded_at)) : date('Y-m-d', strtotime($document->created_at)),
+                    'remarks' => $document->remarks ?? '',
                     'file_path' => $document->file_path,
                 ];
             });
@@ -270,8 +270,8 @@ class EmployeeController extends Controller
                     'file_name' => $document->file_name,
                     'category' => $document->category,
                     'uploaded_by' => $document->uploader ? $document->uploader->name : 'Unknown',
-                    'uploaded_at' => $document->uploaded_at ? date('Y-m-d H:i', strtotime($document->uploaded_at)) : date('Y-m-d H:i', strtotime($document->created_at)),
-                    'remarks' => $document->remarks,
+                    'uploaded_at' => $document->uploaded_at ? date('Y-m-d', strtotime($document->uploaded_at)) : date('Y-m-d', strtotime($document->created_at)),
+                    'remarks' => $document->remarks ?? '',
                     'file_path' => $document->file_path,
                 ];
             });

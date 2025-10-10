@@ -18,10 +18,18 @@ class EmployeeDocumentController extends Controller
     public function store(Request $request, Employee $employee)
     {
         $request->validate([
-            'file' => 'required|mimes:pdf|max:10240', // Max 10MB, PDF only
+            'file' => 'required|mimes:pdf|max:5120', // Max 5MB, PDF only
             'category' => 'required|in:Government_Documents,Company_Documents,Infractions,Other',
-            'remarks' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string|max:30',
         ]);
+        
+        // Additional validation for word count (max 10 words)
+        if ($request->remarks) {
+            $wordCount = str_word_count($request->remarks);
+            if ($wordCount > 10) {
+                return Redirect::back()->withErrors(['remarks' => 'Remarks must not exceed 10 words.']);
+            }
+        }
         
         // Load the company relationship
         $employee->load('company');

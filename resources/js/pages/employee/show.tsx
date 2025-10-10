@@ -47,7 +47,7 @@ interface EmployeeDocument {
     category: 'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other';
     uploaded_by: string;
     uploaded_at: string;
-    remarks?: string;
+    remarks: string;
     file_path: string;
 }
 
@@ -374,65 +374,75 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full">
-                                        <thead>
+                                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800">
+                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                        <thead className="bg-gray-50 dark:bg-gray-800">
                                             <tr className="border-b dark:border-slate-700">
-                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                <th className="py-2 px-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                                                     Category
                                                 </th>
-                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                <th className="py-2 px-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                                                     Filename
                                                 </th>
-                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                <th className="py-2 px-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                                                     Uploaded by
                                                 </th>
-                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                <th className="py-2 px-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                                                     Date
                                                 </th>
-                                                <th className="py-3 px-4 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                <th className="py-2 px-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                                                    Remarks
+                                                </th>
+                                                <th className="py-2 px-3 text-left text-sm font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
                                                     Actions
                                                 </th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
                                             {documents.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={5} className="text-center py-4 text-muted-foreground">
-                                                        No documents found
+                                                    <td colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <FileUp className="h-8 w-8 text-muted-foreground opacity-50" />
+                                                            <p>No documents found</p>
+                                                            <p className="text-xs">Upload a document to get started</p>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ) : (
                                                 documents.map((doc) => (
-                                                    <tr key={doc.document_id} className="border-b dark:border-slate-700">
-                                                        <td className="py-3 px-4 whitespace-nowrap">
-                                                            {doc.category.replace(/_/g, ' ')}
+                                                    <tr key={doc.document_id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                                        <td className="py-2 px-3">
+                                                            <div className="text-sm break-words">{doc.category.replace(/_/g, ' ')}</div>
                                                         </td>
-                                                        <td className="py-3 px-4 whitespace-nowrap">
-                                                            {doc.file_name}
+                                                        <td className="py-2 px-3 max-w-[200px]">
+                                                            <div className="text-sm break-words">{doc.file_name}</div>
                                                         </td>
-                                                        <td className="py-3 px-4 whitespace-nowrap">
-                                                            {doc.uploaded_by}
+                                                        <td className="py-2 px-3">
+                                                            <div className="text-sm break-words">{doc.uploaded_by}</div>
                                                         </td>
-                                                        <td className="py-3 px-4 whitespace-nowrap">
-                                                            {doc.uploaded_at}
+                                                        <td className="py-2 px-3 whitespace-nowrap">
+                                                            <div className="text-sm">{doc.uploaded_at}</div>
                                                         </td>
-                                                        <td className="py-3 px-4 whitespace-nowrap">
-                                                            <div className="flex space-x-2">
+                                                        <td className="py-2 px-3 max-w-[250px]">
+                                                            <div className="text-sm break-words">{doc.remarks || '-'}</div>
+                                                        </td>
+                                                        <td className="py-2 px-3 whitespace-nowrap">
+                                                            <div className="flex space-x-1">
                                                                 <a 
                                                                     href={`/employee/documents/${doc.document_id}/view`} 
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                 >
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Document">
-                                                                        <ExternalLink className="h-4 w-4" />
+                                                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="View Document">
+                                                                        <ExternalLink className="h-3 w-3" />
                                                                     </Button>
                                                                 </a>
                                                                 <Button 
                                                                     type="button" 
                                                                     variant="ghost" 
                                                                     size="sm" 
-                                                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700" 
+                                                                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700" 
                                                                     title="Delete"
                                                                     onClick={() => {
                                                                         setSelectedDocument({
@@ -442,7 +452,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                                                         setDeleteDocumentDialogOpen(true);
                                                                     }}
                                                                 >
-                                                                    <Trash className="h-4 w-4" />
+                                                                    <Trash className="h-3 w-3" />
                                                                 </Button>
                                                             </div>
                                                         </td>

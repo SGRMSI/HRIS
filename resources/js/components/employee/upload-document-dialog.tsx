@@ -25,6 +25,20 @@ export function UploadDocumentDialog({ employeeId, open, onOpenChange, initialCa
         remarks: '',
     });
 
+    const handleRemarksChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const value = e.target.value;
+        const wordCount = value.trim().split(/\s+/).filter(word => word.length > 0).length;
+        
+        // Limit to 10 words or 30 characters
+        if (wordCount <= 10 && value.length <= 30) {
+            setData('remarks', value);
+        } else if (value.length <= 30) {
+            // If character limit is ok but word limit exceeded, truncate to 10 words
+            const words = value.trim().split(/\s+/).slice(0, 10);
+            setData('remarks', words.join(' '));
+        }
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
@@ -59,9 +73,9 @@ export function UploadDocumentDialog({ employeeId, open, onOpenChange, initialCa
                 return;
             }
             
-            // Check file size (max 10MB)
-            if (file.size > 10 * 1024 * 1024) {
-                alert('File size exceeds 10MB limit');
+            // Check file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size exceeds 5MB limit');
                 return;
             }
             
@@ -153,7 +167,7 @@ export function UploadDocumentDialog({ employeeId, open, onOpenChange, initialCa
                                     >
                                         Choose file
                                     </Button>
-                                    <p className="text-xs text-muted-foreground mt-3">Max size: 10MB, PDF only</p>
+                                    <p className="text-xs text-muted-foreground mt-3">Max size: 5MB, PDF only</p>
                                 </div>
                             )}
                         </div>
@@ -185,8 +199,10 @@ export function UploadDocumentDialog({ employeeId, open, onOpenChange, initialCa
                             id="remarks"
                             placeholder="Add any notes or comments about this document"
                             value={data.remarks}
-                            onChange={(e) => setData('remarks', e.target.value)}
+                            onChange={handleRemarksChange}
+                            maxLength={30}
                         />
+                        <p className="text-xs text-muted-foreground">Max 10 words or 30 characters</p>
                     </div>
 
                     <DialogFooter>
