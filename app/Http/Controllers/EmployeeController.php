@@ -67,7 +67,6 @@ class EmployeeController extends Controller
         $techubCompany = Company::where('name', 'TechHub')->first();
 
         $validated = $request->validate([
-            'id_number' => 'required|string|unique:employees,id_number',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -86,6 +85,7 @@ class EmployeeController extends Controller
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
             'date_regularized' => 'nullable|date|after_or_equal:date_hired', // Changed from 'after' to 'after_or_equal'
+            'work_shift' => 'nullable|in:Dayshift,Graveyard',
             'employment_status' => 'required|in:Probationary,Regular,Contractual,Terminated',
             'remarks' => 'nullable|string',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -102,6 +102,11 @@ class EmployeeController extends Controller
         }
 
         try {
+            // Generate employee ID based on company
+            $company = Company::findOrFail($validated['company_id']);
+            $companyPrefix = $this->getCompanyPrefix($company->name);
+            $validated['id_number'] = $this->employeeService->generateEmployeeId($companyPrefix);
+
             $employeeData = $this->employeeService->prepareEmployeeData($validated);
 
             $employeeData['profile_picture'] = $this->employeeService->handleProfilePictureUpload(
@@ -120,7 +125,7 @@ class EmployeeController extends Controller
                 $employee->last_name
             );
 
-            return redirect()->route('employee.index')
+            return redirect()->route('employee.show', $employee->employee_id)
                 ->with('success', "Employee '{$fullName}' has been created successfully!");
 
         } catch (\Exception $e) {
@@ -129,7 +134,7 @@ class EmployeeController extends Controller
             \Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to create employee: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Failed to create employee. Please try again.'])
                 ->withInput();
         }
     }
@@ -149,6 +154,7 @@ class EmployeeController extends Controller
             'employment_status' => $employee->employment_status,
             'date_hired' => $employee->date_hired ? date('Y-m-d', strtotime($employee->date_hired)) : null,
             'date_regularized' => $employee->date_regularized ? date('Y-m-d', strtotime($employee->date_regularized)) : null,
+            'work_shift' => $employee->work_shift,
             'contact_number' => $employee->contact_number,
             'email' => $employee->email,
             'address' => $employee->address,
@@ -242,6 +248,7 @@ class EmployeeController extends Controller
             'employment_status' => $employee->employment_status,
             'date_hired' => $employee->date_hired ? $employee->date_hired->format('Y-m-d') : '',
             'date_regularized' => $employee->date_regularized ? $employee->date_regularized->format('Y-m-d') : null,
+            'work_shift' => $employee->work_shift,
             'contact_number' => $employee->contact_number,
             'address' => $employee->address,
             'date_of_birth' => $employee->birth_date ? $employee->birth_date->format('Y-m-d') : null,
@@ -312,6 +319,7 @@ class EmployeeController extends Controller
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
             'date_regularized' => 'nullable|date|after_or_equal:date_hired',
+            'work_shift' => 'nullable|in:Dayshift,Graveyard',
             'employment_status' => 'required|in:Probationary,Regular,Contractual,Resigned,Terminated',
             'remarks' => 'nullable|string',
         ]);
@@ -344,6 +352,7 @@ class EmployeeController extends Controller
                 'tin_number' => $validated['tin_number'],
                 'date_hired' => $validated['date_hired'],
                 'date_regularized' => $validated['date_regularized'],
+                'work_shift' => $validated['work_shift'],
                 'employment_status' => $validated['employment_status'],
                 'remarks' => $validated['remarks'],
             ]);
@@ -385,5 +394,33 @@ class EmployeeController extends Controller
             return redirect()->route('employee.index')
                 ->with('error', 'Failed to delete employee. Please try again.');
         }
+    }
+
+    /**
+     * Generate company prefix from company name
+     */
+    private function getCompanyPrefix(string $companyName): string
+    {
+        // Handle specific company names
+        $prefixMap = [
+            'Tom N Toms' => 'TNT',
+            'TechHub' => 'TH',
+            'SteamTrain' => 'ST',
+        ];
+
+        if (isset($prefixMap[$companyName])) {
+            return $prefixMap[$companyName];
+        }
+
+        // Default: Take first letter of each word, max 3 letters
+        $words = explode(' ', $companyName);
+        $prefix = '';
+        foreach ($words as $word) {
+            if (strlen($prefix) < 3 && !empty($word)) {
+                $prefix .= strtoupper($word[0]);
+            }
+        }
+
+        return $prefix ?: 'EMP';
     }
 }

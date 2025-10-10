@@ -33,6 +33,7 @@ class Employee extends Model
         'tin_number',
         'date_hired',
         'date_regularized',
+        'work_shift',
         'employment_status',
         'remarks',
         'profile_picture'

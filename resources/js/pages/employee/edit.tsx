@@ -56,6 +56,7 @@ interface Employee {
     age?: number;
     date_regularized?: string;
     date_separated?: string;
+    work_shift?: string;
     sss_number?: string;
     phic_number?: string;
     hdmf_number?: string;
@@ -125,6 +126,7 @@ export default function EditEmployee({ employee, companies, departments, positio
         tin_number: employee.tin_number || '',
         date_hired: employee.date_hired || '',
         date_regularized: employee.date_regularized || '',
+        work_shift: employee.work_shift || '',
         employment_status: employee.employment_status || '',
         remarks: employee.remarks || '',
     });
@@ -461,6 +463,21 @@ export default function EditEmployee({ employee, companies, departments, positio
                                         value={data.date_regularized}
                                         onChange={(e) => setData('date_regularized', e.target.value)}
                                     />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                                <div className="space-y-2">
+                                    <Label htmlFor="work_shift">Work Schedule</Label>
+                                    <Select value={data.work_shift} onValueChange={(value) => setData('work_shift', value)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select work schedule" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Dayshift">Dayshift</SelectItem>
+                                            <SelectItem value="Graveyard">Graveyard</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                         </CardContent>

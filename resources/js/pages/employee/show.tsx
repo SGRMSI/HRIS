@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, User, Edit, Trash2, FileUp, ExternalLink, Trash } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash } from 'lucide-react';
 import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dialog';
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 import { useState } from 'react';
@@ -106,6 +106,17 @@ export default function EmployeeShow({ employee, documents }: Props) {
         }
     };
 
+    const getShiftColor = (shift: string | null) => {
+        switch (shift) {
+            case 'Dayshift':
+                return 'bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
+            case 'Graveyard':
+                return 'bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+        }
+    };
+
     // Calculate work duration from hire date to today
     const getWorkDuration = (hireDate: string) => {
         const hired = new Date(hireDate);
@@ -177,15 +188,14 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         </Card>
 
                         {/* Status and Work Schedule Row */}
-                        <div className="flex gap-4">
+                        <div className="grid grid-cols-2 gap-4">
                             {/* Status Card */}
-                            <Card className="border shadow-sm flex-1">
+                            <Card className="border shadow-sm">
                                 <CardContent className="p-6">
-                                    <div className="flex flex-col items-center">
+                                    <div className="flex flex-col items-center justify-between h-full">
                                         <div
-                                            className={`inline-flex items-center rounded-lg p-5 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
+                                            className={`inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
                                         >
-                                            <User className="mr-2 h-4 w-4" />
                                             {employee.employment_status}
                                         </div>
                                         <p className="mt-2 text-sm text-muted-foreground">Status</p>
@@ -194,13 +204,15 @@ export default function EmployeeShow({ employee, documents }: Props) {
                             </Card>
 
                             {/* Work Schedule Card */}
-                            <Card className="border shadow-sm flex-1">
-                                <CardContent className="p-4 h-full">
-                                    <div className='flex flex-col justify-center h-full items-center'>
-                                        <div className="text-center">
-                                            <p className="font-medium text-foreground">{employee.work_shift || 'Graveyard'}</p>
-                                            <p className="mb-1 text-sm text-muted-foreground">Work Schedule</p>
+                            <Card className="border shadow-sm">
+                                <CardContent className="p-6">
+                                    <div className="flex flex-col items-center justify-between h-full">
+                                        <div
+                                            className={`inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-medium ${getShiftColor(employee.work_shift || null)}`}
+                                        >
+                                            {employee.work_shift || 'Not Set'}
                                         </div>
+                                        <p className="mt-2 text-sm text-muted-foreground">Work Schedule</p>
                                     </div>
                                 </CardContent>
                             </Card>

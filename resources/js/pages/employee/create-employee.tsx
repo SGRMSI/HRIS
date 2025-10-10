@@ -53,7 +53,6 @@ interface Props {
 
 export default function CreateEmployee({ companies, departments, positions, accounts }: Props) {
     const { data, setData, post, processing, errors } = useForm({
-        id_number: '',
         first_name: '',
         last_name: '',
         middle_name: '',
@@ -72,6 +71,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
         tin_number: '',
         date_hired: '',
         date_regularized: '',
+        work_shift: '',
         employment_status: '',
         remarks: '',
     });
@@ -89,7 +89,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
     console.log('Form data:', JSON.stringify(data, null, 2));
     
     // Check if required fields are filled
-    const requiredFields = ['id_number', 'first_name', 'last_name', 'gender', 'birth_date', 'civil_status', 'address', 'contact_number', 'company_id', 'department_id', 'position_id', 'employment_status', 'date_hired'];
+    const requiredFields = ['first_name', 'last_name', 'gender', 'birth_date', 'civil_status', 'address', 'contact_number', 'company_id', 'department_id', 'position_id', 'employment_status', 'date_hired'];
     
     const missingFields = requiredFields.filter(field => !data[field as keyof typeof data]);
     
@@ -161,16 +161,14 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                 <h3 className="border-b pb-2 text-lg font-medium">Personal Information</h3>
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <div className="space-y-2">
-                                        <Label htmlFor="id_number">Employee ID *</Label>
+                                        <Label htmlFor="id_number">Employee ID</Label>
                                         <Input
                                             id="id_number"
-                                            value={data.id_number}
-                                            onChange={(e) => setData('id_number', e.target.value)}
-                                            placeholder="e.g., EMP001"
-                                            className={errors.id_number ? 'border-red-500' : ''}
-                                            required
+                                            value="Auto-generated"
+                                            disabled
+                                            className="bg-muted text-muted-foreground cursor-not-allowed"
                                         />
-                                        {errors.id_number && <p className="text-sm text-red-500">{errors.id_number}</p>}
+                                        <p className="text-xs text-muted-foreground">ID will be automatically assigned</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -395,6 +393,19 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                             value={data.date_regularized}
                                             onChange={(e) => setData('date_regularized', e.target.value)}
                                         />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="work_shift">Work Schedule</Label>
+                                        <Select value={data.work_shift} onValueChange={(value) => setData('work_shift', value)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select work schedule" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Dayshift">Dayshift</SelectItem>
+                                                <SelectItem value="Graveyard">Graveyard</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                             </div>
