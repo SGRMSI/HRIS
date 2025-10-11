@@ -4,7 +4,6 @@ import {
     SortingState,
     flexRender,
     getCoreRowModel,
-    getFilteredRowModel,
     getPaginationRowModel,
     getSortedRowModel,
     useReactTable,
@@ -25,7 +24,7 @@ interface DataTableProps<TData, TValue> {
 export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-    const [recentlyAddedFilter, setRecentlyAddedFilter] = React.useState<string>('all');
+    const [recentlyAddedFilter, setRecentlyAddedFilter] = React.useState<string>('newest');
 
     // Extract unique companies for the filter dropdown
     const uniqueCompanies = React.useMemo(() => {
@@ -35,33 +34,44 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
         return [...new Set(companies)].sort();
     }, [data]);
 
-    // Filter and sort data based on recently added
+    // Filter and sort data
     const filteredData = React.useMemo(() => {
         let filtered = [...data];
         
-        // Filter by date range if not "all"
-        if (recentlyAddedFilter !== 'all') {
-            const now = new Date();
-            const daysAgo = parseInt(recentlyAddedFilter);
-            const cutoffDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-            
-            filtered = filtered.filter((row) => {
-                const createdAt = (row as { created_at?: string }).created_at;
-                if (!createdAt) return false;
-                return new Date(createdAt) >= cutoffDate;
-            });
+        // Apply name search filter
+        const nameFilter = columnFilters.find(f => f.id === 'full_name');
+        if (nameFilter && nameFilter.value) {
+            const searchValue = (nameFilter.value as string).toLowerCase();
+            filtered = filtered.filter(row => 
+                (row as { full_name?: string }).full_name?.toLowerCase().includes(searchValue)
+            );
         }
         
-        // Always sort by created_at descending (latest first)
+        // Apply company filter
+        const companyFilter = columnFilters.find(f => f.id === 'company');
+        if (companyFilter && companyFilter.value) {
+            filtered = filtered.filter(row => 
+                (row as { company?: string }).company === companyFilter.value
+            );
+        }
+        
+        // Sort by created_at based on selected order
         filtered.sort((a, b) => {
             const dateA = (a as { created_at?: string }).created_at;
             const dateB = (b as { created_at?: string }).created_at;
             if (!dateA || !dateB) return 0;
-            return new Date(dateB).getTime() - new Date(dateA).getTime();
+            
+            if (recentlyAddedFilter === 'oldest') {
+                // Oldest to Newest (ascending)
+                return new Date(dateA).getTime() - new Date(dateB).getTime();
+            } else {
+                // Newest to Oldest (descending) - default
+                return new Date(dateB).getTime() - new Date(dateA).getTime();
+            }
         });
         
         return filtered;
-    }, [data, recentlyAddedFilter]);
+    }, [data, recentlyAddedFilter, columnFilters]);
 
     const table = useReactTable({
         data: filteredData,
@@ -71,11 +81,11 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
         state: {
             sorting,
             columnFilters,
         },
+        manualFiltering: true, // We handle filtering manually in the filteredData memo
     });
 
     return (
@@ -112,14 +122,12 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                         value={recentlyAddedFilter}
                         onValueChange={setRecentlyAddedFilter}
                     >
-                        <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="Recently added" />
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Sort by date" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All Time</SelectItem>
-                            <SelectItem value="7">Last 7 Days</SelectItem>
-                            <SelectItem value="30">Last 30 Days</SelectItem>
-                            <SelectItem value="90">Last 90 Days</SelectItem>
+                            <SelectItem value="newest">Newest to Oldest</SelectItem>
+                            <SelectItem value="oldest">Oldest to Newest</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
