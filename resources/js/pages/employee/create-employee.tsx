@@ -24,6 +24,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Company {
     company_id: number;
     name: string;
+    hasAccount?: boolean;
 }
 
 interface Department {
@@ -347,7 +348,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                             {errors.position_id && <p className="text-sm text-red-500">{errors.position_id}</p>}
                                         </div>
 
-                                        {selectedCompany && companies.find((c) => c.company_id === selectedCompany)?.name === 'TechHub' && (
+                                        {selectedCompany && companies.find((c) => c.company_id === selectedCompany)?.hasAccount && (
                                             <div className="space-y-2">
                                                 <Label htmlFor="account_id">Account (Optional)</Label>
                                                 <Select onValueChange={(value) => setData('account_id', value)}>

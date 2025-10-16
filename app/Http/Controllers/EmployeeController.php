@@ -50,7 +50,18 @@ class EmployeeController extends Controller
 
     public function create()
     {
-        $companies = Company::all(['company_id', 'name']);
+        $companies = Company::withCount(['accounts' => function ($query) {
+                $query->where('active', true);
+            }])
+            ->get(['company_id', 'name'])
+            ->map(function ($company) {
+                return [
+                    'company_id' => $company->company_id,
+                    'name' => $company->name,
+                    'hasAccount' => $company->accounts_count > 0, // Only counts active accounts
+                ];
+            });
+
         $departments = Department::all(['department_id', 'name', 'company_id']);
         $positions = Position::all(['position_id', 'title', 'company_id']);
         $accounts = Account::where('active', true)->get(['account_id', 'name', 'company_id']);
