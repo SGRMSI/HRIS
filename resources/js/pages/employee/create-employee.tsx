@@ -350,7 +350,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
 
                                         {selectedCompany && companies.find((c) => c.company_id === selectedCompany)?.hasAccount && (
                                             <div className="space-y-2">
-                                                <Label htmlFor="account_id">Account (Optional)</Label>
+                                                <Label htmlFor="account_id">Account</Label>
                                                 <Select onValueChange={(value) => setData('account_id', value)}>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="Select Account" />
