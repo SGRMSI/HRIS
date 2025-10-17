@@ -90,7 +90,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
     console.log('Form data:', JSON.stringify(data, null, 2));
     
     // Check if required fields are filled
-    const requiredFields = ['first_name', 'last_name', 'gender', 'birth_date', 'civil_status', 'address', 'contact_number', 'company_id', 'department_id', 'position_id', 'employment_status', 'date_hired'];
+    const requiredFields = ['first_name', 'last_name', 'gender', 'birth_date', 'civil_status', 'address', 'contact_number', 'employment_status', 'date_hired'];
     
     const missingFields = requiredFields.filter(field => !data[field as keyof typeof data]);
     
@@ -280,7 +280,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                 <h3 className="border-b pb-2 text-lg font-medium">Company Information</h3>
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label htmlFor="company_id">Company *</Label>
+                                        <Label htmlFor="company_id">Company</Label>
                                         <Select onValueChange={handleCompanyChange}>
                                             <SelectTrigger className={errors.company_id ? 'border-red-500' : ''}>
                                                 <SelectValue placeholder="Select Company" />
@@ -315,7 +315,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                 {selectedCompany && (
                                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                         <div className="space-y-2">
-                                            <Label htmlFor="department_id">Department *</Label>
+                                            <Label htmlFor="department_id">Department</Label>
                                             <Select onValueChange={(value) => setData('department_id', value)}>
                                                 <SelectTrigger className={errors.department_id ? 'border-red-500' : ''}>
                                                     <SelectValue placeholder="Select Department" />
@@ -332,7 +332,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="position_id">Position *</Label>
+                                            <Label htmlFor="position_id">Position</Label>
                                             <Select onValueChange={(value) => setData('position_id', value)}>
                                                 <SelectTrigger className={errors.position_id ? 'border-red-500' : ''}>
                                                     <SelectValue placeholder="Select Position" />
