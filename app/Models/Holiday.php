@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Holiday extends Model
+{
+    protected $primaryKey = 'holiday_id';
+    public $timestamps = ['created_at'];
+
+    protected $fillable = [
+        'name',
+        'date',
+        'type',
+        'company_id',
+    ];
+
+    protected $casts = [
+        'date' => 'date',
+        'created_at' => 'datetime',
+    ];
+
+    // Relationships
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
+}
