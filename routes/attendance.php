@@ -9,7 +9,7 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\EmployeeLeaveController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'can:attendance.manage'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Attendance Upload
     Route::get('/attendance/upload', [AttendanceController::class, 'upload'])->name('attendance.upload');
     Route::post('/attendance/import', [AttendanceController::class, 'import'])->name('attendance.import');

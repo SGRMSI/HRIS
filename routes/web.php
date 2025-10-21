@@ -8,13 +8,6 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\AccountController;
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\AttendanceRawController;
-use App\Http\Controllers\AttendanceProcessedController;
-use App\Http\Controllers\ShiftController;
-use App\Http\Controllers\EmployeeScheduleController;
-use App\Http\Controllers\HolidayController;
-use App\Http\Controllers\EmployeeLeaveController;
 
 // Include attendance routes
 require __DIR__.'/attendance.php';
