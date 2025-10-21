@@ -146,4 +146,43 @@ class EmployeeService
 
         return $companyPrefix . $newNumber;
     }
+
+    /**
+     * Generate company prefix from company name
+     * This creates a 2-3 letter prefix based on the company name
+     */
+    public function generateCompanyPrefix(string $companyName): string
+    {
+        // Remove special characters and extra spaces
+        $cleanName = preg_replace('/[^a-zA-Z0-9\s]/', '', $companyName);
+        $cleanName = trim(preg_replace('/\s+/', ' ', $cleanName));
+        
+        if (empty($cleanName)) {
+            return 'EMP';
+        }
+
+        // Split into words
+        $words = explode(' ', $cleanName);
+        
+        // Strategy 1: If single word, take first 2-3 letters
+        if (count($words) === 1) {
+            $prefix = strtoupper(substr($words[0], 0, 3));
+            return strlen($prefix) >= 2 ? $prefix : $prefix . 'X';
+        }
+        
+        // Strategy 2: If multiple words, take first letter of each word (up to 3)
+        $prefix = '';
+        foreach ($words as $word) {
+            if (strlen($prefix) < 3 && !empty($word)) {
+                $prefix .= strtoupper($word[0]);
+            }
+        }
+        
+        // If prefix is less than 2 characters, add first letters from first word
+        if (strlen($prefix) < 2 && !empty($words[0])) {
+            $prefix = strtoupper(substr($words[0], 0, 3 - strlen($prefix))) . $prefix;
+        }
+        
+        return $prefix ?: 'EMP';
+    }
 }

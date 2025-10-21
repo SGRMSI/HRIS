@@ -117,8 +117,13 @@ class EmployeeController extends Controller
         try {
             // Generate employee ID based on company
             $company = Company::findOrFail($validated['company_id']);
-            $companyPrefix = $this->getCompanyPrefix($company->name);
+            \Log::info('Company found:', ['name' => $company->name]);
+            
+            $companyPrefix = $this->employeeService->generateCompanyPrefix($company->name);
+            \Log::info('Generated prefix:', ['prefix' => $companyPrefix]);
+            
             $validated['id_number'] = $this->employeeService->generateEmployeeId($companyPrefix);
+            \Log::info('Generated employee ID:', ['id_number' => $validated['id_number']]);
 
             $employeeData = $this->employeeService->prepareEmployeeData($validated);
 
@@ -407,34 +412,6 @@ class EmployeeController extends Controller
             return redirect()->route('employee.index')
                 ->with('error', 'Failed to delete employee. Please try again.');
         }
-    }
-
-    /**
-     * Generate company prefix from company name
-     */
-    private function getCompanyPrefix(string $companyName): string
-    {
-        // Handle specific company names
-        $prefixMap = [
-            'Tom N Toms' => 'TNT',
-            'TechHub' => 'TH',
-            'SteamTrain' => 'ST',
-        ];
-
-        if (isset($prefixMap[$companyName])) {
-            return $prefixMap[$companyName];
-        }
-
-        // Default: Take first letter of each word, max 3 letters
-        $words = explode(' ', $companyName);
-        $prefix = '';
-        foreach ($words as $word) {
-            if (strlen($prefix) < 3 && !empty($word)) {
-                $prefix .= strtoupper($word[0]);
-            }
-        }
-
-        return $prefix ?: 'EMP';
     }
 
     public function importCsv(Request $request)
