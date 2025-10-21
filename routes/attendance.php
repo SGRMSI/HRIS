@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AttendanceFinalController;
 use App\Http\Controllers\AttendanceRawController;
 use App\Http\Controllers\AttendanceProcessedController;
 use App\Http\Controllers\ShiftController;
@@ -22,9 +22,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/attendance/process/{batch}', [AttendanceProcessedController::class, 'process'])->name('attendance.processed.process');
 
     // Final Attendance
-    Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
-    Route::patch('/attendance/{attendance}', [AttendanceController::class, 'update'])->name('attendance.update');
-    Route::patch('/attendance/{attendance}/approve', [AttendanceController::class, 'approve'])->name('attendance.approve');
+    Route::get('/attendance', [AttendanceFinalController::class, 'index'])->name('attendance.index');
+    Route::put('/attendance/{attendance}', [AttendanceFinalController::class, 'update'])
+        ->name('attendance.update')
+        ->middleware('can:edit attendances');
+    Route::post('/attendance/{attendance}/approve', [AttendanceFinalController::class, 'approve'])
+        ->name('attendance.approve')
+        ->middleware('can:approve attendances');
+    Route::post('/attendance/bulk-approve', [AttendanceFinalController::class, 'bulkApprove'])
+        ->name('attendance.bulk-approve')
+        ->middleware('can:approve attendances');
 
     // Shifts
     Route::resource('shifts', ShiftController::class);

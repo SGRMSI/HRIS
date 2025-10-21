@@ -43,4 +43,37 @@ class Shift extends Model
             ->withPivot(['date_start', 'date_end', 'is_holiday'])
             ->withTimestamps();
     }
+
+    /**
+     * Check if shift crosses midnight
+     * 
+     * @return bool
+     */
+    public function isOvernight(): bool
+    {
+        $timeIn = $this->time_in?->format('H:i:s');
+        $timeOut = $this->time_out?->format('H:i:s');
+        return $timeIn && $timeOut && $timeOut < $timeIn;
+    }
+
+    /**
+     * Calculate expected duration in minutes
+     * 
+     * @return int
+     */
+    public function getDurationMinutes(): int
+    {
+        if (!$this->time_in || !$this->time_out) {
+            return 0;
+        }
+
+        $timeIn = \Carbon\Carbon::parse($this->time_in->format('H:i:s'));
+        $timeOut = \Carbon\Carbon::parse($this->time_out->format('H:i:s'));
+        
+        if ($this->isOvernight()) {
+            $timeOut->addDay();
+        }
+        
+        return $timeOut->diffInMinutes($timeIn);
+    }
 }
