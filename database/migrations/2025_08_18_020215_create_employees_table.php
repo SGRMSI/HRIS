@@ -24,9 +24,9 @@ return new class extends Migration
         $table->text('address');
         $table->string('contact_number')->nullable();
 
-        $table->foreignId('company_id')->constrained('companies', 'company_id')->onDelete('cascade');
+        $table->foreignId('company_id')->nullable()->constrained('companies', 'company_id')->onDelete('cascade');
         $table->foreignId('department_id')->nullable()->constrained('departments', 'department_id')->nullOnDelete();
-        $table->foreignId('position_id')->constrained('positions', 'position_id')->onDelete('cascade');
+        $table->foreignId('position_id')->nullable()->constrained('positions', 'position_id')->onDelete('cascade');
         $table->foreignId('account_id')->nullable()->constrained('accounts', 'account_id')->nullOnDelete();
 
         $table->string('sss_number')->nullable();

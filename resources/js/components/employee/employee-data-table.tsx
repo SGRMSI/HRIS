@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link } from '@inertiajs/react';
+import { EmployeeImportCsv } from './employee-import-csv';
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
@@ -28,39 +29,33 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
 
     // Extract unique companies for the filter dropdown
     const uniqueCompanies = React.useMemo(() => {
-        const companies = data
-            .map((row) => (row as { company?: string }).company)
-            .filter(Boolean) as string[];
+        const companies = data.map((row) => (row as { company?: string }).company).filter(Boolean) as string[];
         return [...new Set(companies)].sort();
     }, [data]);
 
     // Filter and sort data
     const filteredData = React.useMemo(() => {
         let filtered = [...data];
-        
+
         // Apply name search filter
-        const nameFilter = columnFilters.find(f => f.id === 'full_name');
+        const nameFilter = columnFilters.find((f) => f.id === 'full_name');
         if (nameFilter && nameFilter.value) {
             const searchValue = (nameFilter.value as string).toLowerCase();
-            filtered = filtered.filter(row => 
-                (row as { full_name?: string }).full_name?.toLowerCase().includes(searchValue)
-            );
+            filtered = filtered.filter((row) => (row as { full_name?: string }).full_name?.toLowerCase().includes(searchValue));
         }
-        
+
         // Apply company filter
-        const companyFilter = columnFilters.find(f => f.id === 'company');
+        const companyFilter = columnFilters.find((f) => f.id === 'company');
         if (companyFilter && companyFilter.value) {
-            filtered = filtered.filter(row => 
-                (row as { company?: string }).company === companyFilter.value
-            );
+            filtered = filtered.filter((row) => (row as { company?: string }).company === companyFilter.value);
         }
-        
+
         // Sort by created_at based on selected order
         filtered.sort((a, b) => {
             const dateA = (a as { created_at?: string }).created_at;
             const dateB = (b as { created_at?: string }).created_at;
             if (!dateA || !dateB) return 0;
-            
+
             if (recentlyAddedFilter === 'oldest') {
                 // Oldest to Newest (ascending)
                 return new Date(dateA).getTime() - new Date(dateB).getTime();
@@ -69,7 +64,7 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                 return new Date(dateB).getTime() - new Date(dateA).getTime();
             }
         });
-        
+
         return filtered;
     }, [data, recentlyAddedFilter, columnFilters]);
 
@@ -90,7 +85,7 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
 
     return (
         <div className="w-full">
-            <div className="flex items-center py-4 justify-between">
+            <div className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-3">
                     <Input
                         placeholder="Search by name..."
@@ -98,12 +93,10 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                         onChange={(event) => table.getColumn('full_name')?.setFilterValue(event.target.value)}
                         className="w-[250px]"
                     />
-                    
+
                     <Select
                         value={(table.getColumn('company')?.getFilterValue() as string) ?? ''}
-                        onValueChange={(value) => 
-                            table.getColumn('company')?.setFilterValue(value === 'all' ? '' : value)
-                        }
+                        onValueChange={(value) => table.getColumn('company')?.setFilterValue(value === 'all' ? '' : value)}
                     >
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Filter by company" />
@@ -118,10 +111,7 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                         </SelectContent>
                     </Select>
 
-                    <Select
-                        value={recentlyAddedFilter}
-                        onValueChange={setRecentlyAddedFilter}
-                    >
+                    <Select value={recentlyAddedFilter} onValueChange={setRecentlyAddedFilter}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Sort by date" />
                         </SelectTrigger>
@@ -131,10 +121,13 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                         </SelectContent>
                     </Select>
                 </div>
+                <div className="flex items-center gap-2">
+                    <Button asChild>
+                        <Link href="/employee/create">Add Employee</Link>
+                    </Button>
 
-                <Button asChild>
-                    <Link href="/employee/create">Add Employee</Link>
-                </Button>
+                    <EmployeeImportCsv />
+                </div>
             </div>
             <div className="rounded-md border">
                 <Table>

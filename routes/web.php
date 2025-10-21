@@ -90,6 +90,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('employee/{employee}', [EmployeeController::class, 'update'])->name('employee.update');
     Route::delete('employee/{employee}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
     
+    // Import CSV route
+Route::post('/employee/import', [EmployeeController::class, 'importCsv'])->name('employee.import');
     // Employee Documents routes with additional authorization
     Route::middleware(['auth', 'verified'])->group(function () {
         // Only authenticated users can upload, delete, download, or view documents
@@ -150,6 +152,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('payroll');
     })->name('payroll');
 });
+
+
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

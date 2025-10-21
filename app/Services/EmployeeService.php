@@ -80,20 +80,51 @@ class EmployeeService
      */
     public function formatContactNumber(string $contactNumber): string
     {
+        // If empty, return null
+        if (empty($contactNumber)) {
+            return null;
+        }
+        
         // Remove all non-numeric characters
         $cleaned = preg_replace('/[^0-9]/', '', $contactNumber);
         
-        // Add +63 prefix if it's a Philippine number starting with 9
-        if (strlen($cleaned) === 10 && substr($cleaned, 0, 1) === '9') {
-            return '+63' . $cleaned;
+        // If empty after cleaning, return null
+        if (empty($cleaned)) {
+            return null;
         }
         
-        // Add +63 prefix if it starts with 09
-        if (strlen($cleaned) === 11 && substr($cleaned, 0, 2) === '09') {
-            return '+63' . substr($cleaned, 1);
+        // Handle different length scenarios
+        $length = strlen($cleaned);
+        
+        // If it's 10 digits (local number without country code)
+        if ($length == 10) {
+            // Format as +63 XXX XXX XXXX
+            return '+63 ' . substr($cleaned, 0, 3) . ' ' . substr($cleaned, 3, 3) . ' ' . substr($cleaned, 6);
         }
         
-        return $contactNumber; // Return original if doesn't match patterns
+        // If it's 11 digits and starts with 0 (local format with leading zero)
+        if ($length == 11 && $cleaned[0] == '0') {
+            // Remove leading zero and format as +63 XXX XXX XXXX
+            return '+63 ' . substr($cleaned, 1, 3) . ' ' . substr($cleaned, 4, 3) . ' ' . substr($cleaned, 7);
+        }
+        
+        // If it's 12 digits and starts with 63 (already has country code without +)
+        if ($length == 12 && substr($cleaned, 0, 2) == '63') {
+            // Format as +63 XXX XXX XXXX
+            return '+63 ' . substr($cleaned, 2, 3) . ' ' . substr($cleaned, 5, 3) . ' ' . substr($cleaned, 8);
+        }
+        
+        // If none of the above patterns match, try a generic approach
+        if ($length >= 9) {
+            // Take the last 10 digits and format them
+            $lastTen = substr($cleaned, -10);
+            if (strlen($lastTen) == 10) {
+                return '+63 ' . substr($lastTen, 0, 3) . ' ' . substr($lastTen, 3, 3) . ' ' . substr($lastTen, 6);
+            }
+        }
+        
+        // If all else fails, just add +63 prefix to whatever number we have
+        return '+63 ' . $cleaned;
     }
 
     /**
