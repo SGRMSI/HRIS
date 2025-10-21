@@ -20,6 +20,50 @@ class AttendanceFinalizeService
     }
 
     /**
+     * Resolve attendance details including schedule, status and working day info
+     * 
+     * @param AttendanceProcessed $processed
+     * @return object
+     */
+    protected function resolveAttendanceDetails(AttendanceProcessed $processed): object
+    {
+        // Get employee's schedule for the date
+        $schedule = $this->scheduleResolver->getScheduleForDate(
+            $processed->employee_id,
+            Carbon::parse($processed->date)
+        );
+
+        $shift = $schedule?->shift;
+
+        // Check if it's a holiday
+        $isHoliday = $this->scheduleResolver->isHoliday(
+            Carbon::parse($processed->date),
+            $processed->employee->company_id
+        );
+
+        // Check if employee is on leave
+        $isOnLeave = $this->scheduleResolver->isOnLeave(
+            $processed->employee_id,
+            Carbon::parse($processed->date)
+        );
+
+        // Determine if it's a working day
+        $isWorkingDay = !$isHoliday && !$isOnLeave;
+
+        // Determine status
+        $status = $this->determineStatus($processed, $schedule, $isHoliday, $isOnLeave);
+
+        return (object) [
+            'schedule' => $schedule,
+            'shift' => $shift,
+            'isHoliday' => $isHoliday,
+            'isOnLeave' => $isOnLeave,
+            'isWorkingDay' => $isWorkingDay,
+            'status' => $status
+        ];
+    }
+
+    /**
      * Push processed records to final attendance
      *
      * @param array $processedIds
@@ -31,18 +75,19 @@ class AttendanceFinalizeService
         DB::beginTransaction();
         
         try {
-            $items = AttendanceProcessed::with(['employee'])
+            $items = AttendanceProcessed::with(['employee.company'])
                 ->whereIn('id', $processedIds)
                 ->get();
 
             foreach ($items as $processed) {
-                $schedule = $this->scheduleResolver->getScheduleForDate(
-                    $processed->employee_id,
-                    $processed->date
-                );
+                // Get resolved schedule and status details
+                $resolved = $this->resolveAttendanceDetails($processed);
 
-                $shift = $schedule?->shift;
-                [$lateMinutes, $overtimeHours, $undertimeHours] = $this->compareToShift($shift, $processed);
+                // Skip time calculations for holidays and leaves
+                [$lateMinutes, $overtimeHours, $undertimeHours] = 
+                    $resolved->isWorkingDay 
+                        ? $this->compareToShift($resolved->shift, $processed)
+                        : [0, 0, 0];
 
                 Attendance::updateOrCreate(
                     [
@@ -50,7 +95,7 @@ class AttendanceFinalizeService
                         'date' => $processed->date,
                     ],
                     [
-                        'shift_id' => $schedule?->shift_id,
+                        'shift_id' => $resolved->schedule?->shift_id,
                         'clock_in' => $processed->clock_in,
                         'break_out' => $processed->break_out,
                         'break_in' => $processed->break_in,
@@ -60,8 +105,8 @@ class AttendanceFinalizeService
                         'late_minutes' => $lateMinutes,
                         'overtime_hours' => $overtimeHours,
                         'undertime_hours' => $undertimeHours,
-                        'status' => $this->determineStatus($processed, $schedule),
-                        'remarks' => $this->generateRemarks($processed, $schedule),
+                        'status' => $resolved->status,
+                        'remarks' => $this->generateRemarks($processed, $resolved),
                         'created_by' => $userId,
                         'created_at' => now(),
                     ]
@@ -152,25 +197,47 @@ class AttendanceFinalizeService
      * @param mixed $schedule
      * @return string
      */
-    protected function determineStatus(AttendanceProcessed $attendance, $schedule): string
-    {
-        if (!$schedule) {
+    protected function determineStatus(
+        AttendanceProcessed $attendance,
+        $schedule,
+        bool $isHoliday,
+        bool $isOnLeave
+    ): string {
+        // Check for holiday first
+        if ($isHoliday) {
+            return $attendance->clock_in ? 'Holiday - Worked' : 'Holiday';
+        }
+
+        // Check for leave
+        if ($isOnLeave) {
+            return $attendance->clock_in ? 'Leave - Worked' : 'On Leave';
+        }
+
+        // Handle invalid schedule case
+        if (!$schedule || !$schedule->shift) {
             return 'No Schedule';
         }
 
-        if ($attendance->status === 'Incomplete') {
+        // Handle incomplete attendance
+        if (!$attendance->clock_in || !$attendance->clock_out) {
             return 'Incomplete';
         }
 
-        if ($this->scheduleResolver->checkLeave($attendance->employee_id, $attendance->date)) {
-            return 'On Leave';
+        // Handle overnight shifts and lateness
+        $shift = $schedule->shift;
+        $scheduledClockIn = Carbon::parse($attendance->date . ' ' . $shift->time_in);
+        
+        if ($shift->isOvernight() && $shift->time_in > $shift->time_out) {
+            $scheduledClockIn->subDay();
         }
 
-        if ($this->scheduleResolver->checkHoliday($attendance->date, $attendance->employee->company_id)) {
-            return 'Holiday';
+        $actualClockIn = Carbon::parse($attendance->clock_in);
+        $lateThreshold = (int) config('attendance.late_threshold_minutes', 1);
+
+        if ($actualClockIn->diffInMinutes($scheduledClockIn, false) > $lateThreshold) {
+            return 'Late';
         }
 
-        // Default to Present if all basic requirements are met
         return 'Present';
     }
 

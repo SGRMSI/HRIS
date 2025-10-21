@@ -98,7 +98,7 @@ Route::post('/employee/import', [EmployeeController::class, 'importCsv'])->name(
 });
 
 // Attendance Management Routes
-Route::middleware(['auth', 'can:attendance.manage'])->prefix('attendance')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('attendance')->group(function () {
     // Upload and Process
     Route::get('upload', [AttendanceController::class, 'showUpload'])->name('attendance.upload');
     Route::post('upload', [AttendanceController::class, 'handleUpload']);
