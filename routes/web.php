@@ -16,6 +16,8 @@ use App\Http\Controllers\EmployeeScheduleController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\EmployeeLeaveController;
 
+// Include attendance routes
+require __DIR__.'/attendance.php';
 
 Route::get('/', function () {
     return Inertia::render('auth/login' );
