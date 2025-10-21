@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('employee_leaves', function (Blueprint $table) {
             $table->id('leave_id');
-            $table->foreignId('employee_id')->constrained('employees', 'id');
+            $table->foreignId('employee_id')->constrained('employees', 'employee_id');
             $table->string('type')->comment('"Vacation", "Sick", "Emergency", etc.');
             $table->date('date_from');
             $table->date('date_to');

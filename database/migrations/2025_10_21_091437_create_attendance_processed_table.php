@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('attendance_processed', function (Blueprint $table) {
             $table->id('processed_id');
             $table->foreignId('batch_id')->constrained('attendance_upload_batches', 'batch_id');
-            $table->foreignId('employee_id')->constrained('employees', 'id');
+            $table->foreignId('employee_id')->constrained('employees', 'employee_id');
             $table->date('date');
             $table->time('clock_in');
             $table->time('clock_out');

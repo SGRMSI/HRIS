@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->date('date');
             $table->string('type')->comment('"Regular", "Special"');
-            $table->foreignId('company_id')->nullable()->constrained('companies', 'id');
+            $table->foreignId('company_id')->nullable()->constrained('companies', 'company_id');
             $table->timestamp('created_at')->useCurrent();
         });
     }
