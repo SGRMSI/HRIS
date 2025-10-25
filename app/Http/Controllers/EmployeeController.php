@@ -450,34 +450,37 @@ class EmployeeController extends Controller
         
         // Updated field map to use names instead of IDs
         $fieldMap = [
-            'id_number' => 'id_number',
-            'last_name' => 'last_name',
-            'first_name' => 'first_name',
-            'middle_name' => 'middle_name',
-            'gender' => 'gender',
-            'birth_date' => 'birth_date',
-            'age' => 'age',
-            'civil_status' => 'civil_status',
-            'address' => 'address',
-            'contact_number' => 'contact_number',
-            'company' => 'company',       // Changed from company_id to company
-            'department' => 'department', // Changed from department_id to department
-            'position' => 'position',     // Changed from position_id to position
-            'account' => 'account',       // Changed from account_id to account
-            'sss_number' => 'sss_number',
-            'phic_number' => 'phic_number',
-            'hdmf_number' => 'hdmf_number',
-            'tin_number' => 'tin_number',
-            'date_hired' => 'date_hired',
-            'employment_status' => 'employment_status',
-        ];
-        
+            // note: id_number will be auto-generated during import; remove from required CSV
+             'last_name' => 'last_name',
+             'first_name' => 'first_name',
+             'middle_name' => 'middle_name',
+             'gender' => 'gender',
+             'birth_date' => 'birth_date',
+             'age' => 'age',
+             'civil_status' => 'civil_status',
+             'address' => 'address',
+             'contact_number' => 'contact_number',
+             'company' => 'company',       // Changed from company_id to company
+             'department' => 'department', // Changed from department_id to department
+             'position' => 'position',     // Changed from position_id to position
+             'account' => 'account',       // Changed from account_id to account
+             'sss_number' => 'sss_number',
+             'phic_number' => 'phic_number',
+             'hdmf_number' => 'hdmf_number',
+             'tin_number' => 'tin_number',
+             'date_hired' => 'date_hired',
+             'employment_status' => 'employment_status',
+         ];
+         
         // Cache company, department, position, and account data to avoid multiple DB queries
+        // $companies: name => id  (used for case-insensitive lookup)
         $companies = Company::pluck('company_id', 'name')->toArray();
-        $departments = Department::pluck('department_id', 'name')->toArray();
-        $positions = Position::pluck('position_id', 'title')->toArray();
-        $accounts = Account::pluck('account_id', 'name')->toArray();
-        
+        // Reverse map id => name for ID generation
+        $companiesById = Company::pluck('name', 'company_id')->toArray();
+         $departments = Department::pluck('department_id', 'name')->toArray();
+         $positions = Position::pluck('position_id', 'title')->toArray();
+         $accounts = Account::pluck('account_id', 'name')->toArray();
+         
         DB::beginTransaction();
         try {
             $importedCount = 0;
@@ -514,14 +517,13 @@ class EmployeeController extends Controller
                 \Log::info("Processing row $index", $employeeData);
                 
                 // Validate required fields
-                if (empty($employeeData['id_number']) || 
-                    empty($employeeData['last_name']) || 
-                    empty($employeeData['first_name'])) {
+                // id_number will be auto-generated; require only names
+                if (empty($employeeData['last_name']) || empty($employeeData['first_name'])) {
                     \Log::warning("Row $index missing required fields");
                     $skippedCount++;
                     continue;
                 }
-                
+ 
                 // Format dates if they exist
                 if (!empty($employeeData['birth_date'])) {
                     // Try to parse date in common formats
@@ -613,32 +615,50 @@ class EmployeeController extends Controller
                     }
                 }
                 
-                // Create employee with resolved IDs (null if not found)
-                Employee::create([
-                    'id_number' => $employeeData['id_number'],
-                    'last_name' => $employeeData['last_name'],
-                    'first_name' => $employeeData['first_name'],
-                    'middle_name' => $employeeData['middle_name'] ?? null,
-                    'gender' => $employeeData['gender'] ?? 'Other',
-                    'birth_date' => $employeeData['birth_date'] ?? now(),
-                    'age' => $employeeData['age'] ?? 0,
-                    'civil_status' => $employeeData['civil_status'] ?? 'Single',
-                    'address' => $employeeData['address'] ?? '',
-                    'contact_number' => !empty($employeeData['contact_number']) 
-                    ? $this->employeeService->formatContactNumber($employeeData['contact_number']) 
-                    : null,
-                    'company_id' => $companyId,  
-                    'department_id' => $departmentId,  
-                    'position_id' => $positionId,  
-                    'account_id' => $accountId,  
-                    'sss_number' => $employeeData['sss_number'] ?? null,
-                    'phic_number' => $employeeData['phic_number'] ?? null,
-                    'hdmf_number' => $employeeData['hdmf_number'] ?? null,
-                    'tin_number' => $employeeData['tin_number'] ?? null,
-                    'date_hired' => $employeeData['date_hired'] ?? now(),
-                    'employment_status' => $employeeData['employment_status'] ?? 'Probationary',
-                ]);
-                $importedCount++;
+                // Auto-generate employee id_number using company prefix if available.
+                // If company not provided, fall back to generic 'EMP' prefix.
+                $generatedId = null;
+                try {
+                    $prefix = 'EMP';
+                    if (!is_null($companyId) && isset($companiesById[$companyId])) {
+                        $companyNameForPrefix = $companiesById[$companyId];
+                        $prefix = $this->employeeService->generateCompanyPrefix($companyNameForPrefix);
+                    }
+                    $generatedId = $this->employeeService->generateEmployeeId($prefix);
+                } catch (\Exception $e) {
+                    \Log::error("Row $index: Failed to generate employee id - " . $e->getMessage());
+                    // If generation fails, skip the row to avoid duplicate/null ids
+                    $skippedCount++;
+                    continue;
+                }
+                
+
+                 // Create employee with resolved IDs (null if not found)
+                 Employee::create([
+                    'id_number' => $generatedId,
+                     'last_name' => $employeeData['last_name'],
+                     'first_name' => $employeeData['first_name'],
+                     'middle_name' => $employeeData['middle_name'] ?? null,
+                     'gender' => $employeeData['gender'] ?? 'Other',
+                     'birth_date' => $employeeData['birth_date'] ?? now(),
+                     'age' => $employeeData['age'] ?? 0,
+                     'civil_status' => $employeeData['civil_status'] ?? 'Single',
+                     'address' => $employeeData['address'] ?? '',
+                     'contact_number' => !empty($employeeData['contact_number']) 
+                     ? $this->employeeService->formatContactNumber($employeeData['contact_number']) 
+                     : null,
+                     'company_id' => $companyId,  
+                     'department_id' => $departmentId,  
+                     'position_id' => $positionId,  
+                     'account_id' => $accountId,  
+                     'sss_number' => $employeeData['sss_number'] ?? null,
+                     'phic_number' => $employeeData['phic_number'] ?? null,
+                     'hdmf_number' => $employeeData['hdmf_number'] ?? null,
+                     'tin_number' => $employeeData['tin_number'] ?? null,
+                     'date_hired' => $employeeData['date_hired'] ?? now(),
+                     'employment_status' => $employeeData['employment_status'] ?? 'Probationary',
+                 ]);
+                 $importedCount++;
             }
             
             DB::commit();

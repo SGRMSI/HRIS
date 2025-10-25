@@ -102,6 +102,7 @@ class EmployeeService
             return '+63 ' . substr($cleaned, 0, 3) . ' ' . substr($cleaned, 3, 3) . ' ' . substr($cleaned, 6);
         }
         
+        
         // If it's 11 digits and starts with 0 (local format with leading zero)
         if ($length == 11 && $cleaned[0] == '0') {
             // Remove leading zero and format as +63 XXX XXX XXXX
