@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AttendanceFinalController;
 use App\Http\Controllers\AttendanceRawController;
 use App\Http\Controllers\AttendanceProcessedController;
