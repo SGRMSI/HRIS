@@ -76,4 +76,38 @@ class Shift extends Model
         
         return $timeOut->diffInMinutes($timeIn);
     }
+
+    public function getBreakDurationMinutes(): int
+    {
+        if (!$this->break_start || !$this->break_end) {
+            return 0;
+        }
+
+        $breakStart = \Carbon\Carbon::parse($this->break_start->format('H:i:s'));
+        $breakEnd = \Carbon\Carbon::parse($this->break_end->format('H:i:s'));
+        
+        if ($breakEnd < $breakStart) {
+            $breakEnd->addDay();
+        }
+        
+        return $breakEnd->diffInMinutes($breakStart);
+    }
+
+    /**
+     * Get working hours duration (shift duration minus break)
+     */
+    public function getWorkingHours(): float
+    {
+        return round(($this->getDurationMinutes() - $this->getBreakDurationMinutes()) / 60, 2);
+    }
+
+    /**
+     * Get late threshold time with grace period
+     */
+    public function getLateThreshold(): string
+    {
+        return \Carbon\Carbon::parse($this->time_in)
+            ->addMinutes($this->grace_period ?? 0)
+            ->format('H:i:s');
+    }
 }

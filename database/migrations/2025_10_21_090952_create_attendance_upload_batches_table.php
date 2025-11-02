@@ -13,13 +13,18 @@ return new class extends Migration
     {
         Schema::create('attendance_upload_batches', function (Blueprint $table) {
             $table->id('batch_id');
-            $table->string('file_name');
-            $table->foreignId('uploaded_by')->constrained('users', 'id');
-            $table->timestamp('uploaded_at');
-            $table->integer('total_records');
-            $table->string('status')->comment('e.g. "pending", "processed", "finalized"');
+            $table->string('filename');
+            $table->string('file_path');
+            $table->integer('total_rows')->default(0);
+            $table->integer('processed_rows')->default(0);
+            $table->string('status')->comment('pending, processing, completed, failed');
             $table->text('remarks')->nullable();
+            $table->foreignId('created_by')->constrained('users', 'id');
             $table->timestamps();
+
+            // Add indexes for performance
+            $table->index('status');
+            $table->index('created_at');
         });
     }
 

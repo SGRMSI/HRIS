@@ -11,7 +11,7 @@ class UploadAttendanceRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return auth()->user()->can('manage-attendance');
+        return auth()->check(); // Ensure user is authenticated
     }
 
     /**
@@ -22,14 +22,21 @@ class UploadAttendanceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'], // max 10MB
+            'file' => [
+                'required',
+                'file',
+                'mimes:xlsx,xls,csv',
+                'max:10240', // max 10MB
+                'mimetypes:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv'
+            ],
+            'remarks' => ['nullable', 'string', 'max:500'],
         ];
     }
 
     /**
      * Get custom messages for validator errors.
      *
-     * @return array
+     * @return array<string, string>
      */
     public function messages(): array
     {
@@ -38,6 +45,20 @@ class UploadAttendanceRequest extends FormRequest
             'file.file' => 'The uploaded file is invalid.',
             'file.mimes' => 'The file must be an Excel file (xlsx, xls) or CSV.',
             'file.max' => 'The file size must not exceed 10MB.',
+            'file.mimetypes' => 'Invalid file format. Please upload a valid Excel or CSV file.',
+            'remarks.max' => 'Remarks cannot exceed 500 characters.',
         ];
+    }
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->hasFile('file')) {
+            $this->merge([
+                'original_filename' => $this->file('file')->getClientOriginalName(),
+            ]);
+        }
     }
 }
