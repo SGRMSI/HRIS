@@ -52,13 +52,24 @@ class AttendanceController extends BaseController
             DB::beginTransaction();
 
             $file = $request->file('file');
+            $filename = $file->getClientOriginalName();
+            
+            // Check if filename already exists
+            $existingBatch = AttendanceUploadBatch::where('filename', $filename)->first();
+            if ($existingBatch) {
+                return back()
+                    ->withErrors([
+                        'file' => 'A file with this name has already been uploaded. Please rename the file or choose a different one.'
+                    ])
+                    ->withInput();
+            }
             
             // Store the file
             $filePath = $file->store('attendance/uploads', 'local');
             
             // Create the batch record
             $batch = AttendanceUploadBatch::create([
-                'filename' => $file->getClientOriginalName(),
+                'filename' => $filename,
                 'file_path' => $filePath,
                 'total_rows' => 0,
                 'processed_rows' => 0,

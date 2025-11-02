@@ -25,7 +25,12 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
         foreach ($rows as $row) {
             try {
                 // Map Excel columns (with dots and dashes) to our keys
-                $acNo = trim($row['ac_no'] ?? $row['ac-no'] ?? '');
+                // AC-No. can be numeric or string, handle both
+                $acNo = $row['ac_no'] ?? $row['ac-no'] ?? $row['acno'] ?? '';
+                
+                // Convert to string and trim
+                $acNo = trim((string) $acNo);
+                
                 $name = trim($row['name'] ?? '');
                 $timeLog = $row['time'] ?? '';
                 $state = trim($row['state'] ?? '');
@@ -38,7 +43,19 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
                 }
 
                 // Try to match employee by AC-No
-                $employee = Employee::where('employee_number', $acNo)->first();
+                // First try to match by employee_id (if AC-No is numeric)
+                // Then fall back to id_number (if it's alphanumeric)
+                $employee = null;
+                
+                if (is_numeric($acNo)) {
+                    // If AC-No is numeric, match by employee_id
+                    $employee = Employee::find((int) $acNo);
+                }
+                
+                // If not found by employee_id, try matching by id_number
+                if (!$employee) {
+                    $employee = Employee::where('id_number', $acNo)->first();
+                }
 
                 AttendanceRaw::create([
                     'batch_id' => $this->batchId,
@@ -67,9 +84,14 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
     public function rules(): array
     {
         return [
-            '*.ac_no' => ['nullable', 'string'],
-            '*.ac-no' => ['nullable', 'string'],
+            // AC-No. can be numeric or string from biometric device
+            '*.ac_no' => ['nullable'],
+            '*.ac-no' => ['nullable'],
+            '*.acno' => ['nullable'],
+            '*.no' => ['nullable'], // Sometimes "No." column exists
             '*.time' => ['nullable'],
+            '*.name' => ['nullable'],
+            '*.state' => ['nullable'],
         ];
     }
 

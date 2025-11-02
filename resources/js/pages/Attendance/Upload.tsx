@@ -142,7 +142,7 @@ export default function Upload({ batches, flash }: UploadPageProps) {
                             <div className="text-sm text-muted-foreground space-y-1">
                                 <p className="font-medium">Required Columns in Excel File:</p>
                                 <ul className="list-disc list-inside space-y-1 ml-2">
-                                    <li><span className="font-mono">AC-No.</span> - Employee attendance number</li>
+                                    <li><span className="font-mono">AC-No.</span> - Employee ID (numeric) or ID Number (alphanumeric)</li>
                                     <li><span className="font-mono">Name</span> - Employee name</li>
                                     <li><span className="font-mono">Time</span> - Timestamp of attendance log</li>
                                     <li><span className="font-mono">State</span> - Attendance state</li>
@@ -150,6 +150,9 @@ export default function Upload({ batches, flash }: UploadPageProps) {
                                     <li><span className="font-mono">Exception</span> - Any exceptions (optional)</li>
                                     <li><span className="font-mono">Operation</span> - Operation type (optional)</li>
                                 </ul>
+                                <p className="text-xs mt-2 text-muted-foreground/80">
+                                    Note: AC-No. will match employees by Employee ID (1, 2, 3...) or ID Number (TNT001, TH001...).
+                                </p>
                             </div>
                         </form>
                     </CardContent>

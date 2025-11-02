@@ -53,7 +53,7 @@ class AttendanceRawExport implements FromCollection, WithHeadings, WithMapping, 
             $row->exception,
             $row->operation,
             $row->employee ? 'Matched' : 'Unmatched',
-            $row->employee?->employee_number ?? '',
+            $row->employee?->id_number ?? '',
             $row->employee ? ($row->employee->first_name . ' ' . $row->employee->last_name) : '',
         ];
     }

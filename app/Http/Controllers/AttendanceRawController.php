@@ -57,7 +57,7 @@ class AttendanceRawController extends Controller
 
         $query = AttendanceRaw::query()
             ->where('batch_id', $batchId)
-            ->with('employee:employee_id,employee_number,first_name,last_name')
+            ->with('employee:employee_id,id_number,first_name,last_name')
             ->when($request->search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('ac_no', 'like', "%{$search}%")
@@ -86,7 +86,7 @@ class AttendanceRawController extends Controller
                 'operation' => $record->operation,
                 'employee' => $record->employee ? [
                     'id' => $record->employee->employee_id,
-                    'number' => $record->employee->employee_number,
+                    'number' => $record->employee->id_number,
                     'name' => $record->employee->first_name . ' ' . $record->employee->last_name,
                 ] : null,
             ]);
@@ -128,7 +128,7 @@ class AttendanceRawController extends Controller
 
         $records = AttendanceRaw::query()
             ->where('batch_id', $batchId)
-            ->with('employee:employee_id,employee_number,first_name,last_name')
+            ->with('employee:employee_id,id_number,first_name,last_name')
             ->orderBy('time_log')
             ->get();
 
