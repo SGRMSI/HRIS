@@ -22,122 +22,119 @@ class AttendanceRawController extends Controller
      */
     public function index(Request $request)
     {
-        $query = AttendanceRaw::query()
-            ->with(['batch', 'employee'])
-            ->when($request->batch_id, function ($query, $batchId) {
-                $query->where('batch_id', $batchId);
-            })
-            ->when($request->employee_id, function ($query, $employeeId) {
-                $query->where('employee_id', $employeeId);
-            })
-            ->when($request->date_from, function ($query, $dateFrom) {
-                $query->whereDate('raw_date', '>=', $dateFrom);
-            })
-            ->when($request->date_to, function ($query, $dateTo) {
-                $query->whereDate('raw_date', '<=', $dateTo);
-            })
-            ->when($request->search, function ($query, $search) {
-                $query->whereHas('employee', function ($q) use ($search) {
-                    $q->where('employee_number', 'like', "%{$search}%")
-                      ->orWhere('name', 'like', "%{$search}%");
-                });
-            });
-
-        $rawRecords = $query->latest('raw_date')
-            ->paginate($request->per_page ?? 15)
-            ->withQueryString();
-
-        // Get batches for filter dropdown
-        $batches = AttendanceUploadBatch::select('id', 'file_name', 'uploaded_at')
-            ->latest()
-            ->get();
-
-        // Get employees for filter dropdown
-        $employees = Employee::select('id', 'name', 'employee_number')
-            ->orderBy('name')
-            ->get();
+        // Get batches with statistics
+        $batches = AttendanceUploadBatch::query()
+            ->with('uploadedBy:id,name')
+            ->withCount('raws')
+            ->latest('created_at')
+            ->paginate(10)
+            ->through(fn ($batch) => [
+                'id' => $batch->batch_id,
+                'filename' => $batch->filename,
+                'uploaded_at' => $batch->created_at->format('Y-m-d H:i:s'),
+                'uploaded_by' => $batch->uploadedBy?->name ?? 'Unknown',
+                'total_records' => $batch->total_rows,
+                'raws_count' => $batch->raws_count,
+                'status' => $batch->status,
+            ]);
 
         return Inertia::render('Attendance/RawIndex', [
-            'records' => $rawRecords,
-            'filters' => [
-                'batches' => $batches,
-                'employees' => $employees,
-                'date_from' => $request->date_from,
-                'date_to' => $request->date_to,
-                'batch_id' => $request->batch_id,
-                'employee_id' => $request->employee_id,
-                'search' => $request->search,
-            ]
+            'batches' => $batches,
         ]);
     }
 
     /**
-     * Display the specified attendance raw record
+     * Display raw records for a specific batch
      *
-     * @param AttendanceRaw $raw
+     * @param int $batchId
+     * @param Request $request
      * @return \Inertia\Response
      */
-    public function show(AttendanceRaw $raw)
+    public function show($batchId, Request $request)
     {
-        $raw->load([
-            'batch',
-            'employee.department',
-            'employee.position',
-            'employee.schedules' => function ($query) use ($raw) {
-                $query->where('date_start', '<=', $raw->raw_date)
-                    ->where(function ($q) use ($raw) {
-                        $q->whereNull('date_end')
-                          ->orWhere('date_end', '>=', $raw->raw_date);
-                    });
-            }
-        ]);
+        $batch = AttendanceUploadBatch::with('uploadedBy:id,name')
+            ->findOrFail($batchId);
 
-        // Get related records for the same day
-        $relatedRecords = AttendanceRaw::where('employee_id', $raw->employee_id)
-            ->whereDate('raw_date', Carbon::parse($raw->raw_date)->toDateString())
-            ->where('id', '!=', $raw->id)
-            ->get();
+        $query = AttendanceRaw::query()
+            ->where('batch_id', $batchId)
+            ->with('employee:employee_id,employee_number,first_name,last_name')
+            ->when($request->search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('ac_no', 'like', "%{$search}%")
+                      ->orWhere('name', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->has_employee, function ($query) use ($request) {
+                if ($request->has_employee === 'matched') {
+                    $query->whereNotNull('employee_id');
+                } elseif ($request->has_employee === 'unmatched') {
+                    $query->whereNull('employee_id');
+                }
+            });
+
+        $records = $query->latest('time_log')
+            ->paginate($request->per_page ?? 50)
+            ->withQueryString()
+            ->through(fn ($record) => [
+                'id' => $record->raw_id,
+                'ac_no' => $record->ac_no,
+                'name' => $record->name,
+                'time_log' => $record->time_log?->format('Y-m-d H:i:s'),
+                'state' => $record->state,
+                'new_state' => $record->new_state,
+                'exception' => $record->exception,
+                'operation' => $record->operation,
+                'employee' => $record->employee ? [
+                    'id' => $record->employee->employee_id,
+                    'number' => $record->employee->employee_number,
+                    'name' => $record->employee->first_name . ' ' . $record->employee->last_name,
+                ] : null,
+            ]);
+
+        // Statistics
+        $stats = [
+            'total' => AttendanceRaw::where('batch_id', $batchId)->count(),
+            'matched' => AttendanceRaw::where('batch_id', $batchId)->whereNotNull('employee_id')->count(),
+            'unmatched' => AttendanceRaw::where('batch_id', $batchId)->whereNull('employee_id')->count(),
+        ];
 
         return Inertia::render('Attendance/RawShow', [
-            'record' => $raw,
-            'relatedRecords' => $relatedRecords
+            'batch' => [
+                'id' => $batch->batch_id,
+                'filename' => $batch->filename,
+                'uploaded_at' => $batch->created_at->format('Y-m-d H:i:s'),
+                'uploaded_by' => $batch->uploadedBy?->name ?? 'Unknown',
+                'total_records' => $batch->total_rows,
+                'status' => $batch->status,
+            ],
+            'records' => $records,
+            'stats' => $stats,
+            'filters' => [
+                'search' => $request->search,
+                'has_employee' => $request->has_employee,
+            ],
         ]);
     }
 
     /**
      * Export filtered raw attendance records to Excel
      *
-     * @param Request $request
+     * @param int $batchId
      * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
      */
-    public function export(Request $request)
+    public function export($batchId)
     {
-        $request->validate([
-            'batch_id' => 'nullable|exists:attendance_upload_batches,id',
-            'employee_id' => 'nullable|exists:employees,id',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after_or_equal:date_from',
-        ]);
+        $batch = AttendanceUploadBatch::findOrFail($batchId);
 
-        $query = AttendanceRaw::query()
-            ->with(['batch', 'employee'])
-            ->when($request->batch_id, function ($query, $batchId) {
-                $query->where('batch_id', $batchId);
-            })
-            ->when($request->employee_id, function ($query, $employeeId) {
-                $query->where('employee_id', $employeeId);
-            })
-            ->when($request->date_from, function ($query, $dateFrom) {
-                $query->whereDate('raw_date', '>=', $dateFrom);
-            })
-            ->when($request->date_to, function ($query, $dateTo) {
-                $query->whereDate('raw_date', '<=', $dateTo);
-            })
-            ->orderBy('raw_date');
+        $records = AttendanceRaw::query()
+            ->where('batch_id', $batchId)
+            ->with('employee:employee_id,employee_number,first_name,last_name')
+            ->orderBy('time_log')
+            ->get();
 
         return Excel::download(
-            new AttendanceRawExport($query), 
-            'attendance_raw_' . now()->format('Y-m-d_His') . '.xlsx'
+            new AttendanceRawExport($records, $batch), 
+            'attendance_raw_' . $batch->filename . '_' . now()->format('Y-m-d_His') . '.xlsx'
         );
     }
 }

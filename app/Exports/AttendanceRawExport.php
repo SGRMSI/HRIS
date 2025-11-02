@@ -2,57 +2,64 @@
 
 namespace App\Exports;
 
-use Illuminate\Database\Query\Builder;
-use Maatwebsite\Excel\Concerns\FromQuery;
+use App\Models\AttendanceUploadBatch;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class AttendanceRawExport implements FromQuery, WithHeadings, WithMapping, WithTitle, ShouldAutoSize
+class AttendanceRawExport implements FromCollection, WithHeadings, WithMapping, WithTitle, ShouldAutoSize
 {
-    protected $query;
+    protected Collection $records;
+    protected AttendanceUploadBatch $batch;
 
-    public function __construct(Builder $query)
+    public function __construct(Collection $records, AttendanceUploadBatch $batch)
     {
-        $this->query = $query;
+        $this->records = $records;
+        $this->batch = $batch;
     }
 
-    public function query()
+    public function collection()
     {
-        return $this->query;
+        return $this->records;
     }
 
     public function headings(): array
     {
         return [
-            'Batch',
-            'Employee ID',
+            'AC-No.',
+            'Name (File)',
+            'Time Log',
+            'State',
+            'New State',
+            'Exception',
+            'Operation',
+            'Employee Match',
+            'Employee Number',
             'Employee Name',
-            'Date',
-            'Time',
-            'Type',
-            'Original Data',
-            'Created At'
         ];
     }
 
     public function map($row): array
     {
         return [
-            $row->batch->file_name,
-            $row->employee->employee_number,
-            $row->employee->name,
-            $row->raw_date->format('Y-m-d'),
-            $row->raw_time->format('H:i:s'),
-            $row->raw_type,
-            $row->raw_data,
-            $row->created_at->format('Y-m-d H:i:s')
+            $row->ac_no,
+            $row->name,
+            $row->time_log?->format('Y-m-d H:i:s'),
+            $row->state,
+            $row->new_state,
+            $row->exception,
+            $row->operation,
+            $row->employee ? 'Matched' : 'Unmatched',
+            $row->employee?->employee_number ?? '',
+            $row->employee ? ($row->employee->first_name . ' ' . $row->employee->last_name) : '',
         ];
     }
 
     public function title(): string
     {
-        return 'Raw Attendance Records';
+        return 'Raw Attendance - ' . substr($this->batch->filename, 0, 20);
     }
 }

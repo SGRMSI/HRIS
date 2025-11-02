@@ -20,7 +20,8 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
     // Raw Attendance Records
     Route::prefix('raw')->name('raw.')->group(function () {
         Route::get('/', [AttendanceRawController::class, 'index'])->name('index');
-        Route::get('export', [AttendanceRawController::class, 'export'])->name('export');
+        Route::get('{batch}', [AttendanceRawController::class, 'show'])->name('show');
+        Route::get('{batch}/export', [AttendanceRawController::class, 'export'])->name('export');
     });
     
     // Processed Attendance
