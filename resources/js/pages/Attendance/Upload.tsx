@@ -70,7 +70,7 @@ export default function Upload({ batches, flash }: UploadPageProps) {
         >
             <Head title="Upload Attendance" />
             
-            <div className="space-y-6">
+            <div className="space-y-6 p-6 md:p-4">
                 <div>
                     <h1 className="text-3xl font-bold">Upload Attendance</h1>
                     <p className="text-muted-foreground mt-1">
@@ -140,11 +140,15 @@ export default function Upload({ batches, flash }: UploadPageProps) {
                             </div>
 
                             <div className="text-sm text-muted-foreground space-y-1">
-                                <p className="font-medium">Required Columns:</p>
+                                <p className="font-medium">Required Columns in Excel File:</p>
                                 <ul className="list-disc list-inside space-y-1 ml-2">
-                                    <li>employee_number</li>
-                                    <li>timestamp</li>
-                                    <li>device_id</li>
+                                    <li><span className="font-mono">AC-No.</span> - Employee attendance number</li>
+                                    <li><span className="font-mono">Name</span> - Employee name</li>
+                                    <li><span className="font-mono">Time</span> - Timestamp of attendance log</li>
+                                    <li><span className="font-mono">State</span> - Attendance state</li>
+                                    <li><span className="font-mono">New State</span> - Updated state (optional)</li>
+                                    <li><span className="font-mono">Exception</span> - Any exceptions (optional)</li>
+                                    <li><span className="font-mono">Operation</span> - Operation type (optional)</li>
                                 </ul>
                             </div>
                         </form>
