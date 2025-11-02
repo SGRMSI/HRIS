@@ -117,10 +117,8 @@ class AttendanceImportService
                 ]
             ]);
 
-            // Import Excel file using chunk reading for large files
-            Excel::import(new AttendanceRawImport($batch->id, function($chunk) use ($batch) {
-                $this->trackProgress($batch, $chunk);
-            }), $file);
+            // Import Excel file
+            Excel::import(new AttendanceRawImport($batch->id), $file);
 
             // Check for duplicates
             $duplicates = $this->checkDuplicates($batch);
