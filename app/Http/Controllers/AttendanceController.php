@@ -34,35 +34,22 @@ class AttendanceController extends BaseController
      */
     public function upload()
     {
-        // Get recent batches with error states
+        // Get recent batches
         $batches = AttendanceUploadBatch::query()
-            ->with(['createdBy:id,name'])
-            ->withCount('raws')
-            ->latest()
-            ->limit(10)
-            ->get()
-            ->map(fn ($batch) => [
-                'id' => $batch->id,
-                'filename' => $batch->file_name,
-                'uploaded_at' => $batch->uploaded_at->format('Y-m-d H:i:s'),
-                'total_rows' => $batch->total_records,
-                'processed_rows' => $batch->processed_rows,
+            ->with(['uploadedBy:id,name'])
+            ->latest('created_at')
+            ->paginate(10)
+            ->through(fn ($batch) => [
+                'id' => $batch->batch_id,
+                'filename' => $batch->filename,
+                'uploaded_at' => $batch->created_at->format('Y-m-d H:i:s'),
+                'uploaded_by' => $batch->uploadedBy->name ?? 'Unknown',
+                'total_records' => $batch->total_rows,
                 'status' => $batch->status,
-                'created_by' => $batch->createdBy->name,
-                'has_errors' => $batch->status === 'failed',
-                'error_message' => $batch->meta['error'] ?? null,
-                'progress_percentage' => $batch->total_records > 0 
-                    ? round(($batch->processed_rows / $batch->total_records) * 100) 
-                    : 0
             ]);
 
         return Inertia::render('Attendance/Upload', [
             'batches' => $batches,
-            'maxFileSize' => config('excel.max_file_size', 10240), // 10MB default
-            'allowedTypes' => ['xlsx', 'xls', 'csv'],
-            'errors' => session('errors'),
-            'success' => session('success'),
-            'canUpload' => auth()->user()->can('attendance.upload')
         ]);
     }
 

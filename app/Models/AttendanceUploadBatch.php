@@ -10,16 +10,18 @@ class AttendanceUploadBatch extends Model
     protected $primaryKey = 'batch_id';
 
     protected $fillable = [
-        'file_name',
-        'uploaded_by',
-        'uploaded_at',
-        'total_records',
+        'filename',
+        'file_path',
+        'total_rows',
+        'processed_rows',
         'status',
         'remarks',
+        'created_by',
     ];
 
     protected $casts = [
-        'uploaded_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     // Relationships
@@ -33,8 +35,8 @@ class AttendanceUploadBatch extends Model
         return $this->hasMany(AttendanceProcessed::class, 'batch_id');
     }
 
-    public function uploader()
+    public function uploadedBy()
     {
-        return $this->belongsTo(User::class, 'uploaded_by');
+        return $this->belongsTo(User::class, 'created_by');
     }
 }
