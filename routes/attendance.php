@@ -10,41 +10,73 @@ use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\EmployeeLeaveController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    // Attendance Upload
-    Route::get('/attendance/upload', [AttendanceController::class, 'upload'])->name('attendance.upload');
-    Route::post('/attendance/import', [AttendanceController::class, 'import'])->name('attendance.import');
-
+// Attendance Management Routes
+Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.')->group(function () {
+    
+    // Upload & Import
+    Route::get('upload', [AttendanceController::class, 'upload'])->name('upload');
+    Route::post('import', [AttendanceController::class, 'import'])->name('import');
+    
     // Raw Attendance Records
-    Route::get('/attendance/raw', [AttendanceRawController::class, 'index'])->name('attendance.raw.index');
+    Route::prefix('raw')->name('raw.')->group(function () {
+        Route::get('/', [AttendanceRawController::class, 'index'])->name('index');
+        Route::get('{batch}', [AttendanceRawController::class, 'show'])->name('show');
+        Route::get('export/{batch}', [AttendanceRawController::class, 'export'])->name('export');
+    });
     
     // Processed Attendance
-    Route::get('/attendance/processed', [AttendanceProcessedController::class, 'index'])->name('attendance.processed.index');
-    Route::post('/attendance/process/{batch}', [AttendanceProcessedController::class, 'process'])->name('attendance.processed.process');
-
-    // Final Attendance
-    Route::get('/attendance', [AttendanceFinalController::class, 'index'])->name('attendance.index');
-    Route::put('/attendance/{attendance}', [AttendanceFinalController::class, 'update'])
-        ->name('attendance.update')
-        ->middleware('can:edit attendances');
-    Route::post('/attendance/{attendance}/approve', [AttendanceFinalController::class, 'approve'])
-        ->name('attendance.approve')
-        ->middleware('can:approve attendances');
-    Route::post('/attendance/bulk-approve', [AttendanceFinalController::class, 'bulkApprove'])
-        ->name('attendance.bulk-approve')
-        ->middleware('can:approve attendances');
-
-    // Shifts
-    Route::resource('shifts', ShiftController::class);
-
-    // Schedules
-    Route::resource('schedules', EmployeeScheduleController::class);
-    Route::post('/schedules/bulk', [EmployeeScheduleController::class, 'bulkAssign'])->name('schedules.bulk');
-
-    // Holidays
-    Route::resource('holidays', HolidayController::class);
-
-    // Leaves
-    Route::resource('leaves', EmployeeLeaveController::class);
-    Route::patch('/leaves/{leave}/status', [EmployeeLeaveController::class, 'updateStatus'])->name('leaves.status');
+    Route::prefix('processed')->name('processed.')->group(function () {
+        Route::get('/', [AttendanceProcessedController::class, 'index'])->name('index');
+        Route::post('process/{batch}', [AttendanceProcessedController::class, 'process'])->name('process');
+        Route::post('reprocess/{batch}', [AttendanceProcessedController::class, 'reprocess'])->name('reprocess');
+    });
+    
+    // Final Attendance Records
+    Route::prefix('final')->name('final.')->group(function () {
+        Route::get('/', [AttendanceFinalController::class, 'index'])->name('index');
+        Route::get('{attendance}', [AttendanceFinalController::class, 'show'])->name('show');
+        Route::put('{attendance}', [AttendanceFinalController::class, 'update'])->name('update');
+        Route::post('{attendance}/approve', [AttendanceFinalController::class, 'approve'])->name('approve');
+        Route::post('bulk-approve', [AttendanceFinalController::class, 'bulkApprove'])->name('bulk-approve');
+        Route::get('export', [AttendanceFinalController::class, 'export'])->name('export');
+    });
+    
+    // Shifts Management
+    Route::resource('shifts', ShiftController::class)->except(['show']);
+    
+    // Employee Schedules
+    Route::prefix('schedules')->name('schedules.')->group(function () {
+        Route::get('/', [EmployeeScheduleController::class, 'index'])->name('index');
+        Route::get('create', [EmployeeScheduleController::class, 'create'])->name('create');
+        Route::post('/', [EmployeeScheduleController::class, 'store'])->name('store');
+        Route::get('{schedule}/edit', [EmployeeScheduleController::class, 'edit'])->name('edit');
+        Route::put('{schedule}', [EmployeeScheduleController::class, 'update'])->name('update');
+        Route::delete('{schedule}', [EmployeeScheduleController::class, 'destroy'])->name('destroy');
+        Route::post('bulk', [EmployeeScheduleController::class, 'bulkUpdate'])->name('bulk');
+    });
+    
+    // Holidays Management
+    Route::prefix('holidays')->name('holidays.')->group(function () {
+        Route::get('/', [HolidayController::class, 'index'])->name('index');
+        Route::get('create', [HolidayController::class, 'create'])->name('create');
+        Route::post('/', [HolidayController::class, 'store'])->name('store');
+        Route::get('{holiday}/edit', [HolidayController::class, 'edit'])->name('edit');
+        Route::put('{holiday}', [HolidayController::class, 'update'])->name('update');
+        Route::delete('{holiday}', [HolidayController::class, 'destroy'])->name('destroy');
+        Route::post('import', [HolidayController::class, 'bulkImport'])->name('import');
+        Route::get('export', [HolidayController::class, 'export'])->name('export');
+    });
+    
+    // Leave Management
+    Route::prefix('leaves')->name('leaves.')->group(function () {
+        Route::get('/', [EmployeeLeaveController::class, 'index'])->name('index');
+        Route::get('create', [EmployeeLeaveController::class, 'create'])->name('create');
+        Route::post('/', [EmployeeLeaveController::class, 'store'])->name('store');
+        Route::get('{leave}', [EmployeeLeaveController::class, 'show'])->name('show');
+        Route::get('{leave}/edit', [EmployeeLeaveController::class, 'edit'])->name('edit');
+        Route::put('{leave}', [EmployeeLeaveController::class, 'update'])->name('update');
+        Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
+        Route::post('{leave}/approve', [EmployeeLeaveController::class, 'approve'])->name('approve');
+        Route::post('{leave}/cancel', [EmployeeLeaveController::class, 'cancel'])->name('cancel');
+    });
 });

@@ -9,9 +9,6 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\AccountController;
 
-// Include attendance routes
-require __DIR__.'/attendance.php';
-
 Route::get('/', function () {
     return Inertia::render('auth/login' );
 })->name('home');
@@ -97,58 +94,12 @@ Route::post('/employee/import', [EmployeeController::class, 'importCsv'])->name(
     });
 });
 
-// Attendance Management Routes
-Route::middleware(['auth', 'verified'])->prefix('attendance')->group(function () {
-    // Upload and Process
-    Route::get('upload', [AttendanceController::class, 'showUpload'])->name('attendance.upload');
-    Route::post('upload', [AttendanceController::class, 'handleUpload']);
-    
-    // Raw Logs
-    Route::get('raw', [AttendanceRawController::class, 'index'])->name('attendance.raw.index');
-    Route::get('raw/{batch}', [AttendanceRawController::class, 'show'])->name('attendance.raw.show');
-    
-    // Processed Records
-    Route::get('processed', [AttendanceProcessedController::class, 'index'])->name('attendance.processed.index');
-    Route::get('processed/{batch}', [AttendanceProcessedController::class, 'show'])->name('attendance.processed.show');
-    Route::post('processed/push', [AttendanceProcessedController::class, 'pushToFinal'])->name('attendance.processed.push');
-    
-    // Final Attendance Records
-    Route::get('final', [AttendanceController::class, 'index'])->name('attendance.final.index');
-    Route::get('final/create', [AttendanceController::class, 'create'])->name('attendance.final.create');
-    Route::post('final', [AttendanceController::class, 'store'])->name('attendance.final.store');
-    Route::get('final/{attendance}/edit', [AttendanceController::class, 'edit'])->name('attendance.final.edit');
-    Route::put('final/{attendance}', [AttendanceController::class, 'update'])->name('attendance.final.update');
-    Route::post('final/{attendance}/approve', [AttendanceController::class, 'approve'])->name('attendance.final.approve');
-    Route::delete('final/{attendance}', [AttendanceController::class, 'destroy'])->name('attendance.final.destroy');
-
-    // Shifts Management
-    Route::resource('shifts', ShiftController::class)->except(['show']);
-    
-    // Employee Schedules
-    Route::resource('schedules', EmployeeScheduleController::class)->except(['show']);
-    Route::post('schedules/bulk', [EmployeeScheduleController::class, 'bulkAssign'])->name('schedules.bulk');
-    
-    // Holidays Management
-    Route::resource('holidays', HolidayController::class)->except(['show']);
-    Route::post('holidays/import', [HolidayController::class, 'import'])->name('holidays.import');
-    
-    // Leave Management
-    Route::resource('leaves', EmployeeLeaveController::class);
-    Route::post('leaves/{leave}/approve', [EmployeeLeaveController::class, 'approve'])->name('leaves.approve');
-    Route::post('leaves/{leave}/reject', [EmployeeLeaveController::class, 'reject'])->name('leaves.reject');
-
-    // Reports and Exports
-    Route::get('reports/daily', [AttendanceController::class, 'dailyReport'])->name('attendance.reports.daily');
-    Route::get('reports/monthly', [AttendanceController::class, 'monthlyReport'])->name('attendance.reports.monthly');
-    Route::get('reports/export', [AttendanceController::class, 'export'])->name('attendance.reports.export');
-});
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('payroll', function () {
         return Inertia::render('payroll');
     })->name('payroll');
 });
 
-
-
+require __DIR__.'/attendance.php';
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
