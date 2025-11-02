@@ -27,13 +27,13 @@ class AttendanceProcessService
             $rows = $batch->raws()
                 ->orderBy('time_log')
                 ->get()
-                ->groupBy(fn($r) => $r->ac_no);
+                ->groupBy(fn($r) => $r->ac_no); // ac_no is now the same as employee_id
 
             foreach ($rows as $acNo => $events) {
-                // Map ac_no to employee_id
-                $employee = Employee::where('biometric_ac_no', $acNo)->first();
+                // Map ac_no directly to employee_id since they're the same
+                $employee = Employee::find($acNo); // Changed from where('biometric_ac_no')
                 if (!$employee) {
-                    Log::warning("No employee found for AC No: {$acNo}", [
+                    Log::warning("No employee found for ID: {$acNo}", [
                         'batch_id' => $batch->id,
                         'events_count' => $events->count()
                     ]);
@@ -55,11 +55,11 @@ class AttendanceProcessService
                     $breakMinutes = 0;
                     $breakPairs = [];
                     $pairs = min($bout->count(), $bin->count());
-                    
+
                     for ($i = 0; $i < $pairs; $i++) {
                         $breakStart = $bout[$i]->time_log;
                         $breakEnd = $bin[$i]->time_log;
-                        
+
                         if ($breakEnd->gt($breakStart)) {
                             $breakMinutes += $breakEnd->diffInMinutes($breakStart);
                             $breakPairs[] = [
@@ -157,7 +157,7 @@ class AttendanceProcessService
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             $batch->update([
                 'status' => 'failed',
                 'meta' => array_merge($batch->meta ?? [], [
@@ -165,7 +165,7 @@ class AttendanceProcessService
                     'error_type' => get_class($e)
                 ])
             ]);
-            
+
             throw $e;
         }
     }
