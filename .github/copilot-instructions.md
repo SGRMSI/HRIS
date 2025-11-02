@@ -523,10 +523,12 @@ export default function ComponentName({ prop1, prop2 }: ComponentProps) {
 10. Use activity logging for audit trails on critical operations
 
 ### Model & Database
-11. Model casts: Use 'datetime' for date fields that need Carbon methods (e.g., diffInDays())
-12. Foreign keys: Always validate relationships before deletion
-13. Batch operations: Collect errors instead of failing fast for better UX
-14. Status enums: Use consistent status values across related models
+11. **CRITICAL**: Always specify `$table` property for models with non-standard pluralization (AttendanceProcessed → attendance_processed, AttendanceRaw → attendance_raws, EmployeeSchedule → employee_schedules, EmployeeLeave → employee_leaves, EmployeeDocument → employee_documents)
+12. **SQLite Compatibility**: Don't use MySQL-specific functions like YEAR(), MONTH(). Use strftime('%Y', date) instead for SQLite compatibility
+13. Model casts: Use 'datetime' for date fields that need Carbon methods (e.g., diffInDays())
+14. Foreign keys: Always validate relationships before deletion
+15. Batch operations: Collect errors instead of failing fast for better UX
+16. Status enums: Use consistent status values across related models
 
 ### Frontend
 15. Check file paths casing when importing components (Components vs components)

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AttendanceUploadBatch extends Model
 {
+    protected $table = 'attendance_upload_batches';
     protected $primaryKey = 'batch_id';
 
     protected $fillable = [

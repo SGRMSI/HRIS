@@ -56,10 +56,11 @@ class HolidayController extends Controller
                 ];
             });
 
-        // Get available years
-        $availableYears = Holiday::selectRaw('DISTINCT YEAR(date) as year')
+        // Get available years - SQLite compatible
+        $availableYears = Holiday::selectRaw("DISTINCT strftime('%Y', date) as year")
             ->orderBy('year', 'desc')
             ->pluck('year')
+            ->map(fn($year) => (int) $year)
             ->toArray();
 
         if (!in_array($year, $availableYears)) {

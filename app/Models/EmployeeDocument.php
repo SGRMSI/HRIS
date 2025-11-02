@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmployeeDocument extends Model
 {
+    protected $table = 'employee_documents';
     protected $primaryKey = 'document_id';
     protected $fillable = [
         'employee_id','file_name','file_type','file_path','category',

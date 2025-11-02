@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AttendanceProcessed extends Model
 {
+    protected $table = 'attendance_processed';
     protected $primaryKey = 'processed_id';
     public $timestamps = false;
 

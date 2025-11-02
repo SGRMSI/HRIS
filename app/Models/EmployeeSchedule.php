@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmployeeSchedule extends Model
 {
+    protected $table = 'employee_schedules';
     protected $primaryKey = 'schedule_id';
 
     protected $fillable = [
