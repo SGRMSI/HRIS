@@ -127,7 +127,7 @@ class AttendanceFinalController extends Controller
             $attendance->date
         );
 
-        return Inertia::render('Attendance/Show', [
+        return Inertia::render('Attendance/FinalShow', [
             'attendance' => [
                 'id' => $attendance->id,
                 'employee' => [

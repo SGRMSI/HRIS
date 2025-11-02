@@ -97,7 +97,7 @@ class EmployeeScheduleController extends Controller
                 ]);
         }
 
-        return Inertia::render('Schedules/Index', [
+        return Inertia::render('Attendance/Schedules/Index', [
             'schedules' => $schedules,
             'filters' => $request->only(['employee_search', 'department_id', 'shift_id', 'date_from', 'date_to']),
             'departments' => Department::select(['id', 'name'])->get(),

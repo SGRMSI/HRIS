@@ -65,7 +65,7 @@ class ShiftController extends Controller
                 ];
             });
 
-        return Inertia::render('Settings/Shifts/Index', [
+        return Inertia::render('Attendance/Shifts/Index', [
             'shifts' => $shifts,
             'filters' => $request->only(['search', 'status'])
         ]);
@@ -78,7 +78,7 @@ class ShiftController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Settings/Shifts/Create', [
+        return Inertia::render('Attendance/Shifts/Create', [
             'defaultGracePeriod' => 15 // 15 minutes default
         ]);
     }
@@ -167,7 +167,7 @@ class ShiftController extends Controller
             ->where('date', '>=', now()->subDays(7))
             ->count();
 
-        return Inertia::render('Settings/Shifts/Edit', [
+        return Inertia::render('Attendance/Shifts/Edit', [
             'shift' => [
                 'id' => $shift->shift_id,
                 'name' => $shift->name,

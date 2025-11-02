@@ -67,7 +67,7 @@ class HolidayController extends Controller
         }
         sort($availableYears);
 
-        return Inertia::render('Settings/Holidays/Index', [
+        return Inertia::render('Attendance/Holidays/Index', [
             'holidays' => $holidays,
             'filters' => $request->only(['year', 'company_id', 'type', 'search']),
             'companies' => Company::select(['id', 'name'])->get(),

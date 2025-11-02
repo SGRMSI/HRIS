@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Building2, KeyRound, LayoutGrid, Notebook, User, Wallet } from 'lucide-react';
+import { Building2, Calendar, CalendarDays, ClipboardList, Clock, FileUp, KeyRound, LayoutGrid, ListChecks, Notebook, Settings, User, Wallet } from 'lucide-react';
 import { useMemo } from 'react';
 import AppLogo from './app-logo';
 
@@ -44,6 +44,48 @@ const mainNavItems: NavItem[] = [
         title: 'Attendance',
         href: '/attendance',
         icon: Notebook,
+        items: [
+            {
+                title: 'Upload Attendance',
+                href: '/attendance/upload',
+                icon: FileUp,
+            },
+            {
+                title: 'Raw Data',
+                href: '/attendance/raw',
+                icon: ClipboardList,
+            },
+            {
+                title: 'Processed Data',
+                href: '/attendance/processed',
+                icon: ListChecks,
+            },
+            {
+                title: 'Final Attendance',
+                href: '/attendance/final',
+                icon: Calendar,
+            },
+            {
+                title: 'Shifts',
+                href: '/attendance/shifts',
+                icon: Clock,
+            },
+            {
+                title: 'Schedules',
+                href: '/attendance/schedules',
+                icon: CalendarDays,
+            },
+            {
+                title: 'Holidays',
+                href: '/attendance/holidays',
+                icon: Calendar,
+            },
+            {
+                title: 'Leaves',
+                href: '/attendance/leaves',
+                icon: CalendarDays,
+            },
+        ],
     },
     {
         title: 'Payroll',

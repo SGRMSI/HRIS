@@ -95,7 +95,7 @@ class AttendanceProcessedController extends Controller
             $query->where('batch_id', $filters['batch_id']);
         }
 
-        return Inertia::render('Attendance/ProcessedIndex', [
+        return Inertia::render('Attendance/Processed', [
             'batches' => $batches,
             'processed' => $query->paginate(25)
                 ->through(fn ($record) => [

@@ -382,41 +382,59 @@ All attendance routes are defined in `routes/attendance.php` and included in `ro
 
 **Implemented Routes:**
 1. **Upload & Import**
-   - GET `/attendance/upload` → `attendance.upload`
+   - GET `/attendance/upload` → `attendance.upload` → `Attendance/Upload.tsx`
    - POST `/attendance/import` → `attendance.import`
 
 2. **Raw Attendance**
-   - GET `/attendance/raw` → `attendance.raw.index`
-   - GET `/attendance/raw/{batch}` → `attendance.raw.show`
-   - GET `/attendance/raw/export/{batch}` → `attendance.raw.export`
+   - GET `/attendance/raw` → `attendance.raw.index` → `Attendance/RawIndex.tsx`
+   - GET `/attendance/raw/export` → `attendance.raw.export`
 
 3. **Processed Attendance**
-   - GET `/attendance/processed` → `attendance.processed.index`
+   - GET `/attendance/processed` → `attendance.processed.index` → `Attendance/Processed.tsx`
    - POST `/attendance/process/{batch}` → `attendance.processed.process`
-   - POST `/attendance/reprocess/{batch}` → `attendance.processed.reprocess`
 
 4. **Final Attendance**
-   - GET `/attendance/final` → `attendance.final.index`
-   - GET `/attendance/final/{attendance}` → `attendance.final.show`
+   - GET `/attendance/final` → `attendance.final.index` → `Attendance/FinalIndex.tsx`
+   - GET `/attendance/final/{attendance}` → `attendance.final.show` → `Attendance/FinalShow.tsx`
    - PUT `/attendance/final/{attendance}` → `attendance.final.update`
-   - POST `/attendance/final/{attendance}/approve` → `attendance.final.approve`
    - POST `/attendance/final/bulk-approve` → `attendance.final.bulk-approve`
    - GET `/attendance/final/export` → `attendance.final.export`
 
-5. **Shifts** (Resource routes)
-   - Standard CRUD operations via `attendance.shifts.*`
+5. **Shifts**
+   - GET `/attendance/shifts` → `attendance.shifts.index` → `Attendance/Shifts/Index.tsx`
+   - GET `/attendance/shifts/create` → `attendance.shifts.create` → `Attendance/Shifts/Create.tsx`
+   - POST `/attendance/shifts` → `attendance.shifts.store`
+   - GET `/attendance/shifts/{shift}/edit` → `attendance.shifts.edit` → `Attendance/Shifts/Edit.tsx`
+   - PUT `/attendance/shifts/{shift}` → `attendance.shifts.update`
+   - DELETE `/attendance/shifts/{shift}` → `attendance.shifts.destroy`
 
 6. **Schedules**
-   - Standard CRUD operations via `attendance.schedules.*`
+   - GET `/attendance/schedules` → `attendance.schedules.index` → `Attendance/Schedules/Index.tsx`
+   - GET `/attendance/schedules/create` → `attendance.schedules.create` → `Attendance/Schedules/Create.tsx`
+   - POST `/attendance/schedules` → `attendance.schedules.store`
+   - GET `/attendance/schedules/{schedule}/edit` → `attendance.schedules.edit` → `Attendance/Schedules/Edit.tsx`
+   - PUT `/attendance/schedules/{schedule}` → `attendance.schedules.update`
+   - DELETE `/attendance/schedules/{schedule}` → `attendance.schedules.destroy`
    - POST `/attendance/schedules/bulk` → `attendance.schedules.bulk`
 
 7. **Holidays**
-   - Standard CRUD operations via `attendance.holidays.*`
+   - GET `/attendance/holidays` → `attendance.holidays.index` → `Attendance/Holidays/Index.tsx`
+   - GET `/attendance/holidays/create` → `attendance.holidays.create` → `Attendance/Holidays/Create.tsx`
+   - POST `/attendance/holidays` → `attendance.holidays.store`
+   - GET `/attendance/holidays/{holiday}/edit` → `attendance.holidays.edit` → `Attendance/Holidays/Edit.tsx`
+   - PUT `/attendance/holidays/{holiday}` → `attendance.holidays.update`
+   - DELETE `/attendance/holidays/{holiday}` → `attendance.holidays.destroy`
    - POST `/attendance/holidays/import` → `attendance.holidays.import`
    - GET `/attendance/holidays/export` → `attendance.holidays.export`
 
 8. **Leaves**
-   - Standard CRUD operations via `attendance.leaves.*`
+   - GET `/attendance/leaves` → `attendance.leaves.index` → `Attendance/Leaves/Index.tsx`
+   - GET `/attendance/leaves/create` → `attendance.leaves.create` → `Attendance/Leaves/Create.tsx`
+   - POST `/attendance/leaves` → `attendance.leaves.store`
+   - GET `/attendance/leaves/{leave}` → `attendance.leaves.show` → `Attendance/Leaves/Show.tsx`
+   - GET `/attendance/leaves/{leave}/edit` → `attendance.leaves.edit` → `Attendance/Leaves/Edit.tsx`
+   - PUT `/attendance/leaves/{leave}` → `attendance.leaves.update`
+   - DELETE `/attendance/leaves/{leave}` → `attendance.leaves.destroy`
    - POST `/attendance/leaves/{leave}/approve` → `attendance.leaves.approve`
    - POST `/attendance/leaves/{leave}/cancel` → `attendance.leaves.cancel`
 

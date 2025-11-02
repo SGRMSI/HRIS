@@ -90,7 +90,7 @@ class EmployeeLeaveController extends Controller
                 ]);
         }
 
-        return Inertia::render('Leaves/Index', [
+        return Inertia::render('Attendance/Leaves/Index', [
             'leaves' => $leaves,
             'filters' => $request->only(['status', 'type', 'employee_search', 'department_id', 'date_from', 'date_to']),
             'departments' => Department::select(['id', 'name'])->get(),
