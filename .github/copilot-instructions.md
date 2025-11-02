@@ -48,11 +48,20 @@ This is a Human Resource Information System built with Laravel and React (Inerti
 - `app/Http/Controllers/` - Request handlers following RESTful patterns
 - `resources/js/` - React components and frontend logic
 
-### Document Management Pattern
-- Employee documents are stored in `storage/app/public/employee_documents/{employee_id}/`
-- Must run `php artisan storage:link` for public access
-- Document uploads handled by EmployeeService with standard categories
-- Access control enforced at application level
+### File Storage Patterns
+
+#### Employee Documents
+- **Location:** `storage/app/public/employee_documents/{employee_id}/`
+- **Access:** Public via symlink (requires `php artisan storage:link`)
+- **Handler:** EmployeeService with standard categories
+- **Security:** Application-level access control
+
+#### Attendance Excel Files
+- **Location:** `storage/app/attendance-imports/`
+- **Access:** Private (not publicly accessible)
+- **Handler:** AttendanceController with Laravel Excel
+- **Retention:** Files stored with batch records for audit trail
+- **Naming:** `{timestamp}_{original_filename}.xlsx`
 
 ## Development Workflow
 
@@ -83,73 +92,333 @@ This is a Human Resource Information System built with Laravel and React (Inerti
 
 ## Module Patterns
 
+### Controllers Architecture
+
+#### Implemented Controllers
+
+1. **AttendanceController** (`app/Http/Controllers/AttendanceController.php`)
+   - **Purpose:** Handle attendance file uploads and imports
+   - **Methods:**
+     - `upload()` - Display upload form with batch history
+     - `import()` - Process Excel file upload, create batch, import raw data
+   - **Features:**
+     - File validation (Excel only, max 10MB)
+     - Batch creation with metadata
+     - Excel import via Laravel Excel
+     - Activity logging
+     - Transaction management
+
+2. **AttendanceRawController** (`app/Http/Controllers/AttendanceRawController.php`)
+   - **Purpose:** Manage raw attendance logs from uploads
+   - **Methods:**
+     - `index()` - List all upload batches with statistics
+     - `show()` - Display raw logs for a specific batch
+     - `export()` - Export raw logs to Excel
+   - **Features:**
+     - Batch filtering and pagination
+     - Employee matching status
+     - Export functionality
+
+3. **AttendanceProcessedController** (`app/Http/Controllers/AttendanceProcessedController.php`)
+   - **Purpose:** Process raw logs into structured attendance records
+   - **Methods:**
+     - `index()` - List batches ready for processing
+     - `process()` - Process a batch (group logs, match employees, calculate hours)
+     - `reprocess()` - Reprocess failed records in a batch
+   - **Features:**
+     - Automatic employee matching via employee_number
+     - Clock in/out grouping by date
+     - Work hours calculation
+     - Error tracking and recovery
+     - Progress tracking
+
+4. **AttendanceFinalController** (`app/Http/Controllers/AttendanceFinalController.php`)
+   - **Purpose:** Manage final attendance records with approval workflow
+   - **Methods:**
+     - `index()` - List final attendance with filters
+     - `show()` - Display detailed attendance record
+     - `update()` - Manual adjustment of attendance
+     - `approve()` - Approve single attendance
+     - `bulkApprove()` - Approve multiple attendances
+     - `export()` - Export to Excel
+   - **Features:**
+     - Schedule integration via ScheduleResolver
+     - Approval workflow with tracking
+     - Manual adjustments
+     - Bulk operations
+     - Comprehensive filtering
+     - Activity logging
+
+5. **ShiftController** (`app/Http/Controllers/ShiftController.php`)
+   - **Purpose:** Manage work shifts
+   - **Methods:** Standard CRUD
+   - **Features:**
+     - Time validation (clock_in < clock_out)
+     - Overnight shift detection
+     - Break time management
+     - Usage validation before deletion
+     - Active/inactive status
+
+6. **EmployeeScheduleController** (`app/Http/Controllers/EmployeeScheduleController.php`)
+   - **Purpose:** Assign shifts to employees
+   - **Methods:**
+     - Standard CRUD
+     - `bulkUpdate()` - Bulk schedule assignment
+   - **Features:**
+     - Conflict detection (overlapping schedules)
+     - Department-based grouping
+     - Bulk assignment with error collection
+     - Date range validation
+
+7. **HolidayController** (`app/Http/Controllers/HolidayController.php`)
+   - **Purpose:** Manage company holidays
+   - **Methods:**
+     - Standard CRUD
+     - `bulkImport()` - Import holidays from Excel
+     - `export()` - Export holidays to Excel
+   - **Features:**
+     - Company-specific holidays
+     - Type categorization (regular, special, floating)
+     - Year-based filtering
+     - Bulk import/export
+     - Duplicate detection
+
+8. **EmployeeLeaveController** (`app/Http/Controllers/EmployeeLeaveController.php`)
+   - **Purpose:** Manage employee leave requests
+   - **Methods:**
+     - Standard CRUD
+     - `approve()` - Approve leave request
+     - `cancel()` - Cancel approved leave
+   - **Features:**
+     - Leave balance checking
+     - Overlap validation
+     - Approval workflow with email notifications
+     - Document attachment support
+     - Balance restoration on cancellation
+     - Type-based categorization
+
 ### Service Layer Architecture
 
 #### Attendance Services
-1. `AttendanceImportService`
-   - Handles Excel file import using Laravel Excel
-   - Creates and manages `AttendanceUploadBatch` records
-   - Validates raw attendance data
-   - Located in `app/Services/Attendance/`
+1. **ScheduleResolver** (`app/Services/ScheduleResolver.php`)
+   - **Purpose:** Resolve employee schedules for specific dates
+   - **Methods:**
+     - `getScheduleForDate()` - Get shift for employee on date
+     - `isHoliday()` - Check if date is a holiday
+     - `isOnLeave()` - Check if employee is on leave
+   - **Features:**
+     - Company calendar integration
+     - Holiday checking
+     - Leave validation
+     - Schedule conflict resolution
 
-2. `AttendanceProcessService`
-   - Processes raw logs into structured format
-   - Groups records by employee and date
-   - Matches employees via employee number
-   - Calculates work hours and breaks
+#### Import/Export Handlers
+1. **AttendanceRawImport** (`app/Imports/AttendanceRawImport.php`)
+   - Imports raw attendance from Excel
+   - Required columns: employee_number, timestamp, device_id
+   - Creates AttendanceRaw records linked to batch
 
-3. `AttendanceFinalizeService`
-   - Finalizes processed records into attendance entries
-   - Integrates with ScheduleResolver for validation
-   - Determines attendance status (present, late, etc.)
-   - Updates batch status on completion
+2. **AttendanceRawExport** (`app/Exports/AttendanceRawExport.php`)
+   - Exports raw attendance logs to Excel
+   - Includes batch info, employee details, timestamps
 
-4. `ScheduleResolver`
-   - Resolves employee schedules for specific dates
-   - Handles holiday and leave checking
-   - Determines working status
-   - Supports company-specific calendars
+3. **HolidayImport** (`app/Imports/HolidayImport.php`)
+   - Bulk import holidays from Excel
+   - Handles date parsing (Excel serial numbers and strings)
+   - Duplicate detection
+   - Statistics tracking
+
+4. **HolidayExport** (`app/Exports/HolidayExport.php`)
+   - Exports holidays to Excel with filtering
+   - Supports year, company, type filters
+
+5. **AttendanceExport** (`app/Exports/AttendanceExport.php`)
+   - Exports final attendance records
+   - Comprehensive filtering options
+   - Includes employee details and calculations
 
 ### Attendance Processing Flow
-1. Upload Phase:
-   - Excel files uploaded via `AttendanceUploadBatch`
-   - Raw data stored in `AttendanceRaw` without modifications
-   - Each batch tracked with status and metadata
 
-2. Processing Phase:
-   - Raw logs processed into `AttendanceProcessed`
-   - Auto-matching of employees via employee number
-   - Grouping of in/out records by day
-   - Break time calculations
+#### 1. Upload Phase (AttendanceController)
+- User uploads Excel file via web interface
+- File validated (type, size, required columns)
+- `AttendanceUploadBatch` created with metadata:
+  - Original filename
+  - File path in private storage
+  - Upload timestamp
+  - Uploaded by user
+  - Status: 'uploaded'
+- Excel rows imported into `AttendanceRaw` table
+- Each raw record linked to batch via `batch_id`
+- Activity logged for audit trail
 
-3. Finalization Phase:
-   - Processed records pushed to `Attendance` table
-   - Manual adjustments possible by HR
-   - Approval workflow with tracking
+#### 2. Processing Phase (AttendanceProcessedController)
+- User triggers processing for a specific batch
+- Raw logs grouped by employee and date
+- Employee matching via `employee_number`:
+  - Matched: Links to Employee record
+  - Unmatched: Flags for manual review
+- Clock in/out pairing:
+  - Groups timestamps by day
+  - Identifies first in, last out
+  - Handles multiple entries
+- Work hours calculation:
+  - Total hours = clock_out - clock_in
+  - Break time deduction (if configured)
+  - Overtime calculation
+- Results stored in `AttendanceProcessed`
+- Batch status updated to 'processed'
+- Errors tracked for reprocessing
+
+#### 3. Finalization Phase (AttendanceFinalController)
+- Processed records pushed to `Attendance` table
+- For each record:
+  - Schedule lookup via ScheduleResolver
+  - Holiday/Leave checking
+  - Attendance status determination:
+    - Present: Clocked in on working day
+    - Late: Clocked in after shift start + grace period
+    - Absent: No clock in on working day
+    - On Leave: Approved leave exists
+    - Holiday: Date is company holiday
+  - Late minutes calculation
+  - Undertime/Overtime calculation
+- Manual adjustments allowed:
+  - Time corrections
+  - Status overrides
+  - Remarks addition
+- Approval workflow:
+  - Single approval
+  - Bulk approval
+  - Approval tracking (approved_by, approved_at)
+- Activity logging for all changes
+- Export capability for reporting
 
 ### Key Model Relationships
-1. Attendance Flow:
-   ```php
-   AttendanceUploadBatch -> hasMany(AttendanceRaw::class)
-   AttendanceUploadBatch -> hasMany(AttendanceProcessed::class)
-   AttendanceRaw -> belongsTo(Employee::class)
-   Attendance -> belongsTo(Employee::class, Shift::class)
-   ```
 
-2. Schedule Management:
-   ```php
-   Employee -> belongsToMany(Shift::class, 'employee_schedules')
-   EmployeeSchedule -> belongsTo(Employee::class, Shift::class)
-   Holiday -> belongsTo(Company::class)
-   EmployeeLeave -> belongsTo(Employee::class)
-   ```
+#### Attendance Flow
+```php
+// Batch management
+AttendanceUploadBatch -> hasMany(AttendanceRaw::class, 'batch_id')
+AttendanceUploadBatch -> hasMany(AttendanceProcessed::class, 'batch_id')
+AttendanceUploadBatch -> belongsTo(User::class, 'uploaded_by')
+
+// Raw data
+AttendanceRaw -> belongsTo(AttendanceUploadBatch::class, 'batch_id')
+AttendanceRaw -> belongsTo(Employee::class, 'employee_id')
+
+// Processed data
+AttendanceProcessed -> belongsTo(AttendanceUploadBatch::class, 'batch_id')
+AttendanceProcessed -> belongsTo(Employee::class, 'employee_id')
+
+// Final attendance
+Attendance -> belongsTo(Employee::class, 'employee_id')
+Attendance -> belongsTo(Shift::class, 'shift_id')
+Attendance -> belongsTo(User::class, 'approved_by')
+```
+
+#### Schedule Management
+```php
+// Shifts
+Shift -> hasMany(EmployeeSchedule::class, 'shift_id')
+Shift -> hasMany(Attendance::class, 'shift_id')
+
+// Employee schedules
+EmployeeSchedule -> belongsTo(Employee::class, 'employee_id')
+EmployeeSchedule -> belongsTo(Shift::class, 'shift_id')
+Employee -> hasMany(EmployeeSchedule::class, 'employee_id')
+
+// Holidays
+Holiday -> belongsTo(Company::class, 'company_id')
+Company -> hasMany(Holiday::class, 'company_id')
+
+// Leaves
+EmployeeLeave -> belongsTo(Employee::class, 'employee_id')
+EmployeeLeave -> belongsTo(User::class, 'approved_by')
+Employee -> hasMany(EmployeeLeave::class, 'employee_id')
+```
+
+#### Model Properties & Casts
+
+**AttendanceUploadBatch:**
+- `$fillable`: filename, file_path, total_records, uploaded_by, status
+- `$casts`: uploaded_at (datetime)
+
+**AttendanceRaw:**
+- `$fillable`: batch_id, employee_id, employee_number, timestamp, device_id, raw_data
+- `$casts`: timestamp (datetime), raw_data (array)
+
+**AttendanceProcessed:**
+- `$fillable`: batch_id, employee_id, employee_number, date, clock_in, clock_out, work_hours, status, errors
+- `$casts`: date (date), clock_in (datetime), clock_out (datetime), work_hours (decimal:2), errors (array)
+
+**Attendance:**
+- `$fillable`: employee_id, shift_id, date, clock_in, clock_out, work_hours, break_minutes, late_minutes, status, remarks, approved_by, approved_at
+- `$casts`: date (date), clock_in (datetime), clock_out (datetime), approved_at (datetime), work_hours (decimal:2)
+
+**Shift:**
+- `$fillable`: name, code, clock_in, clock_out, break_start, break_end, grace_period_minutes, is_active
+- `$casts`: clock_in (datetime:H:i), clock_out (datetime:H:i), is_active (boolean)
+
+**EmployeeSchedule:**
+- `$fillable`: employee_id, shift_id, date_start, date_end, is_recurring, days_of_week
+- `$casts`: date_start (date), date_end (date), is_recurring (boolean), days_of_week (array)
+
+**Holiday:**
+- `$fillable`: company_id, name, date, type, description, is_recurring
+- `$casts`: date (date), is_recurring (boolean)
+
+**EmployeeLeave:**
+- `$fillable`: employee_id, leave_type, date_start, date_end, days_count, reason, status, approved_by, approved_at, document_path
+- `$casts`: date_start (datetime), date_end (datetime), approved_at (datetime), days_count (decimal:1)
 
 ### Route Organization
-- All attendance routes under `/attendance` prefix
-- Protected by `auth` and `can:attendance.manage` middleware
-- Resource routes for shifts, schedules, holidays, leaves
-- Custom routes for upload/process workflow
-- Batch operations where applicable
+All attendance routes are defined in `routes/attendance.php` and included in `routes/web.php`.
+
+**Route Structure:**
+- Prefix: `/attendance`
+- Middleware: `auth`, `verified`
+- Naming convention: `attendance.{module}.{action}`
+
+**Implemented Routes:**
+1. **Upload & Import**
+   - GET `/attendance/upload` → `attendance.upload`
+   - POST `/attendance/import` → `attendance.import`
+
+2. **Raw Attendance**
+   - GET `/attendance/raw` → `attendance.raw.index`
+   - GET `/attendance/raw/{batch}` → `attendance.raw.show`
+   - GET `/attendance/raw/export/{batch}` → `attendance.raw.export`
+
+3. **Processed Attendance**
+   - GET `/attendance/processed` → `attendance.processed.index`
+   - POST `/attendance/process/{batch}` → `attendance.processed.process`
+   - POST `/attendance/reprocess/{batch}` → `attendance.processed.reprocess`
+
+4. **Final Attendance**
+   - GET `/attendance/final` → `attendance.final.index`
+   - GET `/attendance/final/{attendance}` → `attendance.final.show`
+   - PUT `/attendance/final/{attendance}` → `attendance.final.update`
+   - POST `/attendance/final/{attendance}/approve` → `attendance.final.approve`
+   - POST `/attendance/final/bulk-approve` → `attendance.final.bulk-approve`
+   - GET `/attendance/final/export` → `attendance.final.export`
+
+5. **Shifts** (Resource routes)
+   - Standard CRUD operations via `attendance.shifts.*`
+
+6. **Schedules**
+   - Standard CRUD operations via `attendance.schedules.*`
+   - POST `/attendance/schedules/bulk` → `attendance.schedules.bulk`
+
+7. **Holidays**
+   - Standard CRUD operations via `attendance.holidays.*`
+   - POST `/attendance/holidays/import` → `attendance.holidays.import`
+   - GET `/attendance/holidays/export` → `attendance.holidays.export`
+
+8. **Leaves**
+   - Standard CRUD operations via `attendance.leaves.*`
+   - POST `/attendance/leaves/{leave}/approve` → `attendance.leaves.approve`
+   - POST `/attendance/leaves/{leave}/cancel` → `attendance.leaves.cancel`
 
 ### Code Style & Conventions
 
@@ -220,11 +489,41 @@ export default function ComponentName({ prop1, prop2 }: ComponentProps) {
 5. Activity Logging
 
 ## Common Gotchas
-1. Always ensure proper storage permissions in development
-2. Remember to run storage:link after fresh setup
-3. Use proper type annotations for Inertia page props
-4. Handle both individual and batch attendance records appropriately
-5. Consider timezone settings for attendance timestamps
-6. Validate Excel file format and required columns before processing
-7. Check file paths casing when importing components (Components vs components)
-8. Ensure consistent component naming and organization
+
+### Storage & Files
+1. Always ensure proper storage permissions in development: `chmod -R 775 storage`
+2. Remember to run `php artisan storage:link` after fresh setup
+3. Excel files stored in private storage (`storage/app/attendance-imports/`)
+4. Employee documents in public storage (`storage/app/public/employee_documents/`)
+5. Validate Excel file format and required columns before processing
+
+### Data Handling
+6. Use proper type annotations for Inertia page props
+7. Handle both individual and batch attendance records appropriately
+8. Consider timezone settings for attendance timestamps (use Carbon for consistency)
+9. Always wrap database operations in transactions for data integrity
+10. Use activity logging for audit trails on critical operations
+
+### Model & Database
+11. Model casts: Use 'datetime' for date fields that need Carbon methods (e.g., diffInDays())
+12. Foreign keys: Always validate relationships before deletion
+13. Batch operations: Collect errors instead of failing fast for better UX
+14. Status enums: Use consistent status values across related models
+
+### Frontend
+15. Check file paths casing when importing components (Components vs components)
+16. Ensure consistent component naming and organization
+17. Use TypeScript interfaces for all component props
+18. Prefer Inertia form helpers over raw fetch for better UX
+
+### Validation
+19. Validate time ranges: clock_in must be before clock_out
+20. Check for schedule conflicts before assignment
+21. Verify leave balance before approval
+22. Validate date overlaps for schedules and leaves
+
+### Performance
+23. Eager load relationships to avoid N+1 queries
+24. Use pagination for large datasets
+25. Index frequently queried columns (employee_number, date, batch_id)
+26. Consider chunking for bulk operations on large batches
