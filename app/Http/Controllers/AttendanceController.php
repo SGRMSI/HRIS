@@ -23,14 +23,14 @@ class AttendanceController extends BaseController
     {
         // Get recent batches
         $batches = AttendanceUploadBatch::query()
-            ->with(['uploadedBy:id,name'])
+            ->with('uploadedBy')
             ->latest('created_at')
             ->paginate(10)
             ->through(fn ($batch) => [
                 'id' => $batch->batch_id,
                 'filename' => $batch->filename,
                 'uploaded_at' => $batch->created_at->format('Y-m-d H:i:s'),
-                'uploaded_by' => $batch->uploadedBy->name ?? 'Unknown',
+                'uploaded_by' => $batch->uploadedBy?->name ?? 'Unknown',
                 'total_records' => $batch->total_rows,
                 'status' => $batch->status,
             ]);
