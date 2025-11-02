@@ -2,9 +2,413 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EmployeeSchedule;
+use App\Models\Employee;
+use App\Models\Shift;
+use App\Models\Department;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class EmployeeScheduleController extends Controller
 {
-    //
+    /**
+     * Display a listing of employee schedules
+     *
+     * @param Request $request
+     * @return \Inertia\Response
+     */
+    public function index(Request $request)
+    {
+        $query = EmployeeSchedule::with(['employee.department', 'shift'])
+            ->when($request->employee_search, function ($q) use ($request) {
+                $q->whereHas('employee', function ($q) use ($request) {
+                    $q->where('first_name', 'like', "%{$request->employee_search}%")
+                      ->orWhere('last_name', 'like', "%{$request->employee_search}%")
+                      ->orWhere('employee_number', 'like', "%{$request->employee_search}%");
+                });
+            })
+            ->when($request->department_id, function ($q) use ($request) {
+                $q->whereHas('employee', function ($q) use ($request) {
+                    $q->where('department_id', $request->department_id);
+                });
+            })
+            ->when($request->shift_id, function ($q) use ($request) {
+                $q->where('shift_id', $request->shift_id);
+            })
+            ->when($request->date_from, function ($q) use ($request) {
+                $q->where(function ($q) use ($request) {
+                    $q->where('date_end', '>=', $request->date_from)
+                      ->orWhereNull('date_end');
+                });
+            })
+            ->when($request->date_to, function ($q) use ($request) {
+                $q->where('date_start', '<=', $request->date_to);
+            });
+
+        // Detect conflicts
+        $schedules = $query->orderBy('date_start', 'desc')
+            ->paginate($request->per_page ?? 20)
+            ->through(function ($schedule) {
+                // Check for conflicts with this schedule
+                $hasConflict = $this->checkScheduleConflict(
+                    $schedule->employee_id,
+                    $schedule->date_start,
+                    $schedule->date_end,
+                    $schedule->schedule_id
+                );
+
+                return [
+                    'id' => $schedule->schedule_id,
+                    'employee' => [
+                        'id' => $schedule->employee->id,
+                        'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
+                        'employee_number' => $schedule->employee->employee_number,
+                        'department' => $schedule->employee->department->name ?? 'N/A'
+                    ],
+                    'shift' => [
+                        'id' => $schedule->shift->shift_id,
+                        'name' => $schedule->shift->name,
+                        'time_in' => $schedule->shift->time_in?->format('H:i'),
+                        'time_out' => $schedule->shift->time_out?->format('H:i')
+                    ],
+                    'date_start' => $schedule->date_start->format('Y-m-d'),
+                    'date_end' => $schedule->date_end?->format('Y-m-d'),
+                    'is_holiday' => $schedule->is_holiday,
+                    'has_conflict' => $hasConflict,
+                    'is_active' => !$schedule->date_end || $schedule->date_end >= now()
+                ];
+            });
+
+        // Group by department for better organization
+        $departmentGroups = [];
+        if ($request->group_by_department) {
+            $departmentGroups = EmployeeSchedule::with(['employee.department', 'shift'])
+                ->whereHas('employee')
+                ->get()
+                ->groupBy(fn($s) => $s->employee->department->name ?? 'No Department')
+                ->map(fn($group) => [
+                    'count' => $group->count(),
+                    'employees' => $group->pluck('employee_id')->unique()->count()
+                ]);
+        }
+
+        return Inertia::render('Schedules/Index', [
+            'schedules' => $schedules,
+            'filters' => $request->only(['employee_search', 'department_id', 'shift_id', 'date_from', 'date_to']),
+            'departments' => Department::select(['id', 'name'])->get(),
+            'shifts' => Shift::select(['shift_id', 'name'])->get(),
+            'departmentGroups' => $departmentGroups
+        ]);
+    }
+
+    /**
+     * Store a newly created schedule
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => ['required', 'exists:employees,id'],
+            'shift_id' => ['required', 'exists:shifts,shift_id'],
+            'date_start' => ['required', 'date', 'after_or_equal:today'],
+            'date_end' => ['nullable', 'date', 'after_or_equal:date_start'],
+            'is_holiday' => ['nullable', 'boolean']
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Check for overlapping schedules
+            if ($this->checkScheduleConflict(
+                $validated['employee_id'],
+                $validated['date_start'],
+                $validated['date_end'] ?? null
+            )) {
+                throw ValidationException::withMessages([
+                    'date_start' => 'This schedule overlaps with an existing schedule for this employee.'
+                ]);
+            }
+
+            $schedule = EmployeeSchedule::create([
+                'employee_id' => $validated['employee_id'],
+                'shift_id' => $validated['shift_id'],
+                'date_start' => $validated['date_start'],
+                'date_end' => $validated['date_end'] ?? null,
+                'is_holiday' => $validated['is_holiday'] ?? false
+            ]);
+
+            // Log the creation
+            activity()
+                ->performedOn($schedule)
+                ->causedBy(Auth::user())
+                ->log('schedule.created');
+
+            DB::commit();
+
+            return back()->with('success', 'Schedule created successfully.');
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to create schedule', [
+                'data' => $validated,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to create schedule.']);
+        }
+    }
+
+    /**
+     * Update the specified schedule
+     *
+     * @param Request $request
+     * @param EmployeeSchedule $schedule
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function update(Request $request, EmployeeSchedule $schedule)
+    {
+        $validated = $request->validate([
+            'shift_id' => ['required', 'exists:shifts,shift_id'],
+            'date_start' => ['required', 'date'],
+            'date_end' => ['nullable', 'date', 'after_or_equal:date_start'],
+            'is_holiday' => ['nullable', 'boolean']
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Check for conflicts (excluding current schedule)
+            if ($this->checkScheduleConflict(
+                $schedule->employee_id,
+                $validated['date_start'],
+                $validated['date_end'] ?? null,
+                $schedule->schedule_id
+            )) {
+                throw ValidationException::withMessages([
+                    'date_start' => 'This schedule overlaps with another existing schedule for this employee.'
+                ]);
+            }
+
+            // Record old state for audit
+            $oldState = $schedule->getAttributes();
+
+            $schedule->update([
+                'shift_id' => $validated['shift_id'],
+                'date_start' => $validated['date_start'],
+                'date_end' => $validated['date_end'] ?? null,
+                'is_holiday' => $validated['is_holiday'] ?? false
+            ]);
+
+            // Log the update with changes
+            activity()
+                ->performedOn($schedule)
+                ->causedBy(Auth::user())
+                ->withProperties([
+                    'old' => $oldState,
+                    'new' => $schedule->getAttributes()
+                ])
+                ->log('schedule.updated');
+
+            DB::commit();
+
+            return back()->with('success', 'Schedule updated successfully.');
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            throw $e;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to update schedule', [
+                'schedule_id' => $schedule->schedule_id,
+                'data' => $validated,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to update schedule.']);
+        }
+    }
+
+    /**
+     * Bulk update schedules for multiple employees
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_ids' => ['required', 'array'],
+            'employee_ids.*' => ['required', 'exists:employees,id'],
+            'shift_id' => ['required', 'exists:shifts,shift_id'],
+            'date_start' => ['required', 'date', 'after_or_equal:today'],
+            'date_end' => ['nullable', 'date', 'after_or_equal:date_start'],
+            'is_holiday' => ['nullable', 'boolean'],
+            'close_existing' => ['nullable', 'boolean']
+        ]);
+
+        $errors = [];
+        $successCount = 0;
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($validated['employee_ids'] as $employeeId) {
+                try {
+                    // Close existing schedules if requested
+                    if ($validated['close_existing'] ?? false) {
+                        EmployeeSchedule::where('employee_id', $employeeId)
+                            ->whereNull('date_end')
+                            ->update(['date_end' => Carbon::parse($validated['date_start'])->subDay()]);
+                    }
+
+                    // Check for conflicts
+                    if ($this->checkScheduleConflict(
+                        $employeeId,
+                        $validated['date_start'],
+                        $validated['date_end'] ?? null
+                    )) {
+                        $employee = Employee::find($employeeId);
+                        $errors[] = "Conflict for {$employee->first_name} {$employee->last_name}";
+                        continue;
+                    }
+
+                    // Create new schedule
+                    $schedule = EmployeeSchedule::create([
+                        'employee_id' => $employeeId,
+                        'shift_id' => $validated['shift_id'],
+                        'date_start' => $validated['date_start'],
+                        'date_end' => $validated['date_end'] ?? null,
+                        'is_holiday' => $validated['is_holiday'] ?? false
+                    ]);
+
+                    // Log the creation
+                    activity()
+                        ->performedOn($schedule)
+                        ->causedBy(Auth::user())
+                        ->log('schedule.bulk_created');
+
+                    $successCount++;
+
+                } catch (\Exception $e) {
+                    $employee = Employee::find($employeeId);
+                    $errors[] = "Failed for {$employee->first_name} {$employee->last_name}: {$e->getMessage()}";
+                }
+            }
+
+            DB::commit();
+
+            if ($successCount > 0 && empty($errors)) {
+                return back()->with('success', "Successfully created schedules for {$successCount} employee(s).");
+            } elseif ($successCount > 0 && !empty($errors)) {
+                return back()
+                    ->with('success', "Created schedules for {$successCount} employee(s).")
+                    ->withErrors(['bulk' => $errors]);
+            } else {
+                return back()->withErrors(['bulk' => $errors]);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to bulk update schedules', [
+                'data' => $validated,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to bulk update schedules.']);
+        }
+    }
+
+    /**
+     * Remove the specified schedule
+     *
+     * @param EmployeeSchedule $schedule
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy(EmployeeSchedule $schedule)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Log before deletion
+            activity()
+                ->performedOn($schedule)
+                ->causedBy(Auth::user())
+                ->withProperties([
+                    'schedule' => $schedule->toArray()
+                ])
+                ->log('schedule.deleted');
+
+            $schedule->delete();
+
+            DB::commit();
+
+            return back()->with('success', 'Schedule deleted successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete schedule', [
+                'schedule_id' => $schedule->schedule_id,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to delete schedule.']);
+        }
+    }
+
+    /**
+     * Check if schedule conflicts with existing schedules
+     *
+     * @param int $employeeId
+     * @param string $dateStart
+     * @param string|null $dateEnd
+     * @param int|null $excludeScheduleId
+     * @return bool
+     */
+    private function checkScheduleConflict(
+        int $employeeId,
+        string $dateStart,
+        ?string $dateEnd = null,
+        ?int $excludeScheduleId = null
+    ): bool {
+        $query = EmployeeSchedule::where('employee_id', $employeeId);
+
+        if ($excludeScheduleId) {
+            $query->where('schedule_id', '!=', $excludeScheduleId);
+        }
+
+        // Check for overlapping date ranges
+        $query->where(function ($q) use ($dateStart, $dateEnd) {
+            if ($dateEnd) {
+                // New schedule has end date
+                $q->where(function ($q) use ($dateStart, $dateEnd) {
+                    // Existing schedule overlaps
+                    $q->where(function ($q) use ($dateStart, $dateEnd) {
+                        $q->where('date_start', '<=', $dateEnd)
+                          ->where(function ($q) use ($dateStart) {
+                              $q->where('date_end', '>=', $dateStart)
+                                ->orWhereNull('date_end');
+                          });
+                    });
+                });
+            } else {
+                // New schedule has no end date (ongoing)
+                $q->where(function ($q) use ($dateStart) {
+                    $q->whereNull('date_end')
+                      ->orWhere('date_end', '>=', $dateStart);
+                });
+            }
+        });
+
+        return $query->exists();
+    }
 }

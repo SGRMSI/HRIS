@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
-class AttendanceProcessController extends Controller
+class AttendanceProcessedController extends Controller
 {
     protected $processService;
 

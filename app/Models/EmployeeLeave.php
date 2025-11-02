@@ -19,8 +19,8 @@ class EmployeeLeave extends Model
     ];
 
     protected $casts = [
-        'date_from' => 'date',
-        'date_to' => 'date',
+        'date_from' => 'datetime',
+        'date_to' => 'datetime',
     ];
 
     // Relationships
