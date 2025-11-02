@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UploadAttendanceRequest;
-use App\Services\Attendance\AttendanceImportService;
 use App\Models\AttendanceUploadBatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -14,18 +13,6 @@ use Inertia\Inertia;
 class AttendanceController extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
-
-    /**
-     * Create a new controller instance.
-     */
-    /**
-     * Create a new controller instance.
-     */
-    public function __construct(
-        private AttendanceImportService $importService
-    ) {
-        // Authentication and permissions will be handled via middleware in routes
-    }
 
     /**
      * Show the attendance upload page.
@@ -64,25 +51,45 @@ class AttendanceController extends BaseController
         try {
             DB::beginTransaction();
 
-            // Use service to handle import
-            $batch = $this->importService->import(
-                file: $request->file('file'),
-                uploadedBy: auth()->id()
-            );
+            $file = $request->file('file');
+            
+            // Store the file
+            $filePath = $file->store('attendance/uploads', 'local');
+            
+            // Create the batch record
+            $batch = AttendanceUploadBatch::create([
+                'filename' => $file->getClientOriginalName(),
+                'file_path' => $filePath,
+                'total_rows' => 0,
+                'processed_rows' => 0,
+                'status' => 'pending',
+                'remarks' => $request->remarks,
+                'created_by' => auth()->id(),
+            ]);
+
+            // Import the Excel file using Laravel Excel
+            $import = new \App\Imports\AttendanceRawImport($batch->batch_id);
+            \Maatwebsite\Excel\Facades\Excel::import($import, $file);
+            
+            // Update batch with actual row count
+            $batch->update([
+                'total_rows' => $import->getRowCount(),
+                'status' => 'uploaded'
+            ]);
 
             DB::commit();
 
             return redirect()
-                ->route('attendance.raw.index', ['batch_id' => $batch->id])
-                ->with('success', [
-                    'message' => 'File uploaded successfully. Processing attendance records.',
-                    'batch_id' => $batch->id
-                ]);
+                ->route('attendance.upload')
+                ->with('success', 'File uploaded successfully. ' . $import->getRowCount() . ' records imported.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            report($e); // Log the error
+            \Illuminate\Support\Facades\Log::error('Attendance import failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return back()
                 ->withErrors([

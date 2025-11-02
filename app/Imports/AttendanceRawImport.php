@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\AttendanceRaw;
+use App\Models\Employee;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -12,16 +13,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidation
 {
     private int $batchId;
-    private array $headerMap = [
-        'ac_no' => 'ac-no',      // "AC-No."
-        'no' => 'no',            // "No."
-        'name' => 'name',        // "Name"
-        'time' => 'time',        // "Time"
-        'state' => 'state',      // "State"
-        'new_state' => 'new state', // "New State"
-        'exception' => 'exception',  // "Exception"
-        'operation' => 'operation'   // "Operation"
-    ];
+    private int $rowCount = 0;
 
     public function __construct(int $batchId)
     {
@@ -32,27 +24,40 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
     {
         foreach ($rows as $row) {
             try {
-                AttendanceRaw::firstOrCreate(
-                    [
-                        'batch_id' => $this->batchId,
-                        'ac_no' => trim($row[$this->headerMap['ac_no']] ?? ''),
-                        'time_log' => $this->parseDateTime($row[$this->headerMap['time']] ?? ''),
-                        'state' => trim($row[$this->headerMap['state']] ?? ''),
-                        'exception' => trim($row[$this->headerMap['exception']] ?? ''),
-                    ],
-                    [
-                        'no' => trim($row[$this->headerMap['no']] ?? ''),
-                        'name' => trim($row[$this->headerMap['name']] ?? ''),
-                        'new_state' => trim($row[$this->headerMap['new_state']] ?? ''),
-                        'operation' => trim($row[$this->headerMap['operation']] ?? ''),
-                        'created_at' => now(),
-                    ]
-                );
-            } catch (\Exception $e) {
-                // Log the error but continue processing
-                \Log::error('Error importing row', [
+                // Map Excel columns (with dots and dashes) to our keys
+                $acNo = trim($row['ac_no'] ?? $row['ac-no'] ?? '');
+                $name = trim($row['name'] ?? '');
+                $timeLog = $row['time'] ?? '';
+                $state = trim($row['state'] ?? '');
+                $newState = trim($row['new_state'] ?? $row['new state'] ?? '');
+                $exception = trim($row['exception'] ?? '');
+                $operation = trim($row['operation'] ?? '');
+
+                if (empty($acNo) || empty($timeLog)) {
+                    continue; // Skip invalid rows
+                }
+
+                // Try to match employee by AC-No
+                $employee = Employee::where('employee_number', $acNo)->first();
+
+                AttendanceRaw::create([
                     'batch_id' => $this->batchId,
-                    'row' => $row,
+                    'employee_id' => $employee?->employee_id,
+                    'ac_no' => $acNo,
+                    'name' => $name,
+                    'time_log' => $this->parseDateTime($timeLog),
+                    'state' => $state,
+                    'new_state' => $newState,
+                    'exception' => $exception,
+                    'operation' => $operation,
+                ]);
+
+                $this->rowCount++;
+
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Error importing attendance row', [
+                    'batch_id' => $this->batchId,
+                    'row' => $row->toArray(),
                     'error' => $e->getMessage()
                 ]);
             }
@@ -62,10 +67,15 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
     public function rules(): array
     {
         return [
-            '*.ac-no' => ['required', 'string'],
-            '*.time' => ['required'],
-            '*.state' => ['required', 'string'],
+            '*.ac_no' => ['nullable', 'string'],
+            '*.ac-no' => ['nullable', 'string'],
+            '*.time' => ['nullable'],
         ];
+    }
+
+    public function getRowCount(): int
+    {
+        return $this->rowCount;
     }
 
     private function parseDateTime($value): ?Carbon
@@ -75,9 +85,14 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
         }
 
         try {
+            // Handle Excel date format
+            if (is_numeric($value)) {
+                return Carbon::createFromFormat('Y-m-d H:i:s', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d H:i:s'));
+            }
+            
             return Carbon::parse($value);
         } catch (\Exception $e) {
-            \Log::warning('Failed to parse date', [
+            \Illuminate\Support\Facades\Log::warning('Failed to parse date', [
                 'value' => $value,
                 'error' => $e->getMessage()
             ]);

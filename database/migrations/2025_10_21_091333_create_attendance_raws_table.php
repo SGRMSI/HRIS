@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('attendance_raws', function (Blueprint $table) {
             $table->id('raw_id');
-            $table->foreignId('batch_id')->constrained('attendance_upload_batches', 'batch_id');
-            $table->foreignId('employee_id')->nullable()->constrained('employees', 'employee_id');
+            $table->unsignedBigInteger('batch_id');
+            $table->unsignedBigInteger('employee_id')->nullable();
             $table->string('ac_no');
             $table->string('name');
             $table->dateTime('time_log');
@@ -23,6 +23,11 @@ return new class extends Migration
             $table->string('exception')->comment('e.g., "FOT", "OT"');
             $table->string('operation');
             $table->timestamp('created_at')->useCurrent();
+            
+            // Add indexes for performance
+            $table->index('batch_id');
+            $table->index('employee_id');
+            $table->index('ac_no');
         });
     }
 
