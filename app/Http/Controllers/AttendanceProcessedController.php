@@ -21,10 +21,7 @@ class AttendanceProcessedController extends Controller
     }
 
     /**
-     * Display a listing of processed attendance records and batches.
-     *
-     * @param Request $request
-     * @return \Inertia\Response
+     * Display the processed attendance records.
      */
     public function index(Request $request)
     {
@@ -36,115 +33,101 @@ class AttendanceProcessedController extends Controller
             'batch_id'
         ]);
 
-        // Get batches for processing
+        // Query batches
         $batches = AttendanceUploadBatch::query()
-            ->select(['id', 'file_name', 'uploaded_at', 'status', 'total_records', 'processed_rows'])
-            ->where('status', 'IN', ['pending', 'processing', 'failed'])
-            ->orderBy('uploaded_at', 'desc')
+            ->whereIn('status', ['imported', 'processing', 'processed', 'failed'])
+            ->with('uploadedBy')
+            ->latest('created_at')
             ->get()
-            ->map(fn ($batch) => [
-                'id' => $batch->id,
-                'file_name' => $batch->file_name,
-                'uploaded_at' => $batch->uploaded_at->format('Y-m-d H:i:s'),
-                'status' => $batch->status,
-                'progress' => $batch->total_records > 0 
-                    ? round(($batch->processed_rows / $batch->total_records) * 100) 
-                    : 0,
-                'can_process' => $batch->status === 'pending',
-                'can_retry' => $batch->status === 'failed',
-                'error' => $batch->meta['error'] ?? null
+            ->map(function ($batch) {
+                return [
+                    'id' => $batch->batch_id,
+                    'filename' => $batch->filename,
+                    'created_at' => $batch->created_at,
+                    'uploaded_by' => $batch->uploadedBy?->name ?? 'Unknown',
+                    'status' => $batch->status,
+                    'total_records' => $batch->total_rows,
+                    'processed_records' => $batch->processed_rows,
+                    'progress' => $batch->total_rows > 0 
+                        ? round(($batch->processed_rows / $batch->total_rows) * 100, 2)
+                        : 0,
+                ];
+            });
+
+        // Query processed records
+        $processed = AttendanceProcessed::query()
+            ->with(['employee:employee_id,first_name,last_name,id_number'])
+            ->when($request->employee_id, function ($query, $employeeId) {
+                $query->where('employee_id', $employeeId);
+            })
+            ->when($request->date_from, function ($query, $dateFrom) {
+                $query->whereDate('date', '>=', $dateFrom);
+            })
+            ->when($request->date_to, function ($query, $dateTo) {
+                $query->whereDate('date', '<=', $dateTo);
+            })
+            ->when($request->status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->when($request->batch_id, function ($query, $batchId) {
+                $query->where('batch_id', $batchId);
+            })
+            ->latest('date')
+            ->paginate(50)
+            ->through(function ($record) {
+                return [
+                    'id' => $record->processed_id,
+                    'batch_id' => $record->batch_id,
+                    'employee' => [
+                        'id' => $record->employee->employee_id ?? null,
+                        'name' => $record->employee 
+                            ? "{$record->employee->first_name} {$record->employee->last_name}"
+                            : 'Unmatched',
+                        'id_number' => $record->employee->id_number ?? null,
+                    ],
+                    'ac_no' => $record->ac_no,
+                    'date' => $record->date,
+                    'clock_in' => $record->clock_in,
+                    'clock_out' => $record->clock_out,
+                    'break_out' => $record->break_out,
+                    'break_in' => $record->break_in,
+                    'break_minutes' => $record->break_minutes,
+                    'total_hours' => $record->total_hours,
+                    'status' => $record->status,
+                    'meta' => $record->meta,
+                    'errors' => $record->errors,
+                ];
+            });
+
+        // Get employees for filter dropdown
+        $employees = Employee::select(['employee_id', 'first_name', 'last_name'])
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($emp) => [
+                'id' => $emp->employee_id,
+                'name' => $emp->first_name . ' ' . $emp->last_name,
             ]);
-
-        // Build processed records query
-        $query = AttendanceProcessed::with('employee:id,first_name,last_name')
-            ->select([
-                'id', 
-                'employee_id', 
-                'date', 
-                'clock_in',
-                'break_out',
-                'break_in', 
-                'clock_out',
-                'total_hours',
-                'break_minutes',
-                'status',
-                'meta',
-                'batch_id'
-            ])
-            ->orderBy('date', 'desc')
-            ->orderBy('employee_id');
-
-        // Apply filters
-        if ($filters['employee_id'] ?? null) {
-            $query->where('employee_id', $filters['employee_id']);
-        }
-
-        if ($filters['date_from'] ?? null) {
-            $query->where('date', '>=', $filters['date_from']);
-        }
-
-        if ($filters['date_to'] ?? null) {
-            $query->where('date', '<=', $filters['date_to']);
-        }
-
-        if ($filters['status'] ?? null) {
-            $query->where('status', $filters['status']);
-        }
-
-        if ($filters['batch_id'] ?? null) {
-            $query->where('batch_id', $filters['batch_id']);
-        }
 
         return Inertia::render('Attendance/Processed', [
             'batches' => $batches,
-            'processed' => $query->paginate(25)
-                ->through(fn ($record) => [
-                    'id' => $record->id,
-                    'employee' => [
-                        'id' => $record->employee->id,
-                        'name' => $record->employee->first_name . ' ' . $record->employee->last_name,
-                    ],
-                    'date' => $record->date,
-                    'clock_in' => $record->clock_in,
-                    'break_out' => $record->break_out,
-                    'break_in' => $record->break_in,
-                    'clock_out' => $record->clock_out,
-                    'total_hours' => $record->total_hours,
-                    'break_minutes' => $record->break_minutes,
-                    'status' => $record->status,
-                    'meta' => $record->meta,
-                    'has_errors' => !empty($record->meta['errors']),
-                    'can_finalize' => $record->status === 'processed'
-                ]),
+            'processed' => $processed,
             'filters' => $filters,
-            'employees' => Employee::select(['id', 'first_name', 'last_name'])
-                ->orderBy('last_name')
-                ->orderBy('first_name')
-                ->get()
-                ->map(fn($emp) => [
-                    'id' => $emp->id,
-                    'name' => $emp->first_name . ' ' . $emp->last_name,
-                ]),
+            'employees' => $employees,
             'statuses' => [
-                ['value' => 'pending', 'label' => 'Pending'],
-                ['value' => 'processing', 'label' => 'Processing'],
-                ['value' => 'processed', 'label' => 'Processed'],
-                ['value' => 'failed', 'label' => 'Failed'],
-                ['value' => 'finalized', 'label' => 'Finalized']
+                ['value' => 'Present', 'label' => 'Present'],
+                ['value' => 'Incomplete', 'label' => 'Incomplete'],
             ]
         ]);
     }
 
     /**
      * Process a batch of raw attendance records.
-     *
-     * @param AttendanceUploadBatch $batch
-     * @return \Illuminate\Http\RedirectResponse
      */
     public function process(AttendanceUploadBatch $batch)
     {
         try {
-            if (!in_array($batch->status, ['pending', 'failed'])) {
+            if (!in_array($batch->status, ['imported', 'failed'])) {
                 throw new \Exception('Batch cannot be processed in its current state.');
             }
 
@@ -152,29 +135,24 @@ class AttendanceProcessedController extends Controller
 
             $batch->update(['status' => 'processing']);
 
-            // Process async
+            // Process the batch
             $this->processService->processBatch($batch);
 
             DB::commit();
 
-            return back()->with('success', [
-                'message' => 'Batch processing started successfully.',
-                'batch_id' => $batch->id
-            ]);
+            return back()->with('success', 'Batch processed successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             
             Log::error('Batch processing failed', [
-                'batch_id' => $batch->id,
+                'batch_id' => $batch->batch_id,
                 'error' => $e->getMessage()
             ]);
 
             $batch->update([
                 'status' => 'failed',
-                'meta' => array_merge($batch->meta ?? [], [
-                    'error' => $e->getMessage()
-                ])
+                'remarks' => 'Processing failed: ' . $e->getMessage()
             ]);
 
             return back()->withErrors([
@@ -185,16 +163,13 @@ class AttendanceProcessedController extends Controller
 
     /**
      * Retry processing failed records.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
      */
     public function reprocess(Request $request)
     {
         $request->validate([
-            'batch_id' => ['required', 'exists:attendance_upload_batches,id'],
+            'batch_id' => ['required', 'exists:attendance_upload_batches,batch_id'],
             'records' => ['required', 'array'],
-            'records.*' => ['required', 'exists:attendance_processed,id']
+            'records.*' => ['required', 'exists:attendance_processed,processed_id']
         ]);
 
         try {
@@ -203,9 +178,9 @@ class AttendanceProcessedController extends Controller
             $batch = AttendanceUploadBatch::findOrFail($request->batch_id);
             
             // Mark selected records for reprocessing
-            AttendanceProcessed::whereIn('id', $request->records)
-                ->where('batch_id', $batch->id)
-                ->update(['status' => 'pending']);
+            AttendanceProcessed::whereIn('processed_id', $request->records)
+                ->where('batch_id', $batch->batch_id)
+                ->update(['status' => 'Pending']);
 
             // Update batch status if needed
             if ($batch->status === 'failed') {

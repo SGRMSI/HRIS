@@ -107,12 +107,24 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
         }
 
         try {
-            // Handle Excel date format
+            // Handle Excel numeric date format (Excel serial number)
             if (is_numeric($value)) {
-                return Carbon::createFromFormat('Y-m-d H:i:s', \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d H:i:s'));
+                return Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value));
             }
             
-            return Carbon::parse($value);
+            // Handle text date formats like "02/07/2025 8:54 pm"
+            // Try parsing with DD/MM/YYYY format first (international format)
+            try {
+                return Carbon::createFromFormat('d/m/Y g:i a', trim($value));
+            } catch (\Exception $e) {
+                // If that fails, try MM/DD/YYYY (US format)
+                try {
+                    return Carbon::createFromFormat('m/d/Y g:i a', trim($value));
+                } catch (\Exception $e) {
+                    // Fall back to Carbon's general parser
+                    return Carbon::parse($value);
+                }
+            }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning('Failed to parse date', [
                 'value' => $value,

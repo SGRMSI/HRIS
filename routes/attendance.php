@@ -24,10 +24,11 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::get('{batch}/export', [AttendanceRawController::class, 'export'])->name('export');
     });
     
-    // Processed Attendance
+        // Processed Attendance
     Route::prefix('processed')->name('processed.')->group(function () {
         Route::get('/', [AttendanceProcessedController::class, 'index'])->name('index');
-        Route::post('process/{batch}', [AttendanceProcessedController::class, 'process'])->name('process');
+        Route::post('process/{batch:batch_id}', [AttendanceProcessedController::class, 'process'])->name('process');
+        Route::post('reprocess', [AttendanceProcessedController::class, 'reprocess'])->name('reprocess');
     });
     
     // Final Attendance Records

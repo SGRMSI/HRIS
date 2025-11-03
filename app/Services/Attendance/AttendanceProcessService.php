@@ -27,72 +27,96 @@ class AttendanceProcessService
             $rows = $batch->raws()
                 ->orderBy('time_log')
                 ->get()
-                ->groupBy(fn($r) => $r->ac_no); // ac_no is now the same as employee_id
+                ->groupBy(fn($r) => $r->ac_no);
 
             foreach ($rows as $acNo => $events) {
-                // Map ac_no directly to employee_id since they're the same
-                $employee = Employee::find($acNo); // Changed from where('biometric_ac_no')
+                $employee = Employee::find($acNo);
                 if (!$employee) {
                     Log::warning("No employee found for ID: {$acNo}", [
-                        'batch_id' => $batch->id,
+                        'batch_id' => $batch->batch_id,
                         'events_count' => $events->count()
                     ]);
                     continue;
                 }
 
-                $byDate = $events->groupBy(fn($e) => $e->time_log->toDateString());
+                // Get all clock events sorted by time
+                $clockIns = $events->filter(fn($e) => $e->state === 'C/In' && in_array($e->exception, ['FOT', 'OT']))->values();
+                $clockOuts = $events->filter(fn($e) => $e->state === 'C/Out' && in_array($e->exception, ['FOT', 'OT']))->values();
+                
+                // For breaks: OverTime In = break starts, OverTime Out = break ends
+                $breakStarts = $events->filter(fn($e) => $e->state === 'OverTime In' && in_array($e->exception, ['FOT', 'OT']))->values();
+                $breakEnds = $events->filter(fn($e) => $e->state === 'OverTime Out' && in_array($e->exception, ['FOT', 'OT']))->values();
 
-                foreach ($byDate as $date => $logs) {
-                    $ins = $logs->filter(fn($e) => $e->state === 'C/In' && $e->exception === 'FOT')->values();
-                    $outs = $logs->filter(fn($e) => $e->state === 'C/Out' && $e->exception === 'FOT')->values();
-                    $bout = $logs->filter(fn($e) => $e->state === 'OverTime Out' && $e->exception === 'OT')->values();
-                    $bin = $logs->filter(fn($e) => $e->state === 'OverTime In' && $e->exception === 'OT')->values();
+                // Pair each Clock In with the next Clock Out
+                $processedDates = [];
+                foreach ($clockIns as $index => $clockIn) {
+                    $clockInTime = $clockIn->time_log;
+                    $attendanceDate = $clockInTime->toDateString();
+                    
+                    // Skip if we've already processed this date
+                    if (in_array($attendanceDate, $processedDates)) {
+                        continue;
+                    }
+                    $processedDates[] = $attendanceDate;
 
-                    $clockIn = optional($ins->first())->time_log?->format('H:i:s');
-                    $clockOut = optional($outs->last())->time_log?->format('H:i:s');
-
-                    // Pair breaks in order (bout -> bin)
-                    $breakMinutes = 0;
-                    $breakPairs = [];
-                    $pairs = min($bout->count(), $bin->count());
-
-                    for ($i = 0; $i < $pairs; $i++) {
-                        $breakStart = $bout[$i]->time_log;
-                        $breakEnd = $bin[$i]->time_log;
-
-                        if ($breakEnd->gt($breakStart)) {
-                            $breakMinutes += $breakEnd->diffInMinutes($breakStart);
-                            $breakPairs[] = [
-                                'out' => $breakStart->format('H:i:s'),
-                                'in' => $breakEnd->format('H:i:s'),
-                                'minutes' => $breakEnd->diffInMinutes($breakStart)
-                            ];
-                        } else {
-                            Log::warning("Invalid break pair found", [
-                                'employee_id' => $employee->id,
-                                'date' => $date,
-                                'break_start' => $breakStart,
-                                'break_end' => $breakEnd
-                            ]);
+                    // Find the next clock out after this clock in
+                    $clockOutTime = null;
+                    foreach ($clockOuts as $clockOut) {
+                        if ($clockOut->time_log->gt($clockInTime)) {
+                            $clockOutTime = $clockOut->time_log;
+                            break;
                         }
                     }
 
-                    // Calculate total minutes if we have both clock in and out
+                    // Find breaks between clock in and clock out (or just after clock in if no clock out)
+                    $breakMinutes = 0;
+                    $breakPairs = [];
+                    
+                    // Define the time range for finding breaks
+                    $breakRangeStart = $clockInTime;
+                    $breakRangeEnd = $clockOutTime ?? Carbon::now(); // If no clock out, use current time
+                    
+                    // Get breaks that fall within the time range
+                    $relevantBreakStarts = $breakStarts->filter(fn($b) => 
+                        $b->time_log->gte($breakRangeStart) && $b->time_log->lte($breakRangeEnd)
+                    )->values();
+                    
+                    $relevantBreakEnds = $breakEnds->filter(fn($b) => 
+                        $b->time_log->gte($breakRangeStart) && $b->time_log->lte($breakRangeEnd)
+                    )->values();
+
+                    // Pair breaks: OverTime In (start) -> OverTime Out (end)
+                    $pairs = min($relevantBreakStarts->count(), $relevantBreakEnds->count());
+                    for ($i = 0; $i < $pairs; $i++) {
+                        $breakStartTime = $relevantBreakStarts[$i]->time_log;
+                        $breakEndTime = $relevantBreakEnds[$i]->time_log;
+                        $minutes = abs($breakStartTime->diffInMinutes($breakEndTime, false));
+
+                        if ($breakEndTime->gt($breakStartTime)) {
+                            $breakMinutes += $minutes;
+                            $breakPairs[] = [
+                                'start' => $breakStartTime->format('Y-m-d H:i:s'),
+                                'end' => $breakEndTime->format('Y-m-d H:i:s'),
+                                'minutes' => $minutes
+                            ];
+                        }
+                    }
+
+                    // Calculate total hours
                     $totalMinutes = null;
                     $status = 'Present';
                     $meta = [];
 
-                    if ($clockIn && $clockOut) {
-                        $totalMinutes = Carbon::parse("$date $clockOut")
-                            ->diffInMinutes(Carbon::parse("$date $clockIn"))
-                            - $breakMinutes;
+                    if ($clockInTime && $clockOutTime) {
+                        // Calculate minutes worked (always positive)
+                        $totalMinutes = abs($clockInTime->diffInMinutes($clockOutTime, false)) - $breakMinutes;
 
                         if ($totalMinutes < 0) {
                             Log::warning("Negative total minutes calculated", [
-                                'employee_id' => $employee->id,
-                                'date' => $date,
-                                'clock_in' => $clockIn,
-                                'clock_out' => $clockOut,
+                                'employee_id' => $employee->employee_id,
+                                'date' => $attendanceDate,
+                                'clock_in' => $clockInTime->format('Y-m-d H:i:s'),
+                                'clock_out' => $clockOutTime->format('Y-m-d H:i:s'),
                                 'break_minutes' => $breakMinutes
                             ]);
                             $totalMinutes = 0;
@@ -100,8 +124,8 @@ class AttendanceProcessService
                     } else {
                         $status = 'Incomplete';
                         $meta['warnings'] = [
-                            'missing_clock_in' => !$clockIn,
-                            'missing_clock_out' => !$clockOut
+                            'missing_clock_in' => !$clockInTime,
+                            'missing_clock_out' => !$clockOutTime
                         ];
                     }
 
@@ -110,26 +134,17 @@ class AttendanceProcessService
                         $meta['breaks'] = $breakPairs;
                     }
 
-                    if ($bout->count() !== $bin->count()) {
-                        $meta['warnings'] = ($meta['warnings'] ?? []) + [
-                            'unpaired_breaks' => [
-                                'break_outs' => $bout->count(),
-                                'break_ins' => $bin->count()
-                            ]
-                        ];
-                    }
-
                     AttendanceProcessed::updateOrCreate(
                         [
-                            'batch_id' => $batch->id,
+                            'batch_id' => $batch->batch_id,
                             'employee_id' => $employee->employee_id,
-                            'date' => $date,
+                            'date' => $attendanceDate,
                         ],
                         [
-                            'clock_in' => $clockIn,
-                            'break_out' => $bout->first()?->time_log?->format('H:i:s'),
-                            'break_in' => $bin->first()?->time_log?->format('H:i:s'),
-                            'clock_out' => $clockOut,
+                            'clock_in' => $clockInTime?->format('Y-m-d H:i:s'),
+                            'break_out' => $breakPairs[0]['start'] ?? null,  // OverTime In = break starts
+                            'break_in' => $breakPairs[0]['end'] ?? null,     // OverTime Out = break ends
+                            'clock_out' => $clockOutTime?->format('Y-m-d H:i:s'),
                             'total_hours' => $totalMinutes ? round($totalMinutes / 60, 2) : null,
                             'break_minutes' => $breakMinutes,
                             'status' => $status,
@@ -142,10 +157,7 @@ class AttendanceProcessService
 
             $batch->update([
                 'status' => 'processed',
-                'processed_at' => now(),
-                'meta' => array_merge($batch->meta ?? [], [
-                    'processed_records' => AttendanceProcessed::where('batch_id', $batch->id)->count()
-                ])
+                'processed_rows' => AttendanceProcessed::where('batch_id', $batch->batch_id)->count(),
             ]);
 
             DB::commit();
@@ -153,7 +165,7 @@ class AttendanceProcessService
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to process attendance batch', [
-                'batch_id' => $batch->id,
+                'batch_id' => $batch->batch_id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

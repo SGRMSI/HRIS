@@ -67,14 +67,12 @@ class AttendanceController extends BaseController
             // Store the file
             $filePath = $file->store('attendance/uploads', 'local');
             
-            // Create the batch record
+            // Save batch record
             $batch = AttendanceUploadBatch::create([
                 'filename' => $filename,
                 'file_path' => $filePath,
-                'total_rows' => 0,
-                'processed_rows' => 0,
-                'status' => 'pending',
-                'remarks' => $request->remarks,
+                'total_rows' => 0, // Will be updated after import
+                'status' => 'imported',
                 'created_by' => auth()->id(),
             ]);
 
@@ -85,7 +83,6 @@ class AttendanceController extends BaseController
             // Update batch with actual row count
             $batch->update([
                 'total_rows' => $import->getRowCount(),
-                'status' => 'uploaded'
             ]);
 
             DB::commit();

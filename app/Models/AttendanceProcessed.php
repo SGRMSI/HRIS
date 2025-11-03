@@ -18,9 +18,11 @@ class AttendanceProcessed extends Model
         'clock_out',
         'break_in',
         'break_out',
+        'break_minutes',
         'total_hours',
         'status',
         'remarks',
+        'meta',
     ];
 
     protected $casts = [
@@ -29,7 +31,9 @@ class AttendanceProcessed extends Model
         'clock_out' => 'datetime',
         'break_in' => 'datetime',
         'break_out' => 'datetime',
+        'break_minutes' => 'integer',
         'total_hours' => 'decimal:2',
+        'meta' => 'array',
         'created_at' => 'datetime',
     ];
 
