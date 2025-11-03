@@ -21,6 +21,16 @@ class Holiday extends Model
         'created_at' => 'datetime',
     ];
 
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'holiday_id';
+    }
+
     // Relationships
     public function company()
     {

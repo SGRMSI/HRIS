@@ -83,6 +83,23 @@ class HolidayController extends Controller
     }
 
     /**
+     * Show the form for creating a new holiday
+     *
+     * @return \Inertia\Response
+     */
+    public function create()
+    {
+        return Inertia::render('Attendance/Holidays/Create', [
+            'companies' => Company::select(['id', 'name'])->get(),
+            'types' => [
+                ['value' => 'regular', 'label' => 'Regular Holiday'],
+                ['value' => 'special', 'label' => 'Special Non-Working'],
+                ['value' => 'company', 'label' => 'Company Specific']
+            ]
+        ]);
+    }
+
+    /**
      * Store a newly created holiday
      *
      * @param Request $request
@@ -146,6 +163,37 @@ class HolidayController extends Controller
 
             return back()->withErrors(['error' => 'Failed to create holiday.'])->withInput();
         }
+    }
+
+    /**
+     * Show the form for editing the specified holiday
+     *
+     * @param Holiday $holiday
+     * @return \Inertia\Response
+     */
+    public function edit(Holiday $holiday)
+    {
+        $holiday->load('company');
+
+        return Inertia::render('Attendance/Holidays/Edit', [
+            'holiday' => [
+                'id' => $holiday->holiday_id,
+                'name' => $holiday->name,
+                'date' => $holiday->date->format('Y-m-d'),
+                'type' => $holiday->type,
+                'company_id' => $holiday->company_id,
+                'company' => $holiday->company ? [
+                    'id' => $holiday->company->id,
+                    'name' => $holiday->company->name
+                ] : null
+            ],
+            'companies' => Company::select(['id', 'name'])->get(),
+            'types' => [
+                ['value' => 'regular', 'label' => 'Regular Holiday'],
+                ['value' => 'special', 'label' => 'Special Non-Working'],
+                ['value' => 'company', 'label' => 'Company Specific']
+            ]
+        ]);
     }
 
     /**
