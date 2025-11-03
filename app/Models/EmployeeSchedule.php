@@ -23,6 +23,16 @@ class EmployeeSchedule extends Model
         'is_holiday' => 'boolean',
     ];
 
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'schedule_id';
+    }
+
     // Relationships
     public function employee()
     {

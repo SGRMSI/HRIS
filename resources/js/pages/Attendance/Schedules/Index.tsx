@@ -1,17 +1,471 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+    Plus, 
+    Search, 
+    Edit, 
+    Trash2, 
+    Calendar, 
+    Users, 
+    AlertTriangle,
+    CheckCircle2,
+    Filter,
+    UserPlus
+} from 'lucide-react';
 
-export default function SchedulesIndex() {
+interface Employee {
+    id: number;
+    name: string;
+    employee_number: string;
+    department: string;
+}
+
+interface Shift {
+    id: number;
+    name: string;
+    time_in: string;
+    time_out: string;
+}
+
+interface Schedule {
+    id: number;
+    employee: Employee;
+    shift: Shift;
+    date_start: string;
+    date_end: string | null;
+    is_holiday: boolean;
+    has_conflict: boolean;
+    is_active: boolean;
+}
+
+interface Department {
+    id: number;
+    name: string;
+}
+
+interface ShiftOption {
+    shift_id: number;
+    name: string;
+}
+
+interface Props {
+    schedules: {
+        data: Schedule[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
+    filters: {
+        employee_search?: string;
+        department_id?: number;
+        shift_id?: number;
+        date_from?: string;
+        date_to?: string;
+    };
+    departments: Department[];
+    shifts: ShiftOption[];
+    departmentGroups?: Record<string, { count: number; employees: number }>;
+}
+
+export default function SchedulesIndex({ schedules, filters = {}, departments = [], shifts = [] }: Props) {
+    const [employeeSearch, setEmployeeSearch] = useState(filters.employee_search || '');
+    const [deleteSchedule, setDeleteSchedule] = useState<Schedule | null>(null);
+    const [showBulkDialog, setShowBulkDialog] = useState(false);
+
+    const handleFilter = (key: string, value: string | number) => {
+        const filterValue = value === 'all' || value === '' ? undefined : value;
+        router.get(
+            route('attendance.schedules.index'),
+            { ...filters, [key]: filterValue },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const handleSearch = () => {
+        router.get(
+            route('attendance.schedules.index'),
+            { ...filters, employee_search: employeeSearch || undefined },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const handleDelete = () => {
+        if (!deleteSchedule) return;
+
+        router.delete(route('attendance.schedules.destroy', deleteSchedule.id), {
+            onSuccess: () => {
+                setDeleteSchedule(null);
+            },
+        });
+    };
+
+    const formatDate = (date: string) => {
+        try {
+            const d = new Date(date);
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+        } catch {
+            return date;
+        }
+    };
+
     return (
-        <AppLayout breadcrumbs={[{ title: 'Attendance', href: '/attendance/upload' }, { title: 'Schedules', href: '/attendance/schedules' }]}>
+        <AppLayout breadcrumbs={[
+            { title: 'Attendance', href: '/attendance/upload' }, 
+            { title: 'Schedules', href: '/attendance/schedules' }
+        ]}>
             <Head title="Employee Schedules" />
-            <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-semibold">Employee Schedules</h1>
-                    <p className="text-sm text-muted-foreground">Assign and manage employee shift schedules</p>
+
+            <div className="space-y-6 p-6 md:p-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold">Employee Schedules</h1>
+                        <p className="text-muted-foreground mt-1">Assign and manage employee shift schedules</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setShowBulkDialog(true)}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Bulk Assign
+                        </Button>
+                        <Link href={route('attendance.schedules.create')}>
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Schedule
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
-                {/* Content will be added here */}
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Filter className="h-5 w-5" />
+                            Filters
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4 md:grid-cols-5">
+                            <div className="space-y-2">
+                                <Label>Search Employee</Label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <Input
+                                            type="text"
+                                            placeholder="Name or ID..."
+                                            value={employeeSearch}
+                                            onChange={(e) => setEmployeeSearch(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                                            className="pl-10"
+                                        />
+                                    </div>
+                                    <Button onClick={handleSearch} variant="outline" size="icon">
+                                        <Search className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Department</Label>
+                                <Select 
+                                    value={filters.department_id?.toString() || 'all'}
+                                    onValueChange={(value) => handleFilter('department_id', value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="All Departments" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Departments</SelectItem>
+                                        {Array.isArray(departments) && departments
+                                            .filter(dept => dept && dept.id != null)
+                                            .map((dept) => (
+                                                <SelectItem key={dept.id} value={dept.id.toString()}>
+                                                    {dept.name}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Shift</Label>
+                                <Select 
+                                    value={filters.shift_id?.toString() || 'all'}
+                                    onValueChange={(value) => handleFilter('shift_id', value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="All Shifts" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Shifts</SelectItem>
+                                        {Array.isArray(shifts) && shifts
+                                            .filter(shift => shift && shift.shift_id != null)
+                                            .map((shift) => (
+                                                <SelectItem key={shift.shift_id} value={shift.shift_id.toString()}>
+                                                    {shift.name}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>From Date</Label>
+                                <Input
+                                    type="date"
+                                    value={filters.date_from || ''}
+                                    onChange={(e) => handleFilter('date_from', e.target.value)}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>To Date</Label>
+                                <Input
+                                    type="date"
+                                    value={filters.date_to || ''}
+                                    onChange={(e) => handleFilter('date_to', e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Schedules</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {schedules.data.length === 0 ? (
+                            <div className="py-12 text-center text-gray-500">
+                                <Calendar className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                                <p className="text-lg font-medium">No schedules found</p>
+                                <p className="mt-1 text-sm">
+                                    {Object.keys(filters).length > 0
+                                        ? 'Try adjusting your filters'
+                                        : 'Create a schedule to get started'}
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Employee</TableHead>
+                                                <TableHead>Department</TableHead>
+                                                <TableHead>Shift</TableHead>
+                                                <TableHead>Start Date</TableHead>
+                                                <TableHead>End Date</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {schedules.data.map((schedule) => (
+                                                <TableRow key={schedule.id}>
+                                                    <TableCell>
+                                                        <div>
+                                                            <div className="font-medium">{schedule.employee.name}</div>
+                                                            <div className="text-sm text-gray-500">
+                                                                #{schedule.employee.employee_number}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>{schedule.employee.department}</TableCell>
+                                                    <TableCell>
+                                                        <div>
+                                                            <div className="font-medium">{schedule.shift.name}</div>
+                                                            <div className="text-sm text-gray-500">
+                                                                {schedule.shift.time_in} - {schedule.shift.time_out}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>{formatDate(schedule.date_start)}</TableCell>
+                                                    <TableCell>
+                                                        {schedule.date_end ? formatDate(schedule.date_end) : (
+                                                            <span className="text-gray-400">Ongoing</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-1">
+                                                            {schedule.is_active ? (
+                                                                <Badge variant="default" className="bg-green-600 w-fit">
+                                                                    Active
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge variant="secondary" className="w-fit">
+                                                                    Inactive
+                                                                </Badge>
+                                                            )}
+                                                            {schedule.has_conflict && (
+                                                                <Badge variant="destructive" className="w-fit">
+                                                                    <AlertTriangle className="mr-1 h-3 w-3" />
+                                                                    Conflict
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Link
+                                                                href={route('attendance.schedules.edit', schedule.id)}
+                                                            >
+                                                                <Button variant="ghost" size="sm">
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Button>
+                                                            </Link>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => setDeleteSchedule(schedule)}
+                                                                className="text-red-600 hover:text-red-700"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {/* Pagination */}
+                                {schedules.last_page > 1 && (
+                                    <div className="mt-6 flex items-center justify-between">
+                                        <div className="text-sm text-gray-500">
+                                            Showing {(schedules.current_page - 1) * schedules.per_page + 1} to{' '}
+                                            {Math.min(schedules.current_page * schedules.per_page, schedules.total)} of{' '}
+                                            {schedules.total} schedules
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {schedules.current_page > 1 && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        router.get(
+                                                            route('attendance.schedules.index'),
+                                                            {
+                                                                ...filters,
+                                                                page: schedules.current_page - 1,
+                                                            },
+                                                            { preserveState: true }
+                                                        )
+                                                    }
+                                                >
+                                                    Previous
+                                                </Button>
+                                            )}
+                                            {schedules.current_page < schedules.last_page && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        router.get(
+                                                            route('attendance.schedules.index'),
+                                                            {
+                                                                ...filters,
+                                                                page: schedules.current_page + 1,
+                                                            },
+                                                            { preserveState: true }
+                                                        )
+                                                    }
+                                                >
+                                                    Next
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={!!deleteSchedule} onOpenChange={() => setDeleteSchedule(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete the schedule for{' '}
+                            <strong>{deleteSchedule?.employee.name}</strong>? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Bulk Assignment Dialog */}
+            <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Bulk Schedule Assignment</DialogTitle>
+                        <DialogDescription>
+                            This feature will be available soon. Use the Create Schedule form for individual assignments.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowBulkDialog(false)}>
+                            Close
+                        </Button>
+                        <Link href={route('attendance.schedules.create')}>
+                            <Button onClick={() => setShowBulkDialog(false)}>
+                                Create Schedule
+                            </Button>
+                        </Link>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

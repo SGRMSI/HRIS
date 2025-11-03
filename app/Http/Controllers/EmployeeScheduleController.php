@@ -107,6 +107,41 @@ class EmployeeScheduleController extends Controller
     }
 
     /**
+     * Show the form for creating a new schedule
+     *
+     * @return \Inertia\Response
+     */
+    public function create()
+    {
+        $employees = Employee::with('department')
+            ->select(['id', 'first_name', 'last_name', 'employee_number', 'department_id'])
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($emp) => [
+                'id' => $emp->id,
+                'name' => $emp->first_name . ' ' . $emp->last_name,
+                'employee_number' => $emp->employee_number,
+                'department' => $emp->department->name ?? 'N/A'
+            ]);
+
+        $shifts = Shift::select(['shift_id', 'name', 'time_in', 'time_out'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(fn($shift) => [
+                'shift_id' => $shift->shift_id,
+                'name' => $shift->name,
+                'time_in' => $shift->time_in?->format('H:i'),
+                'time_out' => $shift->time_out?->format('H:i')
+            ]);
+
+        return Inertia::render('Attendance/Schedules/Create', [
+            'employees' => $employees,
+            'shifts' => $shifts
+        ]);
+    }
+
+    /**
      * Store a newly created schedule
      *
      * @param Request $request
@@ -166,6 +201,47 @@ class EmployeeScheduleController extends Controller
 
             return back()->withErrors(['error' => 'Failed to create schedule.']);
         }
+    }
+
+    /**
+     * Show the form for editing the specified schedule
+     *
+     * @param EmployeeSchedule $schedule
+     * @return \Inertia\Response
+     */
+    public function edit(EmployeeSchedule $schedule)
+    {
+        $schedule->load(['employee.department', 'shift']);
+
+        $scheduleData = [
+            'id' => $schedule->schedule_id,
+            'employee' => [
+                'id' => $schedule->employee->id,
+                'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
+                'employee_number' => $schedule->employee->employee_number,
+                'department' => $schedule->employee->department->name ?? 'N/A'
+            ],
+            'shift_id' => $schedule->shift_id,
+            'date_start' => $schedule->date_start->format('Y-m-d'),
+            'date_end' => $schedule->date_end?->format('Y-m-d'),
+            'is_holiday' => $schedule->is_holiday
+        ];
+
+        $shifts = Shift::select(['shift_id', 'name', 'time_in', 'time_out'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(fn($shift) => [
+                'shift_id' => $shift->shift_id,
+                'name' => $shift->name,
+                'time_in' => $shift->time_in?->format('H:i'),
+                'time_out' => $shift->time_out?->format('H:i')
+            ]);
+
+        return Inertia::render('Attendance/Schedules/Edit', [
+            'schedule' => $scheduleData,
+            'shifts' => $shifts
+        ]);
     }
 
     /**
