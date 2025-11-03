@@ -17,6 +17,7 @@ class Attendance extends Model
         'break_in',
         'clock_out',
         'total_hours',
+        'break_minutes',
         'late_minutes',
         'overtime_hours',
         'undertime_hours',
@@ -24,6 +25,10 @@ class Attendance extends Model
         'remarks',
         'created_by',
         'approved_by',
+        'approved_at',
+        'holiday_id',
+        'leave_id',
+        'requires_approval',
     ];
 
     protected $casts = [
@@ -32,9 +37,13 @@ class Attendance extends Model
         'clock_out' => 'datetime',
         'break_in' => 'datetime',
         'break_out' => 'datetime',
+        'approved_at' => 'datetime',
         'total_hours' => 'decimal:2',
         'overtime_hours' => 'decimal:2',
         'undertime_hours' => 'decimal:2',
+        'break_minutes' => 'integer',
+        'late_minutes' => 'integer',
+        'requires_approval' => 'boolean',
     ];
 
     // Relationships
@@ -56,5 +65,15 @@ class Attendance extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function holiday()
+    {
+        return $this->belongsTo(Holiday::class, 'holiday_id');
+    }
+
+    public function leave()
+    {
+        return $this->belongsTo(EmployeeLeave::class, 'leave_id');
     }
 }

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\AttendanceExport;
 use App\Models\Attendance;
-use App\Models\Department;
+use App\Models\Company;
 use App\Models\Employee;
 use App\Services\ScheduleResolver;
 use Carbon\Carbon;
@@ -33,7 +33,7 @@ class AttendanceFinalController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Attendance::with(['employee.department', 'shift', 'createdBy', 'approvedBy'])
+        $query = Attendance::with(['employee.department', 'employee.company', 'shift', 'createdBy', 'approvedBy'])
             ->when($request->search, function ($query, $search) {
                 $query->whereHas('employee', function ($q) use ($search) {
                     $q->where('employee_number', 'like', "%{$search}%")
@@ -44,8 +44,8 @@ class AttendanceFinalController extends Controller
             ->when($request->date_from, fn ($q) => $q->where('date', '>=', $request->date_from))
             ->when($request->date_to, fn ($q) => $q->where('date', '<=', $request->date_to))
             ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->department_id, function ($q) use ($request) {
-                $q->whereHas('employee', fn ($q) => $q->where('department_id', $request->department_id));
+            ->when($request->company_id, function ($q) use ($request) {
+                $q->whereHas('employee', fn ($q) => $q->where('company_id', $request->company_id));
             });
 
         // Handle export data request
@@ -63,6 +63,7 @@ class AttendanceFinalController extends Controller
                     'employee' => [
                         'id' => $attendance->employee->id,
                         'name' => $attendance->employee->full_name,
+                        'company' => $attendance->employee->company->name ?? null,
                         'department' => $attendance->employee->department->name,
                         'position' => $attendance->employee->position->name ?? null
                     ],
@@ -95,8 +96,8 @@ class AttendanceFinalController extends Controller
 
         return Inertia::render('Attendance/FinalIndex', [
             'attendances' => $attendances,
-            'filters' => $request->only(['search', 'date_from', 'date_to', 'status', 'department_id']),
-            'departments' => Department::select(['id', 'name'])->get(),
+            'filters' => $request->only(['search', 'date_from', 'date_to', 'status', 'company_id']),
+            'companies' => Company::select(['company_id as id', 'name'])->get(),
             'statuses' => [
                 ['value' => 'present', 'label' => 'Present'],
                 ['value' => 'absent', 'label' => 'Absent'],
@@ -324,7 +325,7 @@ class AttendanceFinalController extends Controller
         $request->validate([
             'date_from' => 'required|date',
             'date_to' => 'required|date|after_or_equal:date_from',
-            'department_id' => 'nullable|exists:departments,id',
+            'company_id' => 'nullable|exists:companies,company_id',
             'status' => 'nullable|string'
         ]);
 
@@ -339,7 +340,7 @@ class AttendanceFinalController extends Controller
                 new AttendanceExport($request->only([
                     'date_from',
                     'date_to',
-                    'department_id',
+                    'company_id',
                     'status'
                 ])),
                 $filename

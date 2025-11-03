@@ -29,6 +29,7 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::get('/', [AttendanceProcessedController::class, 'index'])->name('index');
         Route::post('process/{batch:batch_id}', [AttendanceProcessedController::class, 'process'])->name('process');
         Route::post('reprocess', [AttendanceProcessedController::class, 'reprocess'])->name('reprocess');
+        Route::post('finalize/{batch:batch_id}', [AttendanceProcessedController::class, 'finalize'])->name('finalize');
     });
     
     // Final Attendance Records

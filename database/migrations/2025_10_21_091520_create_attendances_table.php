@@ -26,8 +26,14 @@ return new class extends Migration
             $table->decimal('undertime_hours', 5, 2)->default(0.00);
             $table->string('status')->comment('"Present", "Absent", "On Leave", "Holiday"');
             $table->text('remarks')->nullable();
-            $table->foreignId('created_by')->constrained('users', 'id');
-            $table->foreignId('approved_by')->nullable()->constrained('users', 'id');
+            $table->string('created_by')->nullable();
+            $table->foreign('created_by')->references('id')->on('users');
+            $table->string('approved_by')->nullable();
+            $table->foreign('approved_by')->references('id')->on('users');
+            $table->foreignId('holiday_id')->nullable()->constrained('holidays', 'holiday_id');
+            $table->foreignId('leave_id')->nullable()->constrained('employee_leaves', 'leave_id');
+            $table->boolean('requires_approval')->default(false);
+            $table->timestamp('approved_at')->nullable();
             $table->timestamps();
         });
     }

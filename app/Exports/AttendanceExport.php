@@ -22,11 +22,11 @@ class AttendanceExport implements FromCollection, WithHeadings, WithMapping
      */
     public function collection()
     {
-        return Attendance::with(['employee.department', 'shift', 'approvedBy'])
+        return Attendance::with(['employee.company', 'employee.department', 'shift', 'approvedBy'])
             ->when($this->filters['date_from'] ?? null, fn($q) => $q->where('date', '>=', $this->filters['date_from']))
             ->when($this->filters['date_to'] ?? null, fn($q) => $q->where('date', '<=', $this->filters['date_to']))
-            ->when($this->filters['department_id'] ?? null, function ($q) {
-                $q->whereHas('employee', fn($q) => $q->where('department_id', $this->filters['department_id']));
+            ->when($this->filters['company_id'] ?? null, function ($q) {
+                $q->whereHas('employee', fn($q) => $q->where('company_id', $this->filters['company_id']));
             })
             ->when($this->filters['status'] ?? null, fn($q) => $q->where('status', $this->filters['status']))
             ->orderBy('date')
@@ -43,6 +43,7 @@ class AttendanceExport implements FromCollection, WithHeadings, WithMapping
             'Date',
             'Employee ID',
             'Employee Name',
+            'Company',
             'Department',
             'Shift',
             'Clock In',
@@ -69,6 +70,7 @@ class AttendanceExport implements FromCollection, WithHeadings, WithMapping
             $attendance->date,
             $attendance->employee->employee_number,
             $attendance->employee->full_name,
+            $attendance->employee->company->name ?? 'N/A',
             $attendance->employee->department->name,
             $attendance->shift?->name ?? 'N/A',
             $attendance->clock_in?->format('H:i:s'),

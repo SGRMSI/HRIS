@@ -6,7 +6,9 @@ use App\Models\AttendanceProcessed;
 use App\Models\AttendanceUploadBatch;
 use App\Models\Employee;
 use App\Services\Attendance\AttendanceProcessService;
+use App\Services\Attendance\AttendanceFinalizeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -14,10 +16,14 @@ use Inertia\Inertia;
 class AttendanceProcessedController extends Controller
 {
     protected $processService;
+    protected $finalizeService;
 
-    public function __construct(AttendanceProcessService $processService)
-    {
+    public function __construct(
+        AttendanceProcessService $processService,
+        AttendanceFinalizeService $finalizeService
+    ) {
         $this->processService = $processService;
+        $this->finalizeService = $finalizeService;
     }
 
     /**
@@ -35,7 +41,7 @@ class AttendanceProcessedController extends Controller
 
         // Query batches
         $batches = AttendanceUploadBatch::query()
-            ->whereIn('status', ['imported', 'processing', 'processed', 'failed'])
+            ->whereIn('status', ['imported', 'processing', 'processed', 'failed', 'finalized'])
             ->with('uploadedBy')
             ->latest('created_at')
             ->get()
@@ -202,6 +208,53 @@ class AttendanceProcessedController extends Controller
 
             return back()->withErrors([
                 'reprocess' => 'Failed to reprocess records: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Finalize processed records to final attendance
+     */
+    public function finalize(AttendanceUploadBatch $batch)
+    {
+        try {
+            if ($batch->status !== 'processed') {
+                throw new \Exception('Only processed batches can be finalized.');
+            }
+
+            DB::beginTransaction();
+
+            // Get all processed records for this batch
+            $processedIds = AttendanceProcessed::where('batch_id', $batch->batch_id)
+                ->whereNotNull('employee_id') // Only finalize matched records
+                ->pluck('processed_id')
+                ->toArray();
+
+            if (empty($processedIds)) {
+                throw new \Exception('No valid records to finalize in this batch.');
+            }
+
+            // Push to final attendance
+            $this->finalizeService->push($processedIds, Auth::id());
+
+            // Update batch status
+            $batch->update(['status' => 'finalized']);
+
+            DB::commit();
+
+            return back()->with('success', count($processedIds) . ' records finalized successfully and moved to Final Attendance!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Finalization failed', [
+                'batch_id' => $batch->batch_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return back()->withErrors([
+                'finalize' => 'Failed to finalize batch: ' . $e->getMessage()
             ]);
         }
     }

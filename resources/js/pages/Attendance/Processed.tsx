@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { 
     PlayCircle, 
     CheckCircle2, 
@@ -19,7 +18,9 @@ import {
     FileText,
     User,
     Filter,
-    Download
+    Download,
+    Send,
+    RotateCcw
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -28,7 +29,7 @@ interface Batch {
     filename: string;
     created_at: string;
     uploaded_by: string;
-    status: 'imported' | 'processing' | 'processed' | 'failed';
+    status: 'imported' | 'processing' | 'processed' | 'failed' | 'finalized';
     total_records: number;
     processed_records: number;
     progress: number;
@@ -81,18 +82,19 @@ interface Props {
 }
 
 function getStatusBadge(status: Batch['status']) {
-    const statusConfig = {
+    const statusConfig: Record<Batch['status'], { icon: any; variant: any; label: string; className?: string }> = {
         imported: { icon: Clock, variant: 'secondary' as const, label: 'Ready to Process' },
         processing: { icon: PlayCircle, variant: 'default' as const, label: 'Processing' },
         processed: { icon: CheckCircle2, variant: 'default' as const, label: 'Processed' },
         failed: { icon: XCircle, variant: 'destructive' as const, label: 'Failed' },
+        finalized: { icon: CheckCircle2, variant: 'default' as const, label: 'Finalized', className: 'bg-green-600' },
     };
 
     const config = statusConfig[status];
     const Icon = config.icon;
 
     return (
-        <Badge variant={config.variant} className="gap-1">
+        <Badge variant={config.variant} className={`gap-1 ${config.className || ''}`}>
             <Icon className="h-3 w-3" />
             {config.label}
         </Badge>
@@ -109,6 +111,8 @@ function getRecordStatusBadge(status: 'Present' | 'Incomplete') {
 export default function Processed({ batches, processed, filters, employees, statuses }: Props) {
     const { flash } = usePage().props as any;
     const [processing, setProcessing] = useState<number | null>(null);
+    const [finalizing, setFinalizing] = useState<number | null>(null);
+    const [reprocessing, setReprocessing] = useState<number | null>(null);
 
     const handleProcess = (batchId: number) => {
         if (!confirm('Are you sure you want to process this batch? This will group clock in/out times and calculate work hours.')) {
@@ -121,6 +125,36 @@ export default function Processed({ batches, processed, filters, employees, stat
             {},
             {
                 onFinish: () => setProcessing(null),
+            }
+        );
+    };
+
+    const handleReprocess = (batchId: number) => {
+        if (!confirm('Are you sure you want to reprocess this batch? This will re-calculate all attendance records.')) {
+            return;
+        }
+
+        setReprocessing(batchId);
+        router.post(
+            route('attendance.processed.process', batchId),
+            {},
+            {
+                onFinish: () => setReprocessing(null),
+            }
+        );
+    };
+
+    const handleFinalize = (batchId: number) => {
+        if (!confirm('Are you sure you want to finalize this batch? This will move all processed records to Final Attendance.')) {
+            return;
+        }
+
+        setFinalizing(batchId);
+        router.post(
+            route('attendance.processed.finalize', batchId),
+            {},
+            {
+                onFinish: () => setFinalizing(null),
             }
         );
     };
@@ -242,16 +276,6 @@ export default function Processed({ batches, processed, filters, employees, stat
                                             </div>
                                         </div>
 
-                                        {batch.status === 'processing' || batch.status === 'processed' ? (
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-xs text-gray-600">
-                                                    <span>Progress</span>
-                                                    <span>{batch.progress}%</span>
-                                                </div>
-                                                <Progress value={batch.progress} />
-                                            </div>
-                                        ) : null}
-
                                         {batch.status === 'imported' || batch.status === 'failed' ? (
                                             <Button
                                                 onClick={() => handleProcess(batch.id)}
@@ -268,6 +292,70 @@ export default function Processed({ batches, processed, filters, employees, stat
                                                     <>
                                                         <PlayCircle className="mr-2 h-4 w-4" />
                                                         {batch.status === 'failed' ? 'Retry Processing' : 'Process Batch'}
+                                                    </>
+                                                )}
+                                            </Button>
+                                        ) : null}
+
+                                        {batch.status === 'processed' ? (
+                                            <div className="space-y-2">
+                                                <Button
+                                                    onClick={() => handleReprocess(batch.id)}
+                                                    disabled={reprocessing === batch.id}
+                                                    className="w-full"
+                                                    size="sm"
+                                                    variant="outline"
+                                                >
+                                                    {reprocessing === batch.id ? (
+                                                        <>
+                                                            <Clock className="mr-2 h-4 w-4 animate-spin" />
+                                                            Reprocessing...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <RotateCcw className="mr-2 h-4 w-4" />
+                                                            Reprocess Batch
+                                                        </>
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleFinalize(batch.id)}
+                                                    disabled={finalizing === batch.id}
+                                                    className="w-full bg-green-600 hover:bg-green-700"
+                                                    size="sm"
+                                                >
+                                                    {finalizing === batch.id ? (
+                                                        <>
+                                                            <Clock className="mr-2 h-4 w-4 animate-spin" />
+                                                            Finalizing...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Send className="mr-2 h-4 w-4" />
+                                                            Finalize Attendance
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        ) : null}
+
+                                        {batch.status === 'finalized' ? (
+                                            <Button
+                                                onClick={() => handleReprocess(batch.id)}
+                                                disabled={reprocessing === batch.id}
+                                                className="w-full"
+                                                size="sm"
+                                                variant="outline"
+                                            >
+                                                {reprocessing === batch.id ? (
+                                                    <>
+                                                        <Clock className="mr-2 h-4 w-4 animate-spin" />
+                                                        Reprocessing...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <RotateCcw className="mr-2 h-4 w-4" />
+                                                        Reprocess Batch
                                                     </>
                                                 )}
                                             </Button>

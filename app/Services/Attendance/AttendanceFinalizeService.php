@@ -62,7 +62,9 @@ class AttendanceFinalizeService
             'isHoliday' => $isHoliday,
             'isOnLeave' => $isOnLeave,
             'isWorkingDay' => $isWorkingDay,
-            'status' => $status
+            'status' => $status,
+            'holiday' => $holiday,
+            'leave' => $leave
         ];
     }
 
@@ -82,7 +84,7 @@ class AttendanceFinalizeService
             $items = AttendanceProcessed::with([
                 'employee.company',
                 'batch' // For audit trail
-            ])->whereIn('id', $processedIds)
+            ])->whereIn('processed_id', $processedIds)
                 ->get();
 
             // Track batch processing
@@ -131,8 +133,8 @@ class AttendanceFinalizeService
                         'created_by' => $userId,
                         'created_at' => now(),
                         'requires_approval' => $this->requiresApproval($overtimeHours, $undertimeHours),
-                        'holiday_id' => $holiday->id ?? null,
-                        'leave_id' => $leave->id ?? null
+                        'holiday_id' => $resolved->holiday->id ?? null,
+                        'leave_id' => $resolved->leave->id ?? null
                     ]
                 );
 
@@ -142,7 +144,7 @@ class AttendanceFinalizeService
                     ->causedBy($userId)
                     ->withProperties([
                         'status' => $resolved->status,
-                        'source_id' => $processed->id,
+                        'source_id' => $processed->processed_id,
                         'batch_id' => $processed->batch_id,
                         'changes' => array_diff_assoc($attendance->getChanges(), $attendance->getOriginal())
                     ])
