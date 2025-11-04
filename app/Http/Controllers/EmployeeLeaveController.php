@@ -112,6 +112,36 @@ class EmployeeLeaveController extends Controller
     }
 
     /**
+     * Show the form for creating a new leave request
+     *
+     * @return \Inertia\Response
+     */
+    public function create()
+    {
+        $employees = Employee::with('department')
+            ->select(['id', 'first_name', 'last_name', 'employee_number', 'department_id'])
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($emp) => [
+                'id' => $emp->id,
+                'name' => $emp->first_name . ' ' . $emp->last_name,
+                'employee_number' => $emp->employee_number,
+                'department' => $emp->department->name ?? 'N/A'
+            ]);
+
+        return Inertia::render('Attendance/Leaves/Create', [
+            'employees' => $employees,
+            'types' => [
+                ['value' => 'sick', 'label' => 'Sick Leave'],
+                ['value' => 'vacation', 'label' => 'Vacation Leave'],
+                ['value' => 'emergency', 'label' => 'Emergency Leave'],
+                ['value' => 'unpaid', 'label' => 'Unpaid Leave'],
+                ['value' => 'other', 'label' => 'Other']
+            ]
+        ]);
+    }
+
+    /**
      * Store a newly created leave request
      *
      * @param Request $request
@@ -204,6 +234,89 @@ class EmployeeLeaveController extends Controller
 
             return back()->withErrors(['error' => 'Failed to create leave request.']);
         }
+    }
+
+    /**
+     * Display the specified leave request
+     *
+     * @param EmployeeLeave $leave
+     * @return \Inertia\Response
+     */
+    public function show(EmployeeLeave $leave)
+    {
+        $leave->load(['employee.department', 'approver']);
+
+        $duration = $leave->date_from->diffInDays($leave->date_to) + 1;
+
+        return Inertia::render('Attendance/Leaves/Show', [
+            'leave' => [
+                'id' => $leave->leave_id,
+                'employee' => [
+                    'id' => $leave->employee->id,
+                    'name' => $leave->employee->first_name . ' ' . $leave->employee->last_name,
+                    'employee_number' => $leave->employee->employee_number,
+                    'department' => $leave->employee->department->name ?? 'N/A'
+                ],
+                'type' => $leave->type,
+                'date_from' => $leave->date_from->format('Y-m-d'),
+                'date_to' => $leave->date_to->format('Y-m-d'),
+                'formatted_date_from' => $leave->date_from->format('F d, Y'),
+                'formatted_date_to' => $leave->date_to->format('F d, Y'),
+                'duration_days' => $duration,
+                'status' => $leave->status,
+                'remarks' => $leave->remarks,
+                'document_path' => $leave->document_path,
+                'approved_by' => $leave->approver ? [
+                    'id' => $leave->approver->id,
+                    'name' => $leave->approver->name
+                ] : null,
+                'created_at' => $leave->created_at->format('Y-m-d H:i:s'),
+                'updated_at' => $leave->updated_at->format('Y-m-d H:i:s'),
+                'can_approve' => $leave->status === 'pending' && Auth::user()->can('approve leaves'),
+                'can_edit' => $leave->status === 'pending',
+                'can_cancel' => in_array($leave->status, ['pending', 'approved'])
+            ]
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified leave request
+     *
+     * @param EmployeeLeave $leave
+     * @return \Inertia\Response
+     */
+    public function edit(EmployeeLeave $leave)
+    {
+        if ($leave->status !== 'pending') {
+            return redirect()->route('attendance.leaves.show', $leave->leave_id)
+                ->with('error', 'Only pending leaves can be edited.');
+        }
+
+        $leave->load(['employee.department']);
+
+        return Inertia::render('Attendance/Leaves/Edit', [
+            'leave' => [
+                'id' => $leave->leave_id,
+                'employee' => [
+                    'id' => $leave->employee->id,
+                    'name' => $leave->employee->first_name . ' ' . $leave->employee->last_name,
+                    'employee_number' => $leave->employee->employee_number,
+                    'department' => $leave->employee->department->name ?? 'N/A'
+                ],
+                'type' => $leave->type,
+                'date_from' => $leave->date_from->format('Y-m-d'),
+                'date_to' => $leave->date_to->format('Y-m-d'),
+                'remarks' => $leave->remarks,
+                'document_path' => $leave->document_path
+            ],
+            'types' => [
+                ['value' => 'sick', 'label' => 'Sick Leave'],
+                ['value' => 'vacation', 'label' => 'Vacation Leave'],
+                ['value' => 'emergency', 'label' => 'Emergency Leave'],
+                ['value' => 'unpaid', 'label' => 'Unpaid Leave'],
+                ['value' => 'other', 'label' => 'Other']
+            ]
+        ]);
     }
 
     /**

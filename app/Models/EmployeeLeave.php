@@ -17,12 +17,23 @@ class EmployeeLeave extends Model
         'status',
         'remarks',
         'approved_by',
+        'document_path',
     ];
 
     protected $casts = [
         'date_from' => 'datetime',
         'date_to' => 'datetime',
     ];
+
+    /**
+     * Get the route key for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'leave_id';
+    }
 
     // Relationships
     public function employee()
