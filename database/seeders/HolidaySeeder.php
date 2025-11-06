@@ -62,21 +62,21 @@ class HolidaySeeder extends Seeder
                 'company_id' => $firstCompany->company_id,
                 'name' => 'Company Foundation Day',
                 'date' => '2025-03-15',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
 
             Holiday::create([
                 'company_id' => $firstCompany->company_id,
                 'name' => 'Annual Company Outing',
                 'date' => '2025-07-15',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
 
             Holiday::create([
                 'company_id' => $firstCompany->company_id,
                 'name' => 'Year End Party',
                 'date' => '2025-12-20',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
         }
 
@@ -87,21 +87,21 @@ class HolidaySeeder extends Seeder
                 'company_id' => $secondCompany->company_id,
                 'name' => 'TechHub Anniversary',
                 'date' => '2025-05-20',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
 
             Holiday::create([
                 'company_id' => $secondCompany->company_id,
                 'name' => 'Innovation Day',
                 'date' => '2025-09-10',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
 
             Holiday::create([
                 'company_id' => $secondCompany->company_id,
                 'name' => 'Company Wellness Day',
                 'date' => '2025-10-15',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
         }
 
@@ -112,21 +112,21 @@ class HolidaySeeder extends Seeder
                 'company_id' => $thirdCompany->company_id,
                 'name' => 'SteamTrain Foundation Day',
                 'date' => '2025-06-01',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
 
             Holiday::create([
                 'company_id' => $thirdCompany->company_id,
                 'name' => 'Mid-Year Team Building',
                 'date' => '2025-08-15',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
 
             Holiday::create([
                 'company_id' => $thirdCompany->company_id,
                 'name' => 'Holiday Celebration',
                 'date' => '2025-12-23',
-                'type' => 'Company Specific',
+                'type' => 'company',
             ]);
         }
 
