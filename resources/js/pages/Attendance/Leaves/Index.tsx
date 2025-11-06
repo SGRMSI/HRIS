@@ -37,7 +37,8 @@ import {
     CheckCircle2, 
     XCircle,
     Calendar,
-    Ban
+    Ban,
+    Trash2
 } from 'lucide-react';
 
 interface Leave {
@@ -47,6 +48,7 @@ interface Leave {
         name: string;
         employee_number: string;
         department: string;
+        company: string;
     };
     type: string;
     date_from: string;
@@ -58,9 +60,10 @@ interface Leave {
     approved_at: string;
     can_approve: boolean;
     can_cancel: boolean;
+    can_delete: boolean;
 }
 
-interface Department {
+interface Company {
     id: number;
     name: string;
 }
@@ -87,11 +90,11 @@ interface Props {
         status?: string;
         type?: string;
         employee_search?: string;
-        department_id?: number;
+        company_id?: number;
         date_from?: string;
         date_to?: string;
     };
-    departments: Department[];
+    companies: Company[];
     statuses: StatusOption[];
     types: TypeOption[];
     departmentGroups?: Record<string, { count: number; employees: number; total_days: number }>;
@@ -100,7 +103,7 @@ interface Props {
 export default function LeavesIndex({ 
     leaves, 
     filters = {}, 
-    departments = [],
+    companies = [],
     statuses = [],
     types = []
 }: Props) {
@@ -111,6 +114,7 @@ export default function LeavesIndex({
     const [approvalRemarks, setApprovalRemarks] = useState('');
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const handleFilter = (key: string, value: string | number) => {
         const filterValue = value === 'all' || value === '' ? undefined : value;
@@ -166,6 +170,22 @@ export default function LeavesIndex({
                 setShowCancelDialog(false);
                 setSelectedLeave(null);
                 setCancelReason('');
+            }
+        });
+    };
+
+    const openDeleteDialog = (leave: Leave) => {
+        setSelectedLeave(leave);
+        setShowDeleteDialog(true);
+    };
+
+    const handleDelete = () => {
+        if (!selectedLeave) return;
+
+        router.delete(route('attendance.leaves.destroy', selectedLeave.id), {
+            onSuccess: () => {
+                setShowDeleteDialog(false);
+                setSelectedLeave(null);
             }
         });
     };
@@ -270,23 +290,23 @@ export default function LeavesIndex({
                                 </Select>
                             </div>
 
-                            {/* Department Filter */}
+                            {/* Company Filter */}
                             <div className="space-y-2">
-                                <Label>Department</Label>
+                                <Label>Company</Label>
                                 <Select
-                                    value={filters.department_id?.toString() || 'all'}
-                                    onValueChange={(value) => handleFilter('department_id', value)}
+                                    value={filters.company_id?.toString() || 'all'}
+                                    onValueChange={(value) => handleFilter('company_id', value)}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="All Departments" />
+                                        <SelectValue placeholder="All Companies" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Departments</SelectItem>
-                                        {Array.isArray(departments) && departments
-                                            .filter(dept => dept && dept.id != null)
-                                            .map((dept) => (
-                                                <SelectItem key={dept.id} value={dept.id.toString()}>
-                                                    {dept.name}
+                                        <SelectItem value="all">All Companies</SelectItem>
+                                        {Array.isArray(companies) && companies
+                                            .filter(company => company && company.id != null)
+                                            .map((company) => (
+                                                <SelectItem key={company.id} value={company.id.toString()}>
+                                                    {company.name}
                                                 </SelectItem>
                                             ))}
                                     </SelectContent>
@@ -347,6 +367,7 @@ export default function LeavesIndex({
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead>Company</TableHead>
                                     <TableHead>Employee</TableHead>
                                     <TableHead>Type</TableHead>
                                     <TableHead>Period</TableHead>
@@ -359,13 +380,16 @@ export default function LeavesIndex({
                             <TableBody>
                                 {leaves.data.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                                             No leave requests found
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     leaves.data.map((leave) => (
                                         <TableRow key={leave.id}>
+                                            <TableCell>
+                                                <div className="font-medium">{leave.employee.company}</div>
+                                            </TableCell>
                                             <TableCell>
                                                 <div>
                                                     <div className="font-medium">{leave.employee.name}</div>
@@ -431,6 +455,16 @@ export default function LeavesIndex({
                                                             className="text-orange-600 hover:text-orange-700"
                                                         >
                                                             <Ban className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                    {leave.can_delete && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => openDeleteDialog(leave)}
+                                                            className="text-red-600 hover:text-red-700"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     )}
                                                 </div>
@@ -560,6 +594,43 @@ export default function LeavesIndex({
                             disabled={!cancelReason.trim()}
                         >
                             Cancel Leave
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Leave Request</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to permanently delete this leave request?
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedLeave && (
+                        <div className="space-y-4 py-4">
+                            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg space-y-2">
+                                <div className="flex items-center gap-2 text-destructive font-medium">
+                                    <Trash2 className="h-4 w-4" />
+                                    Warning: This action cannot be undone
+                                </div>
+                                <div className="text-sm">
+                                    This will permanently delete the leave request for <strong>{selectedLeave.employee.name}</strong> from <strong>{selectedLeave.date_from}</strong> to <strong>{selectedLeave.date_to}</strong>.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleDelete}
+                            variant="destructive"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Permanently
                         </Button>
                     </DialogFooter>
                 </DialogContent>

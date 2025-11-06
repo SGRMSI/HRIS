@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
     Dialog,
     DialogContent,
@@ -24,7 +25,9 @@ import {
     User,
     FileText,
     Download,
-    Clock
+    Clock,
+    Trash2,
+    AlertCircle
 } from 'lucide-react';
 
 interface Leave {
@@ -53,6 +56,7 @@ interface Leave {
     can_approve: boolean;
     can_edit: boolean;
     can_cancel: boolean;
+    can_delete: boolean;
 }
 
 interface Props {
@@ -65,6 +69,7 @@ export default function LeavesShow({ leave }: Props) {
     const [approvalRemarks, setApprovalRemarks] = useState('');
     const [showCancelDialog, setShowCancelDialog] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const openApprovalDialog = (action: 'approve' | 'reject') => {
         setApprovalAction(action);
@@ -91,6 +96,14 @@ export default function LeavesShow({ leave }: Props) {
         }, {
             onSuccess: () => {
                 setShowCancelDialog(false);
+            }
+        });
+    };
+
+    const handleDelete = () => {
+        router.delete(route('attendance.leaves.destroy', leave.id), {
+            onSuccess: () => {
+                setShowDeleteDialog(false);
             }
         });
     };
@@ -181,6 +194,16 @@ export default function LeavesShow({ leave }: Props) {
                             >
                                 <Ban className="mr-2 h-4 w-4" />
                                 Cancel
+                            </Button>
+                        )}
+                        {leave.can_delete && (
+                            <Button
+                                onClick={() => setShowDeleteDialog(true)}
+                                variant="outline"
+                                className="text-red-600 border-red-600 hover:bg-red-50"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
                             </Button>
                         )}
                     </div>
@@ -448,6 +471,38 @@ export default function LeavesShow({ leave }: Props) {
                             disabled={!cancelReason.trim()}
                         >
                             Cancel Leave
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Leave Request</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this leave request? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                Only pending or rejected leaves can be deleted. This will permanently remove the leave request and any attached documents.
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleDelete}
+                            variant="destructive"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
                         </Button>
                     </DialogFooter>
                 </DialogContent>

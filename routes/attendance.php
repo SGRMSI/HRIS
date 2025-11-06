@@ -72,6 +72,7 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::get('/', [EmployeeLeaveController::class, 'index'])->name('index');
         Route::get('create', [EmployeeLeaveController::class, 'create'])->name('create');
         Route::post('/', [EmployeeLeaveController::class, 'store'])->name('store');
+        Route::get('employees/{company}', [EmployeeLeaveController::class, 'getEmployeesByCompany'])->name('employees');
         Route::get('{leave}', [EmployeeLeaveController::class, 'show'])->name('show');
         Route::get('{leave}/download', [EmployeeLeaveController::class, 'downloadDocument'])->name('download');
         Route::get('{leave}/edit', [EmployeeLeaveController::class, 'edit'])->name('edit');

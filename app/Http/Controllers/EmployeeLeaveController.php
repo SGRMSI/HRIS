@@ -25,7 +25,7 @@ class EmployeeLeaveController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EmployeeLeave::with(['employee.department', 'approver'])
+        $query = EmployeeLeave::with(['employee.department', 'employee.company', 'approver'])
             ->when($request->status, function ($q) use ($request) {
                 $q->where('status', $request->status);
             })
@@ -36,12 +36,12 @@ class EmployeeLeaveController extends Controller
                 $q->whereHas('employee', function ($q) use ($request) {
                     $q->where('first_name', 'like', "%{$request->employee_search}%")
                       ->orWhere('last_name', 'like', "%{$request->employee_search}%")
-                      ->orWhere('employee_number', 'like', "%{$request->employee_search}%");
+                      ->orWhere('id_number', 'like', "%{$request->employee_search}%");
                 });
             })
-            ->when($request->department_id, function ($q) use ($request) {
+            ->when($request->company_id, function ($q) use ($request) {
                 $q->whereHas('employee', function ($q) use ($request) {
-                    $q->where('department_id', $request->department_id);
+                    $q->where('company_id', $request->company_id);
                 });
             })
             ->when($request->date_from, function ($q) use ($request) {
@@ -57,10 +57,11 @@ class EmployeeLeaveController extends Controller
                 return [
                     'id' => $leave->leave_id,
                     'employee' => [
-                        'id' => $leave->employee->id,
+                        'id' => $leave->employee->employee_id,
                         'name' => $leave->employee->first_name . ' ' . $leave->employee->last_name,
-                        'employee_number' => $leave->employee->employee_number,
-                        'department' => $leave->employee->department->name ?? 'N/A'
+                        'employee_number' => $leave->employee->id_number,
+                        'department' => $leave->employee->department->name ?? 'N/A',
+                        'company' => $leave->employee->company->name ?? 'N/A'
                     ],
                     'type' => $leave->type,
                     'date_from' => $leave->date_from->format('Y-m-d'),
@@ -72,7 +73,8 @@ class EmployeeLeaveController extends Controller
                     'approved_at' => $leave->updated_at->format('Y-m-d H:i:s'),
                     'can_approve' => $leave->status === 'pending' && Auth::user()->can('approve leaves'),
                     'can_cancel' => in_array($leave->status, ['pending', 'approved']) && 
-                                    ($leave->employee_id === Auth::id() || Auth::user()->can('cancel leaves'))
+                                    ($leave->employee_id === Auth::id() || Auth::user()->can('cancel leaves')),
+                    'can_delete' => in_array($leave->status, ['pending', 'rejected'])
                 ];
             });
 
@@ -92,8 +94,8 @@ class EmployeeLeaveController extends Controller
 
         return Inertia::render('Attendance/Leaves/Index', [
             'leaves' => $leaves,
-            'filters' => $request->only(['status', 'type', 'employee_search', 'department_id', 'date_from', 'date_to']),
-            'departments' => Department::select(['department_id as id', 'name'])->get(),
+            'filters' => $request->only(['status', 'type', 'employee_search', 'company_id', 'date_from', 'date_to']),
+            'companies' => \App\Models\Company::select(['company_id as id', 'name'])->get(),
             'statuses' => [
                 ['value' => 'pending', 'label' => 'Pending'],
                 ['value' => 'approved', 'label' => 'Approved'],
@@ -118,19 +120,10 @@ class EmployeeLeaveController extends Controller
      */
     public function create()
     {
-        $employees = Employee::with('department')
-            ->select(['employee_id', 'first_name', 'last_name', 'employee_number', 'department_id'])
-            ->orderBy('first_name')
-            ->get()
-            ->map(fn($emp) => [
-                'id' => $emp->employee_id,
-                'name' => $emp->first_name . ' ' . $emp->last_name,
-                'employee_number' => $emp->employee_number,
-                'department' => $emp->department->name ?? 'N/A'
-            ]);
+        $companies = \App\Models\Company::select(['company_id as id', 'name'])->get();
 
         return Inertia::render('Attendance/Leaves/Create', [
-            'employees' => $employees,
+            'companies' => $companies,
             'types' => [
                 ['value' => 'sick', 'label' => 'Sick Leave'],
                 ['value' => 'vacation', 'label' => 'Vacation Leave'],
@@ -265,16 +258,17 @@ class EmployeeLeaveController extends Controller
      */
     public function show(EmployeeLeave $leave)
     {
-        $leave->load(['employee.department', 'approver']);
+        $leave->load(['employee.department', 'employee.company', 'approver']);
 
         return Inertia::render('Attendance/Leaves/Show', [
             'leave' => [
                 'id' => $leave->leave_id,
                 'employee' => [
-                    'id' => $leave->employee->id,
+                    'id' => $leave->employee->employee_id,
                     'name' => $leave->employee->first_name . ' ' . $leave->employee->last_name,
-                    'employee_number' => $leave->employee->employee_number,
-                    'department' => $leave->employee->department->name ?? 'N/A'
+                    'employee_number' => $leave->employee->id_number,
+                    'department' => $leave->employee->department->name ?? 'N/A',
+                    'company' => $leave->employee->company->name ?? 'N/A'
                 ],
                 'type' => $leave->type,
                 'date_from' => $leave->date_from->format('Y-m-d'),
@@ -293,7 +287,8 @@ class EmployeeLeaveController extends Controller
                 'updated_at' => $leave->updated_at->format('Y-m-d H:i:s'),
                 'can_approve' => $leave->status === 'pending' && Auth::user()->can('approve leaves'),
                 'can_edit' => $leave->status === 'pending',
-                'can_cancel' => in_array($leave->status, ['pending', 'approved'])
+                'can_cancel' => in_array($leave->status, ['pending', 'approved']),
+                'can_delete' => in_array($leave->status, ['pending', 'rejected'])
             ]
         ]);
     }
@@ -311,22 +306,25 @@ class EmployeeLeaveController extends Controller
                 ->with('error', 'Only pending leaves can be edited.');
         }
 
-        $leave->load(['employee.department']);
+        $leave->load(['employee.department', 'employee.company']);
 
         return Inertia::render('Attendance/Leaves/Edit', [
             'leave' => [
                 'id' => $leave->leave_id,
                 'employee' => [
-                    'id' => $leave->employee->id,
+                    'id' => $leave->employee->employee_id,
                     'name' => $leave->employee->first_name . ' ' . $leave->employee->last_name,
-                    'employee_number' => $leave->employee->employee_number,
-                    'department' => $leave->employee->department->name ?? 'N/A'
+                    'employee_number' => $leave->employee->id_number,
+                    'department' => $leave->employee->department->name ?? 'N/A',
+                    'company' => $leave->employee->company->name ?? 'N/A'
                 ],
                 'type' => $leave->type,
                 'date_from' => $leave->date_from->format('Y-m-d'),
                 'date_to' => $leave->date_to->format('Y-m-d'),
                 'remarks' => $leave->remarks,
-                'document_path' => $leave->document_path
+                'document_path' => $leave->document_path,
+                'include_saturday' => $leave->include_saturday,
+                'include_sunday' => $leave->include_sunday,
             ],
             'types' => [
                 ['value' => 'sick', 'label' => 'Sick Leave'],
@@ -597,6 +595,66 @@ class EmployeeLeaveController extends Controller
     }
 
     /**
+     * Delete a leave request
+     *
+     * @param EmployeeLeave $leave
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy(EmployeeLeave $leave)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Only allow deletion of pending or rejected leaves
+            if (!in_array($leave->status, ['pending', 'rejected'])) {
+                return back()->withErrors(['error' => 'Only pending or rejected leaves can be deleted.']);
+            }
+
+            // Delete document if exists
+            if ($leave->document_path && Storage::disk('local')->exists($leave->document_path)) {
+                Storage::disk('local')->delete($leave->document_path);
+                
+                // Delete the entire folder if empty
+                $folder = dirname($leave->document_path);
+                if (Storage::disk('local')->exists($folder)) {
+                    $files = Storage::disk('local')->files($folder);
+                    if (empty($files)) {
+                        Storage::disk('local')->deleteDirectory($folder);
+                    }
+                }
+            }
+
+            // Log the deletion before deleting
+            activity()
+                ->performedOn($leave)
+                ->causedBy(Auth::user())
+                ->withProperties([
+                    'employee' => $leave->employee->first_name . ' ' . $leave->employee->last_name,
+                    'type' => $leave->type,
+                    'date_from' => $leave->date_from->format('Y-m-d'),
+                    'date_to' => $leave->date_to->format('Y-m-d'),
+                ])
+                ->log('leave.deleted');
+
+            $leave->delete();
+
+            DB::commit();
+
+            return redirect()->route('attendance.leaves.index')
+                ->with('success', 'Leave request deleted successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to delete leave', [
+                'leave_id' => $leave->leave_id,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()->withErrors(['error' => 'Failed to delete leave request.']);
+        }
+    }
+
+    /**
      * Check if leave period overlaps with existing leaves
      */
     private function checkLeaveOverlap(
@@ -714,5 +772,28 @@ class EmployeeLeaveController extends Controller
         $filename = basename($leave->document_path);
         
         return response()->download($filePath, $filename);
+    }
+
+    /**
+     * Get employees by company
+     *
+     * @param int $company
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getEmployeesByCompany($company)
+    {
+        $employees = Employee::with('department')
+            ->where('company_id', $company)
+            ->select(['employee_id', 'first_name', 'last_name', 'id_number', 'department_id'])
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($emp) => [
+                'id' => $emp->employee_id,
+                'name' => $emp->first_name . ' ' . $emp->last_name,
+                'employee_number' => $emp->id_number,
+                'department' => $emp->department->name ?? 'N/A'
+            ]);
+
+        return response()->json($employees);
     }
 }

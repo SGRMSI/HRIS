@@ -14,7 +14,8 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Save, X, Calendar, Upload as UploadIcon, FileText } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useState, useEffect } from 'react';
+import axios from 'axios';
 
 interface Employee {
     id: number;
@@ -23,17 +24,22 @@ interface Employee {
     department: string;
 }
 
+interface Company {
+    id: number;
+    name: string;
+}
+
 interface TypeOption {
     value: string;
     label: string;
 }
 
 interface Props {
-    employees: Employee[];
+    companies: Company[];
     types: TypeOption[];
 }
 
-export default function LeavesCreate({ employees = [], types = [] }: Props) {
+export default function LeavesCreate({ companies = [], types = [] }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         employee_id: '',
         type: '',
@@ -46,6 +52,28 @@ export default function LeavesCreate({ employees = [], types = [] }: Props) {
     });
 
     const [fileName, setFileName] = useState<string>('');
+    const [selectedCompany, setSelectedCompany] = useState<string>('');
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+    // Fetch employees when company is selected
+    useEffect(() => {
+        if (selectedCompany) {
+            setLoadingEmployees(true);
+            axios.get(route('attendance.leaves.employees', selectedCompany))
+                .then(response => {
+                    setEmployees(response.data);
+                    setLoadingEmployees(false);
+                })
+                .catch(error => {
+                    console.error('Error fetching employees:', error);
+                    setLoadingEmployees(false);
+                });
+        } else {
+            setEmployees([]);
+            setData('employee_id', '');
+        }
+    }, [selectedCompany]);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -147,15 +175,44 @@ export default function LeavesCreate({ employees = [], types = [] }: Props) {
                                     <CardDescription>Fill in the leave request information</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
+                                    {/* Company Selection */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="company">Company *</Label>
+                                        <Select
+                                            value={selectedCompany}
+                                            onValueChange={setSelectedCompany}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select company first" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Array.isArray(companies) && companies
+                                                    .filter(company => company && company.id != null)
+                                                    .map((company) => (
+                                                        <SelectItem key={company.id} value={company.id.toString()}>
+                                                            {company.name}
+                                                        </SelectItem>
+                                                    ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     {/* Employee Selection */}
                                     <div className="space-y-2">
                                         <Label htmlFor="employee_id">Employee *</Label>
                                         <Select
                                             value={data.employee_id}
                                             onValueChange={(value) => setData('employee_id', value)}
+                                            disabled={!selectedCompany || loadingEmployees}
                                         >
                                             <SelectTrigger className={errors.employee_id ? 'border-red-500' : ''}>
-                                                <SelectValue placeholder="Select employee" />
+                                                <SelectValue placeholder={
+                                                    !selectedCompany 
+                                                        ? "Select company first"
+                                                        : loadingEmployees 
+                                                        ? "Loading employees..."
+                                                        : "Select employee"
+                                                } />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {Array.isArray(employees) && employees

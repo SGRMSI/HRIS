@@ -28,12 +28,15 @@ interface Leave {
         name: string;
         employee_number: string;
         department: string;
+        company: string;
     };
     type: string;
     date_from: string;
     date_to: string;
     remarks: string | null;
     document_path: string | null;
+    include_saturday: boolean;
+    include_sunday: boolean;
 }
 
 interface Props {
@@ -49,8 +52,8 @@ export default function LeavesEdit({ leave, types = [] }: Props) {
         date_to: leave.date_to,
         remarks: leave.remarks || '',
         document: null as File | null,
-        include_saturday: false as boolean,
-        include_sunday: false as boolean,
+        include_saturday: leave.include_saturday || false,
+        include_sunday: leave.include_sunday || false,
     });
 
     const [fileName, setFileName] = useState<string>(leave.document_path ? leave.document_path.split('/').pop() || '' : '');
