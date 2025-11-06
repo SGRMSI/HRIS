@@ -14,6 +14,9 @@ public function run(): void
     $this->call([
         HRISSeeder::class,
         UserSeeder::class,
+        ShiftSeeder::class,
+        HolidaySeeder::class,
+        EmployeeLeaveSeeder::class,
     ]);
 }
 }
