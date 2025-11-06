@@ -4,6 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $holiday_id
+ * @property string $name
+ * @property \Carbon\Carbon $date
+ * @property string $type
+ * @property int|null $company_id
+ * @property \Carbon\Carbon $created_at
+ * @property \Carbon\Carbon $updated_at
+ */
 class Holiday extends Model
 {
     protected $primaryKey = 'holiday_id';

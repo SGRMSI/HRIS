@@ -283,7 +283,7 @@ class EmployeeLeaveController extends Controller
      * Show the form for editing the specified leave request
      *
      * @param EmployeeLeave $leave
-     * @return \Inertia\Response
+     * @return \Inertia\Response|\Illuminate\Http\RedirectResponse
      */
     public function edit(EmployeeLeave $leave)
     {
