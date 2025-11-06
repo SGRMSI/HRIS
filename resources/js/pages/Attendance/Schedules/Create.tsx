@@ -13,7 +13,13 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Save, X, Calendar, AlertTriangle } from 'lucide-react';
-import { FormEventHandler, useState } from 'react';
+import { FormEventHandler, useState, useEffect } from 'react';
+import axios from 'axios';
+
+interface Company {
+    id: number;
+    name: string;
+}
 
 interface Employee {
     id: number;
@@ -30,12 +36,13 @@ interface Shift {
 }
 
 interface Props {
-    employees: Employee[];
+    companies: Company[];
     shifts: Shift[];
 }
 
-export default function SchedulesCreate({ employees = [], shifts = [] }: Props) {
+export default function SchedulesCreate({ companies = [], shifts = [] }: Props) {
     const { data, setData, post, processing, errors } = useForm({
+        company_id: '',
         employee_id: '',
         shift_id: '',
         date_start: '',
@@ -44,6 +51,28 @@ export default function SchedulesCreate({ employees = [], shifts = [] }: Props) 
     });
 
     const [showConflictWarning, setShowConflictWarning] = useState(false);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+    // Fetch employees when company is selected
+    useEffect(() => {
+        if (data.company_id) {
+            setLoadingEmployees(true);
+            axios.get(route('attendance.schedules.employees', data.company_id))
+                .then(response => {
+                    setEmployees(response.data);
+                    setLoadingEmployees(false);
+                })
+                .catch(error => {
+                    console.error('Error loading employees:', error);
+                    setEmployees([]);
+                    setLoadingEmployees(false);
+                });
+        } else {
+            setEmployees([]);
+            setData('employee_id', '');
+        }
+    }, [data.company_id]);
 
     const selectedEmployee = employees.find(e => e.id.toString() === data.employee_id);
     const selectedShift = shifts.find(s => s.shift_id.toString() === data.shift_id);
@@ -100,15 +129,45 @@ export default function SchedulesCreate({ employees = [], shifts = [] }: Props) 
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
+                                    {/* Company Selection */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="company_id">Company *</Label>
+                                        <Select
+                                            value={data.company_id}
+                                            onValueChange={(value) => setData('company_id', value)}
+                                        >
+                                            <SelectTrigger className={errors.company_id ? 'border-red-500' : ''}>
+                                                <SelectValue placeholder="Select company" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {companies.map((company) => (
+                                                    <SelectItem key={company.id} value={company.id.toString()}>
+                                                        {company.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.company_id && (
+                                            <p className="text-sm text-red-500">{errors.company_id}</p>
+                                        )}
+                                    </div>
+
                                     {/* Employee Selection */}
                                     <div className="space-y-2">
                                         <Label htmlFor="employee_id">Employee *</Label>
                                         <Select
                                             value={data.employee_id}
                                             onValueChange={(value) => setData('employee_id', value)}
+                                            disabled={!data.company_id || loadingEmployees}
                                         >
                                             <SelectTrigger className={errors.employee_id ? 'border-red-500' : ''}>
-                                                <SelectValue placeholder="Select employee" />
+                                                <SelectValue placeholder={
+                                                    !data.company_id 
+                                                        ? "Select company first" 
+                                                        : loadingEmployees 
+                                                            ? "Loading employees..." 
+                                                            : "Select employee"
+                                                } />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {employees.map((employee) => (
@@ -120,6 +179,11 @@ export default function SchedulesCreate({ employees = [], shifts = [] }: Props) 
                                         </Select>
                                         {errors.employee_id && (
                                             <p className="text-sm text-red-500">{errors.employee_id}</p>
+                                        )}
+                                        {!data.company_id && (
+                                            <p className="text-sm text-muted-foreground">
+                                                Please select a company first to see employees
+                                            </p>
                                         )}
                                     </div>
 

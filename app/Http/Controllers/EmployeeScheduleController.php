@@ -6,6 +6,7 @@ use App\Models\EmployeeSchedule;
 use App\Models\Employee;
 use App\Models\Shift;
 use App\Models\Department;
+use App\Models\Company;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -113,19 +114,9 @@ class EmployeeScheduleController extends Controller
      */
     public function create()
     {
-        $employees = Employee::with('department')
-            ->select(['employee_id', 'first_name', 'last_name', 'employee_number', 'department_id'])
-            ->orderBy('first_name')
-            ->get()
-            ->map(fn($emp) => [
-                'id' => $emp->employee_id,
-                'name' => $emp->first_name . ' ' . $emp->last_name,
-                'employee_number' => $emp->employee_number,
-                'department' => $emp->department->name ?? 'N/A'
-            ]);
+        $companies = Company::select(['company_id as id', 'name'])->get();
 
         $shifts = Shift::select(['shift_id', 'name', 'time_in', 'time_out'])
-            ->where('is_active', true)
             ->orderBy('name')
             ->get()
             ->map(fn($shift) => [
@@ -136,7 +127,7 @@ class EmployeeScheduleController extends Controller
             ]);
 
         return Inertia::render('Attendance/Schedules/Create', [
-            'employees' => $employees,
+            'companies' => $companies,
             'shifts' => $shifts
         ]);
     }
@@ -487,4 +478,28 @@ class EmployeeScheduleController extends Controller
 
         return $query->exists();
     }
+
+    /**
+     * Get employees by company
+     *
+     * @param int $company
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getEmployeesByCompany($company)
+    {
+        $employees = Employee::with('department')
+            ->where('company_id', $company)
+            ->select(['employee_id', 'first_name', 'last_name', 'id_number', 'department_id'])
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($emp) => [
+                'id' => $emp->employee_id,
+                'name' => $emp->first_name . ' ' . $emp->last_name,
+                'employee_number' => $emp->id_number,
+                'department' => $emp->department->name ?? 'N/A'
+            ]);
+
+        return response()->json($employees);
+    }
 }
+

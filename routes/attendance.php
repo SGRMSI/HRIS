@@ -49,6 +49,7 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::get('/', [EmployeeScheduleController::class, 'index'])->name('index');
         Route::get('create', [EmployeeScheduleController::class, 'create'])->name('create');
         Route::post('/', [EmployeeScheduleController::class, 'store'])->name('store');
+        Route::get('employees/{company}', [EmployeeScheduleController::class, 'getEmployeesByCompany'])->name('employees');
         Route::get('{schedule}/edit', [EmployeeScheduleController::class, 'edit'])->name('edit');
         Route::put('{schedule}', [EmployeeScheduleController::class, 'update'])->name('update');
         Route::delete('{schedule}', [EmployeeScheduleController::class, 'destroy'])->name('destroy');
