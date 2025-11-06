@@ -76,7 +76,7 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::get('{leave}/edit', [EmployeeLeaveController::class, 'edit'])->name('edit');
         Route::put('{leave}', [EmployeeLeaveController::class, 'update'])->name('update');
         Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
-        Route::post('{leave}/approve', [EmployeeLeaveController::class, 'approve'])->name('approve');
-        Route::post('{leave}/cancel', [EmployeeLeaveController::class, 'cancel'])->name('cancel');
+        Route::post('approve', [EmployeeLeaveController::class, 'approve'])->name('approve');
+        Route::post('cancel', [EmployeeLeaveController::class, 'cancel'])->name('cancel');
     });
 });

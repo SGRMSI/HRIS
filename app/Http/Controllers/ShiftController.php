@@ -131,7 +131,7 @@ class ShiftController extends Controller
             DB::commit();
 
             return redirect()
-                ->route('shifts.index')
+                ->route('attendance.shifts.index')
                 ->with('success', 'Shift created successfully.');
 
         } catch (\Exception $e) {
@@ -244,7 +244,7 @@ class ShiftController extends Controller
             DB::commit();
 
             return redirect()
-                ->route('shifts.index')
+                ->route('attendance.shifts.index')
                 ->with('success', 'Shift updated successfully.');
 
         } catch (\Exception $e) {
@@ -296,7 +296,7 @@ class ShiftController extends Controller
             DB::commit();
 
             return redirect()
-                ->route('shifts.index')
+                ->route('attendance.shifts.index')
                 ->with('success', 'Shift deleted successfully.');
 
         } catch (\Exception $e) {
@@ -323,10 +323,14 @@ class ShiftController extends Controller
         $timeOut = Carbon::createFromFormat('H:i', $data['time_out']);
 
         // Check if shift duration is reasonable (at least 1 hour, max 24 hours)
-        $duration = $timeOut->diffInMinutes($timeIn);
-        if ($timeOut < $timeIn) {
-            // Overnight shift
-            $duration = 1440 - $timeIn->diffInMinutes($timeOut);
+        if ($timeOut->greaterThan($timeIn)) {
+            // Regular shift (same day)
+            $duration = $timeIn->diffInMinutes($timeOut);
+        } else {
+            // Overnight shift (crosses midnight)
+            $minutesToMidnight = $timeIn->diffInMinutes(Carbon::createFromFormat('H:i', '23:59')->addMinute());
+            $minutesFromMidnight = Carbon::createFromFormat('H:i', '00:00')->diffInMinutes($timeOut);
+            $duration = $minutesToMidnight + $minutesFromMidnight;
         }
 
         if ($duration < 60) {
@@ -347,19 +351,24 @@ class ShiftController extends Controller
             $breakEnd = Carbon::createFromFormat('H:i', $data['break_end']);
 
             // Break must be within shift hours
-            if ($timeOut > $timeIn) {
-                // Regular shift
-                if ($breakStart < $timeIn || $breakEnd > $timeOut) {
+            if ($timeOut->greaterThan($timeIn)) {
+                // Regular shift - break must be between time_in and time_out
+                if ($breakStart->lessThan($timeIn) || $breakEnd->greaterThan($timeOut)) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
                         'break_start' => 'Break times must be within shift hours.'
                     ]);
                 }
             }
+            // For overnight shifts, we skip this validation as it's more complex
 
             // Break duration validation
-            $breakDuration = $breakEnd->diffInMinutes($breakStart);
-            if ($breakEnd < $breakStart) {
-                $breakDuration = 1440 - $breakStart->diffInMinutes($breakEnd);
+            if ($breakEnd->greaterThan($breakStart)) {
+                $breakDuration = $breakStart->diffInMinutes($breakEnd);
+            } else {
+                // Overnight break
+                $minutesToMidnight = $breakStart->diffInMinutes(Carbon::createFromFormat('H:i', '23:59')->addMinute());
+                $minutesFromMidnight = Carbon::createFromFormat('H:i', '00:00')->diffInMinutes($breakEnd);
+                $breakDuration = $minutesToMidnight + $minutesFromMidnight;
             }
 
             if ($breakDuration < 15) {
