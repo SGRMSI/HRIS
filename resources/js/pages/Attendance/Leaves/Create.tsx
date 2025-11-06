@@ -41,13 +41,34 @@ export default function LeavesCreate({ employees = [], types = [] }: Props) {
         date_to: '',
         remarks: '',
         document: null as File | null,
+        include_saturday: false as boolean,
+        include_sunday: false as boolean,
     });
 
     const [fileName, setFileName] = useState<string>('');
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('attendance.leaves.store'));
+        
+        console.log('Submitting leave request with data:', {
+            employee_id: data.employee_id,
+            type: data.type,
+            date_from: data.date_from,
+            date_to: data.date_to,
+            remarks: data.remarks,
+            include_saturday: data.include_saturday,
+            include_sunday: data.include_sunday,
+            has_document: !!data.document
+        });
+        
+        post(route('attendance.leaves.store'), {
+            onSuccess: () => {
+                console.log('Success!');
+            },
+            onError: (errors) => {
+                console.error('Errors:', errors);
+            }
+        });
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,9 +86,29 @@ export default function LeavesCreate({ employees = [], types = [] }: Props) {
         if (!data.date_from || !data.date_to) return 0;
         const from = new Date(data.date_from);
         const to = new Date(data.date_to);
-        const diffTime = Math.abs(to.getTime() - from.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays + 1;
+        
+        let count = 0;
+        const current = new Date(from);
+        
+        while (current <= to) {
+            const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday
+            
+            // Check if we should count this day
+            const isSaturday = dayOfWeek === 6;
+            const isSunday = dayOfWeek === 0;
+            
+            const shouldCount = 
+                (!isSaturday || data.include_saturday) && 
+                (!isSunday || data.include_sunday);
+            
+            if (shouldCount) {
+                count++;
+            }
+            
+            current.setDate(current.getDate() + 1);
+        }
+        
+        return count;
     };
 
     const duration = calculateDuration();
@@ -185,6 +226,46 @@ export default function LeavesCreate({ employees = [], types = [] }: Props) {
                                                 <p className="text-sm text-red-500">{errors.date_to}</p>
                                             )}
                                         </div>
+                                    </div>
+
+                                    {/* Weekend Options */}
+                                    <div className="space-y-3">
+                                        <Label>Weekend Inclusion</Label>
+                                        <div className="flex items-start gap-6">
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="include_saturday"
+                                                    checked={data.include_saturday}
+                                                    onChange={(e) => setData('include_saturday', e.target.checked)}
+                                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                />
+                                                <Label 
+                                                    htmlFor="include_saturday" 
+                                                    className="font-normal cursor-pointer"
+                                                >
+                                                    Include Saturday
+                                                </Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="include_sunday"
+                                                    checked={data.include_sunday}
+                                                    onChange={(e) => setData('include_sunday', e.target.checked)}
+                                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                />
+                                                <Label 
+                                                    htmlFor="include_sunday" 
+                                                    className="font-normal cursor-pointer"
+                                                >
+                                                    Include Sunday
+                                                </Label>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Check these options if you want to include weekends in your leave duration calculation.
+                                        </p>
                                     </div>
 
                                     {/* Remarks */}

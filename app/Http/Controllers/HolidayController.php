@@ -333,7 +333,6 @@ class HolidayController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:2048'],
-            'company_id' => ['nullable', 'exists:companies,company_id'],
             'skip_duplicates' => ['nullable', 'boolean']
         ]);
 
@@ -342,7 +341,7 @@ class HolidayController extends Controller
 
             $file = $request->file('file');
             $import = new \App\Imports\HolidayImport(
-                $request->company_id,
+                null, // No default company - will be read from Excel
                 $request->skip_duplicates ?? true
             );
 

@@ -23,7 +23,7 @@ class HolidayExport implements FromCollection, WithHeadings, WithMapping, WithTi
      */
     public function collection()
     {
-        return Holiday::with('company:id,name')
+        return Holiday::with('company:company_id,name')
             ->when($this->filters['year'] ?? null, function ($q) {
                 $q->whereYear('date', $this->filters['year']);
             })

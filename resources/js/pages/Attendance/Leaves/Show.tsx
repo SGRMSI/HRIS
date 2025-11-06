@@ -258,7 +258,7 @@ export default function LeavesShow({ leave }: Props) {
                                 {leave.remarks && (
                                     <div>
                                         <div className="text-sm text-muted-foreground mb-2">Remarks</div>
-                                        <div className="p-3 bg-gray-50 rounded-md">
+                                        <div className="p-3 bg-muted/50 text-foreground rounded-md">
                                             {leave.remarks}
                                         </div>
                                     </div>
@@ -276,11 +276,11 @@ export default function LeavesShow({ leave }: Props) {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
                                         <div className="flex items-center gap-3">
                                             <FileText className="h-8 w-8 text-blue-500" />
                                             <div>
-                                                <div className="font-medium">Attached Document</div>
+                                                <div className="font-medium text-foreground">Attached Document</div>
                                                 <div className="text-sm text-muted-foreground">
                                                     {leave.document_path.split('/').pop()}
                                                 </div>

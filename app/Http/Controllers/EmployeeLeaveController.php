@@ -65,7 +65,7 @@ class EmployeeLeaveController extends Controller
                     'type' => $leave->type,
                     'date_from' => $leave->date_from->format('Y-m-d'),
                     'date_to' => $leave->date_to->format('Y-m-d'),
-                    'duration_days' => $leave->date_from->diffInDays($leave->date_to) + 1,
+                    'duration_days' => $leave->days_count,
                     'status' => $leave->status,
                     'remarks' => $leave->remarks,
                     'approved_by' => $leave->approver?->name,
@@ -86,7 +86,7 @@ class EmployeeLeaveController extends Controller
                 ->map(fn($group) => [
                     'count' => $group->count(),
                     'employees' => $group->pluck('employee_id')->unique()->count(),
-                    'total_days' => $group->sum(fn($l) => $l->date_from->diffInDays($l->date_to) + 1)
+                    'total_days' => $group->sum('days_count')
                 ]);
         }
 
@@ -152,10 +152,12 @@ class EmployeeLeaveController extends Controller
         $validated = $request->validate([
             'employee_id' => ['required', 'exists:employees,employee_id'],
             'type' => ['required', 'string', 'in:sick,vacation,emergency,unpaid,other'],
-            'date_from' => ['required', 'date', 'after_or_equal:today'],
+            'date_from' => ['required', 'date'],
             'date_to' => ['required', 'date', 'after_or_equal:date_from'],
             'remarks' => ['nullable', 'string', 'max:1000'],
-            'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'] // 5MB max
+            'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'], // 5MB max
+            'include_saturday' => ['nullable'],
+            'include_sunday' => ['nullable'],
         ]);
 
         try {
@@ -172,10 +174,13 @@ class EmployeeLeaveController extends Controller
                 ]);
             }
 
-            // Calculate duration
+            // Calculate duration with weekend exclusion
             $dateFrom = Carbon::parse($validated['date_from']);
             $dateTo = Carbon::parse($validated['date_to']);
-            $duration = $dateFrom->diffInDays($dateTo) + 1;
+            $includeSaturday = filter_var($validated['include_saturday'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $includeSunday = filter_var($validated['include_sunday'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            
+            $duration = $this->calculateLeaveDuration($dateFrom, $dateTo, $includeSaturday, $includeSunday);
 
             // Check leave balance (for paid leave types)
             if (in_array($validated['type'], ['sick', 'vacation'])) {
@@ -189,13 +194,11 @@ class EmployeeLeaveController extends Controller
                 }
             }
 
-            // Handle document upload
+            // Handle document upload - temporarily store in temp location
             $documentPath = null;
+            $uploadedFile = null;
             if ($request->hasFile('document')) {
-                $documentPath = $request->file('document')->store(
-                    "employee_leaves/{$validated['employee_id']}",
-                    'public'
-                );
+                $uploadedFile = $request->file('document');
             }
 
             $leave = EmployeeLeave::create([
@@ -203,10 +206,27 @@ class EmployeeLeaveController extends Controller
                 'type' => $validated['type'],
                 'date_from' => $validated['date_from'],
                 'date_to' => $validated['date_to'],
+                'days_count' => $duration,
+                'include_saturday' => $includeSaturday,
+                'include_sunday' => $includeSunday,
                 'status' => 'pending',
                 'remarks' => $validated['remarks'],
-                'document_path' => $documentPath
+                'document_path' => null // Will update after moving file
             ]);
+
+            // Now that we have leave_id, store the document in the proper location
+            if ($uploadedFile) {
+                $extension = $uploadedFile->getClientOriginalExtension();
+                $filename = 'document_' . time() . '.' . $extension;
+                $documentPath = $uploadedFile->storeAs(
+                    "leaves/{$leave->leave_id}",
+                    $filename,
+                    'local' // Private disk
+                );
+                
+                // Update the leave record with document path
+                $leave->update(['document_path' => $documentPath]);
+            }
 
             // Log the creation
             activity()
@@ -220,7 +240,7 @@ class EmployeeLeaveController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Leave request submitted successfully.');
+            return redirect()->route('attendance.leaves.index')->with('success', 'Leave request submitted successfully.');
 
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -228,11 +248,12 @@ class EmployeeLeaveController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to create leave request', [
-                'data' => $validated,
-                'error' => $e->getMessage()
+                'data' => $validated ?? $request->all(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
-            return back()->withErrors(['error' => 'Failed to create leave request.']);
+            return back()->withErrors(['error' => 'Failed to create leave request: ' . $e->getMessage()]);
         }
     }
 
@@ -245,8 +266,6 @@ class EmployeeLeaveController extends Controller
     public function show(EmployeeLeave $leave)
     {
         $leave->load(['employee.department', 'approver']);
-
-        $duration = $leave->date_from->diffInDays($leave->date_to) + 1;
 
         return Inertia::render('Attendance/Leaves/Show', [
             'leave' => [
@@ -262,7 +281,7 @@ class EmployeeLeaveController extends Controller
                 'date_to' => $leave->date_to->format('Y-m-d'),
                 'formatted_date_from' => $leave->date_from->format('F d, Y'),
                 'formatted_date_to' => $leave->date_to->format('F d, Y'),
-                'duration_days' => $duration,
+                'duration_days' => $leave->days_count,
                 'status' => $leave->status,
                 'remarks' => $leave->remarks,
                 'document_path' => $leave->document_path,
@@ -338,7 +357,9 @@ class EmployeeLeaveController extends Controller
             'date_from' => ['required', 'date'],
             'date_to' => ['required', 'date', 'after_or_equal:date_from'],
             'remarks' => ['nullable', 'string', 'max:1000'],
-            'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120']
+            'document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'include_saturday' => ['nullable'],
+            'include_sunday' => ['nullable'],
         ]);
 
         try {
@@ -356,10 +377,13 @@ class EmployeeLeaveController extends Controller
                 ]);
             }
 
-            // Calculate new duration
+            // Calculate new duration with weekend exclusion
             $dateFrom = Carbon::parse($validated['date_from']);
             $dateTo = Carbon::parse($validated['date_to']);
-            $duration = $dateFrom->diffInDays($dateTo) + 1;
+            $includeSaturday = filter_var($validated['include_saturday'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $includeSunday = filter_var($validated['include_sunday'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            
+            $duration = $this->calculateLeaveDuration($dateFrom, $dateTo, $includeSaturday, $includeSunday);
 
             // Check leave balance
             if (in_array($validated['type'], ['sick', 'vacation'])) {
@@ -376,18 +400,27 @@ class EmployeeLeaveController extends Controller
             if ($request->hasFile('document')) {
                 // Delete old document if exists
                 if ($leave->document_path) {
-                    Storage::disk('public')->delete($leave->document_path);
+                    Storage::disk('local')->delete($leave->document_path);
                 }
                 
-                $documentPath = $request->file('document')->store(
-                    "employee_leaves/{$leave->employee_id}",
-                    'public'
+                $uploadedFile = $request->file('document');
+                $extension = $uploadedFile->getClientOriginalExtension();
+                $filename = 'document_' . time() . '.' . $extension;
+                $documentPath = $uploadedFile->storeAs(
+                    "leaves/{$leave->leave_id}",
+                    $filename,
+                    'local' // Private disk
                 );
                 $validated['document_path'] = $documentPath;
             }
 
             // Record old state
             $oldState = $leave->getAttributes();
+
+            // Add calculated fields to validated data
+            $validated['days_count'] = $duration;
+            $validated['include_saturday'] = $includeSaturday;
+            $validated['include_sunday'] = $includeSunday;
 
             $leave->update($validated);
 
@@ -403,7 +436,7 @@ class EmployeeLeaveController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Leave request updated successfully.');
+            return redirect()->route('attendance.leaves.index')->with('success', 'Leave request updated successfully.');
 
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -630,5 +663,56 @@ class EmployeeLeaveController extends Controller
         // Implementation depends on your approval hierarchy
         // This is a placeholder
         Log::info("Notification sent to approvers for leave {$leave->leave_id}");
+    }
+
+    /**
+     * Calculate leave duration excluding weekends if specified
+     */
+    private function calculateLeaveDuration(Carbon $dateFrom, Carbon $dateTo, bool $includeSaturday, bool $includeSunday): int
+    {
+        $count = 0;
+        $current = $dateFrom->copy();
+        
+        while ($current->lte($dateTo)) {
+            $dayOfWeek = $current->dayOfWeek; // 0 = Sunday, 6 = Saturday
+            
+            // Check if we should count this day
+            $isSaturday = $dayOfWeek === Carbon::SATURDAY;
+            $isSunday = $dayOfWeek === Carbon::SUNDAY;
+            
+            $shouldCount = 
+                (!$isSaturday || $includeSaturday) && 
+                (!$isSunday || $includeSunday);
+            
+            if ($shouldCount) {
+                $count++;
+            }
+            
+            $current->addDay();
+        }
+        
+        return $count;
+    }
+
+    /**
+     * Download leave document
+     *
+     * @param EmployeeLeave $leave
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function downloadDocument(EmployeeLeave $leave)
+    {
+        if (!$leave->document_path) {
+            abort(404, 'No document found');
+        }
+
+        if (!Storage::disk('local')->exists($leave->document_path)) {
+            abort(404, 'Document file not found');
+        }
+
+        $filePath = Storage::disk('local')->path($leave->document_path);
+        $filename = basename($leave->document_path);
+        
+        return response()->download($filePath, $filename);
     }
 }

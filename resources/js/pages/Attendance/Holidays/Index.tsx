@@ -109,7 +109,6 @@ export default function HolidaysIndex({
     const [showImportDialog, setShowImportDialog] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
     const [skipDuplicates, setSkipDuplicates] = useState(true);
-    const [selectedCompanyForImport, setSelectedCompanyForImport] = useState<string>('');
 
     const handleFilter = (key: string, value: string | number) => {
         const filterValue = value === 'all' || value === '' ? undefined : value;
@@ -145,17 +144,17 @@ export default function HolidaysIndex({
         const formData = new FormData();
         formData.append('file', importFile);
         formData.append('skip_duplicates', skipDuplicates ? '1' : '0');
-        if (selectedCompanyForImport) {
-            formData.append('company_id', selectedCompanyForImport);
-        }
 
         router.post(route('attendance.holidays.import'), formData, {
             onSuccess: () => {
                 setShowImportDialog(false);
                 setImportFile(null);
-                setSelectedCompanyForImport('');
             }
         });
+    };
+
+    const handleDownloadTemplate = () => {
+        window.location.href = route('attendance.holidays.export');
     };
 
     const handleExport = () => {
@@ -447,30 +446,24 @@ export default function HolidaysIndex({
                                 onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                             />
                             <p className="text-sm text-muted-foreground">
-                                Required columns: name, date, type
+                                Required columns: name, date, type, company_id (optional)
                             </p>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="import_company">Company (Optional)</Label>
-                            <Select
-                                value={selectedCompanyForImport || 'none'}
-                                onValueChange={(value) => setSelectedCompanyForImport(value === 'none' ? '' : value)}
+                            <Label>Download Template</Label>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={handleDownloadTemplate}
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select company" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">None - All Companies</SelectItem>
-                                    {Array.isArray(companies) && companies
-                                        .filter(company => company && company.id != null)
-                                        .map((company) => (
-                                            <SelectItem key={company.id} value={company.id.toString()}>
-                                                {company.name}
-                                            </SelectItem>
-                                        ))}
-                                </SelectContent>
-                            </Select>
+                                <Download className="mr-2 h-4 w-4" />
+                                Download Current Holidays as Template
+                            </Button>
+                            <p className="text-sm text-muted-foreground">
+                                Downloads all existing holidays which you can use as a template
+                            </p>
                         </div>
 
                         <div className="flex items-center space-x-2">
