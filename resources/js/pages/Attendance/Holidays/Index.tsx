@@ -126,7 +126,8 @@ export default function HolidaysIndex({
     };
 
     const handleYearChange = (increment: number) => {
-        const newYear = (filters.year || currentYear) + increment;
+        const currentYearValue = filters.year ? Number(filters.year) : currentYear;
+        const newYear = currentYearValue + increment;
         handleFilter('year', newYear);
     };
 
@@ -179,7 +180,7 @@ export default function HolidaysIndex({
         }
     };
 
-    const displayYear = filters.year || currentYear;
+    const displayYear = filters.year ? Number(filters.year) : currentYear;
 
     return (
         <AppLayout

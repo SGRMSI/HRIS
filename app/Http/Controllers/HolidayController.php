@@ -71,7 +71,7 @@ class HolidayController extends Controller
         return Inertia::render('Attendance/Holidays/Index', [
             'holidays' => $holidays,
             'filters' => $request->only(['year', 'company_id', 'type', 'search']),
-            'companies' => Company::select(['id', 'name'])->get(),
+            'companies' => Company::select(['company_id as id', 'name'])->get(),
             'types' => [
                 ['value' => 'regular', 'label' => 'Regular Holiday'],
                 ['value' => 'special', 'label' => 'Special Non-Working'],
@@ -90,7 +90,7 @@ class HolidayController extends Controller
     public function create()
     {
         return Inertia::render('Attendance/Holidays/Create', [
-            'companies' => Company::select(['id', 'name'])->get(),
+            'companies' => Company::select(['company_id as id', 'name'])->get(),
             'types' => [
                 ['value' => 'regular', 'label' => 'Regular Holiday'],
                 ['value' => 'special', 'label' => 'Special Non-Working'],
@@ -111,7 +111,7 @@ class HolidayController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],
             'type' => ['required', 'string', 'in:regular,special,company'],
-            'company_id' => ['nullable', 'exists:companies,id'],
+            'company_id' => ['nullable', 'exists:companies,company_id'],
             'description' => ['nullable', 'string', 'max:500']
         ]);
 
@@ -125,15 +125,21 @@ class HolidayController extends Controller
         try {
             DB::beginTransaction();
 
-            // Check for duplicates
-            $duplicate = Holiday::where('date', $validated['date'])
-                ->where('company_id', $validated['company_id'] ?? null)
-                ->where('type', $validated['type'])
-                ->exists();
-
-            if ($duplicate) {
+            // Check for duplicates - same date and type
+            // For company-specific holidays, also check company_id
+            $duplicateQuery = Holiday::where('date', $validated['date']);
+            
+            if ($validated['type'] === 'company' && isset($validated['company_id'])) {
+                // Check for same company-specific holiday
+                $duplicateQuery->where('company_id', $validated['company_id']);
+            } elseif ($validated['type'] !== 'company') {
+                // Check for regular/special holidays (should be unique by date regardless of company)
+                $duplicateQuery->whereIn('type', ['regular', 'special']);
+            }
+            
+            if ($duplicateQuery->exists()) {
                 return back()->withErrors([
-                    'date' => 'A holiday already exists for this date and company.'
+                    'date' => 'A holiday already exists for this date.'
                 ])->withInput();
             }
 
@@ -152,7 +158,9 @@ class HolidayController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Holiday created successfully.');
+            return redirect()
+                ->route('attendance.holidays.index')
+                ->with('success', 'Holiday created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -183,11 +191,11 @@ class HolidayController extends Controller
                 'type' => $holiday->type,
                 'company_id' => $holiday->company_id,
                 'company' => $holiday->company ? [
-                    'id' => $holiday->company->id,
+                    'id' => $holiday->company->company_id,
                     'name' => $holiday->company->name
                 ] : null
             ],
-            'companies' => Company::select(['id', 'name'])->get(),
+            'companies' => Company::select(['company_id as id', 'name'])->get(),
             'types' => [
                 ['value' => 'regular', 'label' => 'Regular Holiday'],
                 ['value' => 'special', 'label' => 'Special Non-Working'],
@@ -209,7 +217,7 @@ class HolidayController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],
             'type' => ['required', 'string', 'in:regular,special,company'],
-            'company_id' => ['nullable', 'exists:companies,id']
+            'company_id' => ['nullable', 'exists:companies,company_id']
         ]);
 
         // Additional validation
@@ -223,15 +231,20 @@ class HolidayController extends Controller
             DB::beginTransaction();
 
             // Check for duplicates (excluding current holiday)
-            $duplicate = Holiday::where('date', $validated['date'])
-                ->where('company_id', $validated['company_id'] ?? null)
-                ->where('type', $validated['type'])
-                ->where('holiday_id', '!=', $holiday->holiday_id)
-                ->exists();
-
-            if ($duplicate) {
+            $duplicateQuery = Holiday::where('date', $validated['date'])
+                ->where('holiday_id', '!=', $holiday->holiday_id);
+            
+            if ($validated['type'] === 'company' && isset($validated['company_id'])) {
+                // Check for same company-specific holiday
+                $duplicateQuery->where('company_id', $validated['company_id']);
+            } elseif ($validated['type'] !== 'company') {
+                // Check for regular/special holidays (should be unique by date regardless of company)
+                $duplicateQuery->whereIn('type', ['regular', 'special']);
+            }
+            
+            if ($duplicateQuery->exists()) {
                 return back()->withErrors([
-                    'date' => 'A holiday already exists for this date and company.'
+                    'date' => 'A holiday already exists for this date.'
                 ])->withInput();
             }
 
@@ -257,7 +270,9 @@ class HolidayController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Holiday updated successfully.');
+            return redirect()
+                ->route('attendance.holidays.index')
+                ->with('success', 'Holiday updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();

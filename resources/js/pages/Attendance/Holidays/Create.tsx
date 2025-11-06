@@ -32,17 +32,25 @@ interface Props {
 }
 
 export default function HolidaysCreate({ companies = [], types = [] }: Props) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         date: '',
         type: '',
-        company_id: '',
+        company_id: null as string | null,
         description: '',
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('attendance.holidays.store'));
+        
+        post(route('attendance.holidays.store'), {
+            onSuccess: () => {
+                // Will be redirected by the controller
+            },
+            onError: (errors) => {
+                console.error('Form validation errors:', errors);
+            },
+        });
     };
 
     const selectedType = types.find(t => t.value === data.type);
@@ -139,7 +147,7 @@ export default function HolidaysCreate({ companies = [], types = [] }: Props) {
                                         <div className="space-y-2">
                                             <Label htmlFor="company_id">Company *</Label>
                                             <Select
-                                                value={data.company_id}
+                                                value={data.company_id || ''}
                                                 onValueChange={(value) => setData('company_id', value)}
                                             >
                                                 <SelectTrigger className={errors.company_id ? 'border-red-500' : ''}>
@@ -222,7 +230,7 @@ export default function HolidaysCreate({ companies = [], types = [] }: Props) {
 
                                         <div className="border-t pt-3">
                                             <div className="text-sm text-muted-foreground">Type</div>
-                                            <div className="font-medium">{selectedType.label}</div>
+                                            <div className="font-medium">{selectedType?.label}</div>
                                         </div>
 
                                         {data.type === 'company' && data.company_id && (

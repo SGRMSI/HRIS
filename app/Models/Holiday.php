@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Holiday extends Model
 {
     protected $primaryKey = 'holiday_id';
-    public $timestamps = ['created_at'];
+    public $timestamps = true;
 
     protected $fillable = [
         'name',
