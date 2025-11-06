@@ -30,7 +30,7 @@ class EmployeeScheduleController extends Controller
                 $q->whereHas('employee', function ($q) use ($request) {
                     $q->where('first_name', 'like', "%{$request->employee_search}%")
                       ->orWhere('last_name', 'like', "%{$request->employee_search}%")
-                      ->orWhere('employee_number', 'like', "%{$request->employee_search}%");
+                      ->orWhere('id_number', 'like', "%{$request->employee_search}%");
                 });
             })
             ->when($request->company_id, function ($q) use ($request) {
@@ -68,7 +68,7 @@ class EmployeeScheduleController extends Controller
                     'employee' => [
                         'id' => $schedule->employee->id,
                         'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
-                        'employee_number' => $schedule->employee->employee_number,
+                        'employee_number' => $schedule->employee->id_number,
                         'department' => $schedule->employee->department->name ?? 'N/A',
                         'company' => $schedule->employee->department->company->name ?? 'N/A'
                     ],
@@ -210,7 +210,7 @@ class EmployeeScheduleController extends Controller
             'employee' => [
                 'id' => $schedule->employee->id,
                 'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
-                'employee_number' => $schedule->employee->employee_number,
+                'employee_number' => $schedule->employee->id_number,
                 'department' => $schedule->employee->department->name ?? 'N/A'
             ],
             'shift_id' => $schedule->shift_id,
