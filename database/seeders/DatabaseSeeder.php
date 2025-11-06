@@ -15,6 +15,7 @@ public function run(): void
         HRISSeeder::class,
         UserSeeder::class,
         ShiftSeeder::class,
+        EmployeeScheduleSeeder::class,
         HolidaySeeder::class,
         EmployeeLeaveSeeder::class,
     ]);

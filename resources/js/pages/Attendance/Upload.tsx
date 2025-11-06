@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileUpload } from '@/components/attendance/file-upload';
@@ -54,6 +54,10 @@ export default function Upload({ batches, flash }: UploadPageProps) {
             onSuccess: () => {
                 reset();
                 setSelectedFile(null);
+                // Set flag so raw data page knows to reload fresh data
+                sessionStorage.setItem('attendance_uploaded', 'true');
+                // Clear Inertia cache for raw data page so it shows fresh data
+                router.reload({ only: ['batches'] });
             },
             onError: (errors) => {
                 console.error('Upload errors:', errors);

@@ -1,10 +1,11 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BatchCard } from '@/components/attendance/batch-card';
 import { FileText, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useEffect } from 'react';
 
 interface Batch {
     id: number;
@@ -27,6 +28,15 @@ interface RawIndexProps {
 }
 
 export default function RawIndex({ batches }: RawIndexProps) {
+    // Force reload data when component mounts to prevent stale cache
+    useEffect(() => {
+        const hasNavigatedFromUpload = sessionStorage.getItem('attendance_uploaded');
+        if (hasNavigatedFromUpload) {
+            router.reload({ only: ['batches'] });
+            sessionStorage.removeItem('attendance_uploaded');
+        }
+    }, []);
+
     return (
         <AppLayout
             breadcrumbs={[

@@ -1,10 +1,12 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Table,
     TableBody,
@@ -112,6 +114,17 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
     const [employeeSearch, setEmployeeSearch] = useState(filters.employee_search || '');
     const [deleteSchedule, setDeleteSchedule] = useState<Schedule | null>(null);
     const [showBulkDialog, setShowBulkDialog] = useState(false);
+    
+    // Bulk assignment form state
+    const [bulkCompanyId, setBulkCompanyId] = useState('');
+    const [bulkEmployees, setBulkEmployees] = useState<Employee[]>([]);
+    const [bulkSelectedEmployees, setBulkSelectedEmployees] = useState<number[]>([]);
+    const [bulkShiftId, setBulkShiftId] = useState('');
+    const [bulkDateStart, setBulkDateStart] = useState('');
+    const [bulkDateEnd, setBulkDateEnd] = useState('');
+    const [bulkCloseExisting, setBulkCloseExisting] = useState(false);
+    const [loadingBulkEmployees, setLoadingBulkEmployees] = useState(false);
+    const [processingBulk, setProcessingBulk] = useState(false);
 
     const handleFilter = (key: string, value: string | number) => {
         const filterValue = value === 'all' || value === '' ? undefined : value;
@@ -138,6 +151,83 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
                 setDeleteSchedule(null);
             },
         });
+    };
+
+    // Load employees when company is selected for bulk assignment
+    useEffect(() => {
+        if (bulkCompanyId && showBulkDialog) {
+            setLoadingBulkEmployees(true);
+            axios.get(route('attendance.schedules.employees', bulkCompanyId))
+                .then(response => {
+                    setBulkEmployees(response.data);
+                    setLoadingBulkEmployees(false);
+                })
+                .catch(error => {
+                    console.error('Error loading employees:', error);
+                    setBulkEmployees([]);
+                    setLoadingBulkEmployees(false);
+                });
+        } else {
+            setBulkEmployees([]);
+            setBulkSelectedEmployees([]);
+        }
+    }, [bulkCompanyId, showBulkDialog]);
+
+    const handleBulkSubmit = () => {
+        if (bulkSelectedEmployees.length === 0) {
+            alert('Please select at least one employee');
+            return;
+        }
+        if (!bulkShiftId) {
+            alert('Please select a shift');
+            return;
+        }
+        if (!bulkDateStart) {
+            alert('Please select a start date');
+            return;
+        }
+
+        setProcessingBulk(true);
+
+        router.post(route('attendance.schedules.bulk'), {
+            employee_ids: bulkSelectedEmployees,
+            shift_id: bulkShiftId,
+            date_start: bulkDateStart,
+            date_end: bulkDateEnd || null,
+            close_existing: bulkCloseExisting,
+        }, {
+            onSuccess: () => {
+                setShowBulkDialog(false);
+                // Reset form
+                setBulkCompanyId('');
+                setBulkEmployees([]);
+                setBulkSelectedEmployees([]);
+                setBulkShiftId('');
+                setBulkDateStart('');
+                setBulkDateEnd('');
+                setBulkCloseExisting(false);
+                setProcessingBulk(false);
+            },
+            onError: () => {
+                setProcessingBulk(false);
+            }
+        });
+    };
+
+    const toggleAllEmployees = () => {
+        if (bulkSelectedEmployees.length === bulkEmployees.length) {
+            setBulkSelectedEmployees([]);
+        } else {
+            setBulkSelectedEmployees(bulkEmployees.map(e => e.id));
+        }
+    };
+
+    const toggleEmployee = (employeeId: number) => {
+        if (bulkSelectedEmployees.includes(employeeId)) {
+            setBulkSelectedEmployees(bulkSelectedEmployees.filter(id => id !== employeeId));
+        } else {
+            setBulkSelectedEmployees([...bulkSelectedEmployees, employeeId]);
+        }
     };
 
     const formatDate = (date: string) => {
@@ -454,22 +544,159 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
 
             {/* Bulk Assignment Dialog */}
             <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
-                <DialogContent>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Bulk Schedule Assignment</DialogTitle>
                         <DialogDescription>
-                            This feature will be available soon. Use the Create Schedule form for individual assignments.
+                            Assign the same shift schedule to multiple employees at once
                         </DialogDescription>
                     </DialogHeader>
+
+                    <div className="space-y-6 py-4">
+                        {/* Company Selection */}
+                        <div className="space-y-2">
+                            <Label htmlFor="bulk_company">Company *</Label>
+                            <Select value={bulkCompanyId} onValueChange={setBulkCompanyId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select company" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {companies.map((company) => (
+                                        <SelectItem key={company.id} value={company.id.toString()}>
+                                            {company.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Employee Selection */}
+                        {bulkCompanyId && (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label>Select Employees *</Label>
+                                    {bulkEmployees.length > 0 && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={toggleAllEmployees}
+                                        >
+                                            {bulkSelectedEmployees.length === bulkEmployees.length ? 'Deselect All' : 'Select All'}
+                                        </Button>
+                                    )}
+                                </div>
+                                
+                                {loadingBulkEmployees ? (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        Loading employees...
+                                    </div>
+                                ) : bulkEmployees.length === 0 ? (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        No employees found for this company
+                                    </div>
+                                ) : (
+                                    <div className="border rounded-md max-h-60 overflow-y-auto">
+                                        <div className="divide-y">
+                                            {bulkEmployees.map((employee) => (
+                                                <div
+                                                    key={employee.id}
+                                                    className="flex items-center space-x-3 p-3 hover:bg-muted cursor-pointer"
+                                                    onClick={() => toggleEmployee(employee.id)}
+                                                >
+                                                    <Checkbox
+                                                        checked={bulkSelectedEmployees.includes(employee.id)}
+                                                        onCheckedChange={() => toggleEmployee(employee.id)}
+                                                    />
+                                                    <div className="flex-1">
+                                                        <div className="font-medium">{employee.name}</div>
+                                                        <div className="text-sm text-muted-foreground">
+                                                            {employee.department} - #{employee.employee_number}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {bulkSelectedEmployees.length > 0 && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {bulkSelectedEmployees.length} employee(s) selected
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Shift Selection */}
+                        <div className="space-y-2">
+                            <Label htmlFor="bulk_shift">Shift *</Label>
+                            <Select value={bulkShiftId} onValueChange={setBulkShiftId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select shift" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {shifts.map((shift) => (
+                                        <SelectItem key={shift.shift_id} value={shift.shift_id.toString()}>
+                                            {shift.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Date Range */}
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="bulk_date_start">Start Date *</Label>
+                                <Input
+                                    id="bulk_date_start"
+                                    type="date"
+                                    value={bulkDateStart}
+                                    onChange={(e) => setBulkDateStart(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="bulk_date_end">End Date (Optional)</Label>
+                                <Input
+                                    id="bulk_date_end"
+                                    type="date"
+                                    value={bulkDateEnd}
+                                    onChange={(e) => setBulkDateEnd(e.target.value)}
+                                    min={bulkDateStart}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Close Existing Option */}
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="bulk_close_existing"
+                                checked={bulkCloseExisting}
+                                onCheckedChange={(checked) => setBulkCloseExisting(checked as boolean)}
+                            />
+                            <Label htmlFor="bulk_close_existing" className="cursor-pointer">
+                                Close existing ongoing schedules for selected employees
+                            </Label>
+                        </div>
+
+                        {bulkCloseExisting && (
+                            <Alert>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                    This will automatically end any ongoing schedules (without end date) one day before the new start date.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+                    </div>
+
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowBulkDialog(false)}>
-                            Close
+                        <Button variant="outline" onClick={() => setShowBulkDialog(false)} disabled={processingBulk}>
+                            Cancel
                         </Button>
-                        <Link href={route('attendance.schedules.create')}>
-                            <Button onClick={() => setShowBulkDialog(false)}>
-                                Create Schedule
-                            </Button>
-                        </Link>
+                        <Button onClick={handleBulkSubmit} disabled={processingBulk}>
+                            <Users className="mr-2 h-4 w-4" />
+                            {processingBulk ? 'Assigning...' : `Assign to ${bulkSelectedEmployees.length} Employee(s)`}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
