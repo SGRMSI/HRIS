@@ -58,6 +58,7 @@ interface Employee {
     name: string;
     employee_number: string;
     department: string;
+    company: string;
 }
 
 interface Shift {
@@ -78,7 +79,7 @@ interface Schedule {
     is_active: boolean;
 }
 
-interface Department {
+interface Company {
     id: number;
     name: string;
 }
@@ -98,17 +99,16 @@ interface Props {
     };
     filters: {
         employee_search?: string;
-        department_id?: number;
+        company_id?: number;
         shift_id?: number;
         date_from?: string;
         date_to?: string;
     };
-    departments: Department[];
+    companies: Company[];
     shifts: ShiftOption[];
-    departmentGroups?: Record<string, { count: number; employees: number }>;
 }
 
-export default function SchedulesIndex({ schedules, filters = {}, departments = [], shifts = [] }: Props) {
+export default function SchedulesIndex({ schedules, filters = {}, companies = [], shifts = [] }: Props) {
     const [employeeSearch, setEmployeeSearch] = useState(filters.employee_search || '');
     const [deleteSchedule, setDeleteSchedule] = useState<Schedule | null>(null);
     const [showBulkDialog, setShowBulkDialog] = useState(false);
@@ -207,21 +207,21 @@ export default function SchedulesIndex({ schedules, filters = {}, departments = 
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Department</Label>
+                                <Label>Company</Label>
                                 <Select 
-                                    value={filters.department_id?.toString() || 'all'}
-                                    onValueChange={(value) => handleFilter('department_id', value)}
+                                    value={filters.company_id?.toString() || 'all'}
+                                    onValueChange={(value) => handleFilter('company_id', value)}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="All Departments" />
+                                        <SelectValue placeholder="All Companies" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Departments</SelectItem>
-                                        {Array.isArray(departments) && departments
-                                            .filter(dept => dept && dept.id != null)
-                                            .map((dept) => (
-                                                <SelectItem key={dept.id} value={dept.id.toString()}>
-                                                    {dept.name}
+                                        <SelectItem value="all">All Companies</SelectItem>
+                                        {Array.isArray(companies) && companies
+                                            .filter(company => company && company.id != null)
+                                            .map((company) => (
+                                                <SelectItem key={company.id} value={company.id.toString()}>
+                                                    {company.name}
                                                 </SelectItem>
                                             ))}
                                     </SelectContent>
@@ -277,8 +277,8 @@ export default function SchedulesIndex({ schedules, filters = {}, departments = 
                     </CardHeader>
                     <CardContent>
                         {schedules.data.length === 0 ? (
-                            <div className="py-12 text-center text-gray-500">
-                                <Calendar className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                            <div className="py-12 text-center text-muted-foreground">
+                                <Calendar className="mx-auto mb-4 h-12 w-12 opacity-20" />
                                 <p className="text-lg font-medium">No schedules found</p>
                                 <p className="mt-1 text-sm">
                                     {Object.keys(filters).length > 0
@@ -293,7 +293,7 @@ export default function SchedulesIndex({ schedules, filters = {}, departments = 
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Employee</TableHead>
-                                                <TableHead>Department</TableHead>
+                                                <TableHead>Company</TableHead>
                                                 <TableHead>Shift</TableHead>
                                                 <TableHead>Start Date</TableHead>
                                                 <TableHead>End Date</TableHead>
@@ -307,16 +307,23 @@ export default function SchedulesIndex({ schedules, filters = {}, departments = 
                                                     <TableCell>
                                                         <div>
                                                             <div className="font-medium">{schedule.employee.name}</div>
-                                                            <div className="text-sm text-gray-500">
+                                                            <div className="text-sm text-muted-foreground">
                                                                 #{schedule.employee.employee_number}
                                                             </div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell>{schedule.employee.department}</TableCell>
+                                                    <TableCell>
+                                                        <div>
+                                                            <div className="font-medium">{schedule.employee.company}</div>
+                                                            <div className="text-sm text-muted-foreground">
+                                                                {schedule.employee.department}
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
                                                     <TableCell>
                                                         <div>
                                                             <div className="font-medium">{schedule.shift.name}</div>
-                                                            <div className="text-sm text-gray-500">
+                                                            <div className="text-sm text-muted-foreground">
                                                                 {schedule.shift.time_in} - {schedule.shift.time_out}
                                                             </div>
                                                         </div>
@@ -324,13 +331,13 @@ export default function SchedulesIndex({ schedules, filters = {}, departments = 
                                                     <TableCell>{formatDate(schedule.date_start)}</TableCell>
                                                     <TableCell>
                                                         {schedule.date_end ? formatDate(schedule.date_end) : (
-                                                            <span className="text-gray-400">Ongoing</span>
+                                                            <span className="text-muted-foreground">Ongoing</span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-col gap-1">
                                                             {schedule.is_active ? (
-                                                                <Badge variant="default" className="bg-green-600 w-fit">
+                                                                <Badge variant="default" className="bg-green-600 hover:bg-green-700 w-fit">
                                                                     Active
                                                                 </Badge>
                                                             ) : (
@@ -359,7 +366,7 @@ export default function SchedulesIndex({ schedules, filters = {}, departments = 
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => setDeleteSchedule(schedule)}
-                                                                className="text-red-600 hover:text-red-700"
+                                                                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -374,7 +381,7 @@ export default function SchedulesIndex({ schedules, filters = {}, departments = 
                                 {/* Pagination */}
                                 {schedules.last_page > 1 && (
                                     <div className="mt-6 flex items-center justify-between">
-                                        <div className="text-sm text-gray-500">
+                                        <div className="text-sm text-muted-foreground">
                                             Showing {(schedules.current_page - 1) * schedules.per_page + 1} to{' '}
                                             {Math.min(schedules.current_page * schedules.per_page, schedules.total)} of{' '}
                                             {schedules.total} schedules

@@ -108,11 +108,11 @@ export default function SchedulesEdit({ schedule, shifts = [] }: Props) {
                                     {/* Employee Display (Read-only) */}
                                     <div className="space-y-2">
                                         <Label>Employee</Label>
-                                        <div className="flex items-center gap-3 rounded-md border p-3 bg-gray-50">
-                                            <User className="h-5 w-5 text-gray-500" />
+                                        <div className="flex items-center gap-3 rounded-md border p-3 bg-muted">
+                                            <User className="h-5 w-5 text-muted-foreground" />
                                             <div>
                                                 <div className="font-medium">{schedule.employee.name}</div>
-                                                <div className="text-sm text-gray-500">
+                                                <div className="text-sm text-muted-foreground">
                                                     {schedule.employee.department} - #{schedule.employee.employee_number}
                                                 </div>
                                             </div>
@@ -127,7 +127,15 @@ export default function SchedulesEdit({ schedule, shifts = [] }: Props) {
                                             onValueChange={(value) => setData('shift_id', value)}
                                         >
                                             <SelectTrigger className={errors.shift_id ? 'border-red-500' : ''}>
-                                                <SelectValue placeholder="Select shift" />
+                                                <SelectValue placeholder="Select shift">
+                                                    {selectedShift ? (
+                                                        <span>
+                                                            {selectedShift.name} ({selectedShift.time_in} - {selectedShift.time_out})
+                                                        </span>
+                                                    ) : (
+                                                        'Select shift'
+                                                    )}
+                                                </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {shifts.map((shift) => (
@@ -219,7 +227,7 @@ export default function SchedulesEdit({ schedule, shifts = [] }: Props) {
                                         <div>
                                             <div className="text-sm text-muted-foreground">Employee</div>
                                             <div className="font-medium">{schedule.employee.name}</div>
-                                            <div className="text-sm text-gray-500">
+                                            <div className="text-sm text-muted-foreground">
                                                 {schedule.employee.department}
                                             </div>
                                         </div>
@@ -227,7 +235,7 @@ export default function SchedulesEdit({ schedule, shifts = [] }: Props) {
                                         <div className="border-t pt-3">
                                             <div className="text-sm text-muted-foreground">Shift</div>
                                             <div className="font-medium">{selectedShift.name}</div>
-                                            <div className="text-sm text-gray-500">
+                                            <div className="text-sm text-muted-foreground">
                                                 {selectedShift.time_in} - {selectedShift.time_out}
                                             </div>
                                         </div>
@@ -237,7 +245,7 @@ export default function SchedulesEdit({ schedule, shifts = [] }: Props) {
                                             <div className="font-medium">
                                                 {formatDate(data.date_start)}
                                             </div>
-                                            <div className="text-sm text-gray-500">
+                                            <div className="text-sm text-muted-foreground">
                                                 {data.date_end ? (
                                                     <>to {formatDate(data.date_end)}</>
                                                 ) : (

@@ -42,7 +42,6 @@ interface Props {
 
 export default function SchedulesCreate({ companies = [], shifts = [] }: Props) {
     const { data, setData, post, processing, errors } = useForm({
-        company_id: '',
         employee_id: '',
         shift_id: '',
         date_start: '',
@@ -53,12 +52,13 @@ export default function SchedulesCreate({ companies = [], shifts = [] }: Props) 
     const [showConflictWarning, setShowConflictWarning] = useState(false);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loadingEmployees, setLoadingEmployees] = useState(false);
+    const [selectedCompanyId, setSelectedCompanyId] = useState('');
 
     // Fetch employees when company is selected
     useEffect(() => {
-        if (data.company_id) {
+        if (selectedCompanyId) {
             setLoadingEmployees(true);
-            axios.get(route('attendance.schedules.employees', data.company_id))
+            axios.get(route('attendance.schedules.employees', selectedCompanyId))
                 .then(response => {
                     setEmployees(response.data);
                     setLoadingEmployees(false);
@@ -72,14 +72,23 @@ export default function SchedulesCreate({ companies = [], shifts = [] }: Props) 
             setEmployees([]);
             setData('employee_id', '');
         }
-    }, [data.company_id]);
+    }, [selectedCompanyId]);
 
     const selectedEmployee = employees.find(e => e.id.toString() === data.employee_id);
     const selectedShift = shifts.find(s => s.shift_id.toString() === data.shift_id);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('attendance.schedules.store'));
+        console.log('Form submitted with data:', data);
+        post(route('attendance.schedules.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                console.log('Schedule created successfully');
+            },
+            onError: (errors) => {
+                console.error('Validation errors:', errors);
+            }
+        });
     };
 
     const formatDate = (date: string) => {
@@ -133,10 +142,10 @@ export default function SchedulesCreate({ companies = [], shifts = [] }: Props) 
                                     <div className="space-y-2">
                                         <Label htmlFor="company_id">Company *</Label>
                                         <Select
-                                            value={data.company_id}
-                                            onValueChange={(value) => setData('company_id', value)}
+                                            value={selectedCompanyId}
+                                            onValueChange={(value) => setSelectedCompanyId(value)}
                                         >
-                                            <SelectTrigger className={errors.company_id ? 'border-red-500' : ''}>
+                                            <SelectTrigger>
                                                 <SelectValue placeholder="Select company" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -147,9 +156,6 @@ export default function SchedulesCreate({ companies = [], shifts = [] }: Props) 
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        {errors.company_id && (
-                                            <p className="text-sm text-red-500">{errors.company_id}</p>
-                                        )}
                                     </div>
 
                                     {/* Employee Selection */}
@@ -158,11 +164,11 @@ export default function SchedulesCreate({ companies = [], shifts = [] }: Props) 
                                         <Select
                                             value={data.employee_id}
                                             onValueChange={(value) => setData('employee_id', value)}
-                                            disabled={!data.company_id || loadingEmployees}
+                                            disabled={!selectedCompanyId || loadingEmployees}
                                         >
                                             <SelectTrigger className={errors.employee_id ? 'border-red-500' : ''}>
                                                 <SelectValue placeholder={
-                                                    !data.company_id 
+                                                    !selectedCompanyId 
                                                         ? "Select company first" 
                                                         : loadingEmployees 
                                                             ? "Loading employees..." 
@@ -180,7 +186,7 @@ export default function SchedulesCreate({ companies = [], shifts = [] }: Props) 
                                         {errors.employee_id && (
                                             <p className="text-sm text-red-500">{errors.employee_id}</p>
                                         )}
-                                        {!data.company_id && (
+                                        {!selectedCompanyId && (
                                             <p className="text-sm text-muted-foreground">
                                                 Please select a company first to see employees
                                             </p>

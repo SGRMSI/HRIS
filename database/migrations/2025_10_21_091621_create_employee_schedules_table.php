@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('employee_id')->constrained('employees', 'employee_id');
             $table->foreignId('shift_id')->constrained('shifts', 'shift_id');
             $table->date('date_start');
-            $table->date('date_end');
+            $table->date('date_end')->nullable();
             $table->boolean('is_holiday')->default(false);
             $table->timestamps();
         });

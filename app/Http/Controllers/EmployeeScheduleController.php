@@ -25,7 +25,7 @@ class EmployeeScheduleController extends Controller
      */
     public function index(Request $request)
     {
-        $query = EmployeeSchedule::with(['employee.department', 'shift'])
+        $query = EmployeeSchedule::with(['employee.department.company', 'shift'])
             ->when($request->employee_search, function ($q) use ($request) {
                 $q->whereHas('employee', function ($q) use ($request) {
                     $q->where('first_name', 'like', "%{$request->employee_search}%")
@@ -33,9 +33,9 @@ class EmployeeScheduleController extends Controller
                       ->orWhere('employee_number', 'like', "%{$request->employee_search}%");
                 });
             })
-            ->when($request->department_id, function ($q) use ($request) {
-                $q->whereHas('employee', function ($q) use ($request) {
-                    $q->where('department_id', $request->department_id);
+            ->when($request->company_id, function ($q) use ($request) {
+                $q->whereHas('employee.department', function ($q) use ($request) {
+                    $q->where('company_id', $request->company_id);
                 });
             })
             ->when($request->shift_id, function ($q) use ($request) {
@@ -69,13 +69,20 @@ class EmployeeScheduleController extends Controller
                         'id' => $schedule->employee->id,
                         'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
                         'employee_number' => $schedule->employee->employee_number,
-                        'department' => $schedule->employee->department->name ?? 'N/A'
+                        'department' => $schedule->employee->department->name ?? 'N/A',
+                        'company' => $schedule->employee->department->company->name ?? 'N/A'
                     ],
                     'shift' => [
                         'id' => $schedule->shift->shift_id,
                         'name' => $schedule->shift->name,
-                        'time_in' => $schedule->shift->time_in?->format('H:i'),
-                        'time_out' => $schedule->shift->time_out?->format('H:i')
+                        'time_in' => $schedule->shift->time_in ? 
+                            (is_string($schedule->shift->time_in) ? 
+                                substr($schedule->shift->time_in, 0, 5) : 
+                                $schedule->shift->time_in->format('H:i')) : '',
+                        'time_out' => $schedule->shift->time_out ? 
+                            (is_string($schedule->shift->time_out) ? 
+                                substr($schedule->shift->time_out, 0, 5) : 
+                                $schedule->shift->time_out->format('H:i')) : '',
                     ],
                     'date_start' => $schedule->date_start->format('Y-m-d'),
                     'date_end' => $schedule->date_end?->format('Y-m-d'),
@@ -85,25 +92,11 @@ class EmployeeScheduleController extends Controller
                 ];
             });
 
-        // Group by department for better organization
-        $departmentGroups = [];
-        if ($request->group_by_department) {
-            $departmentGroups = EmployeeSchedule::with(['employee.department', 'shift'])
-                ->whereHas('employee')
-                ->get()
-                ->groupBy(fn($s) => $s->employee->department->name ?? 'No Department')
-                ->map(fn($group) => [
-                    'count' => $group->count(),
-                    'employees' => $group->pluck('employee_id')->unique()->count()
-                ]);
-        }
-
         return Inertia::render('Attendance/Schedules/Index', [
             'schedules' => $schedules,
-            'filters' => $request->only(['employee_search', 'department_id', 'shift_id', 'date_from', 'date_to']),
-            'departments' => Department::select(['department_id as id', 'name'])->get(),
-            'shifts' => Shift::select(['shift_id', 'name'])->get(),
-            'departmentGroups' => $departmentGroups
+            'filters' => $request->only(['employee_search', 'company_id', 'shift_id', 'date_from', 'date_to']),
+            'companies' => Company::select(['company_id as id', 'name'])->get(),
+            'shifts' => Shift::select(['shift_id', 'name'])->get()
         ]);
     }
 
@@ -119,12 +112,20 @@ class EmployeeScheduleController extends Controller
         $shifts = Shift::select(['shift_id', 'name', 'time_in', 'time_out'])
             ->orderBy('name')
             ->get()
-            ->map(fn($shift) => [
-                'shift_id' => $shift->shift_id,
-                'name' => $shift->name,
-                'time_in' => $shift->time_in?->format('H:i'),
-                'time_out' => $shift->time_out?->format('H:i')
-            ]);
+            ->map(function($shift) {
+                return [
+                    'shift_id' => $shift->shift_id,
+                    'name' => $shift->name,
+                    'time_in' => $shift->time_in ? 
+                        (is_string($shift->time_in) ? 
+                            substr($shift->time_in, 0, 5) : 
+                            $shift->time_in->format('H:i')) : '',
+                    'time_out' => $shift->time_out ? 
+                        (is_string($shift->time_out) ? 
+                            substr($shift->time_out, 0, 5) : 
+                            $shift->time_out->format('H:i')) : '',
+                ];
+            });
 
         return Inertia::render('Attendance/Schedules/Create', [
             'companies' => $companies,
@@ -178,7 +179,7 @@ class EmployeeScheduleController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Schedule created successfully.');
+            return redirect()->route('attendance.schedules.index')->with('success', 'Schedule created successfully.');
 
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -219,15 +220,22 @@ class EmployeeScheduleController extends Controller
         ];
 
         $shifts = Shift::select(['shift_id', 'name', 'time_in', 'time_out'])
-            ->where('is_active', true)
             ->orderBy('name')
             ->get()
-            ->map(fn($shift) => [
-                'shift_id' => $shift->shift_id,
-                'name' => $shift->name,
-                'time_in' => $shift->time_in?->format('H:i'),
-                'time_out' => $shift->time_out?->format('H:i')
-            ]);
+            ->map(function($shift) {
+                return [
+                    'shift_id' => $shift->shift_id,
+                    'name' => $shift->name,
+                    'time_in' => $shift->time_in ? 
+                        (is_string($shift->time_in) ? 
+                            substr($shift->time_in, 0, 5) : 
+                            $shift->time_in->format('H:i')) : '',
+                    'time_out' => $shift->time_out ? 
+                        (is_string($shift->time_out) ? 
+                            substr($shift->time_out, 0, 5) : 
+                            $shift->time_out->format('H:i')) : '',
+                ];
+            });
 
         return Inertia::render('Attendance/Schedules/Edit', [
             'schedule' => $scheduleData,
