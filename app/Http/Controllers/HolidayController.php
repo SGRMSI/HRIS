@@ -25,7 +25,7 @@ class HolidayController extends Controller
     {
         $year = $request->year ?? Carbon::now()->year;
         
-        $query = Holiday::with('company:id,name')
+        $query = Holiday::with('company:company_id,name')
             ->whereYear('date', $year)
             ->when($request->company_id, function ($q) use ($request) {
                 $q->where('company_id', $request->company_id);
@@ -48,7 +48,7 @@ class HolidayController extends Controller
                     'day_of_week' => $holiday->date->format('l'),
                     'type' => $holiday->type,
                     'company' => $holiday->company ? [
-                        'id' => $holiday->company->id,
+                        'id' => $holiday->company->company_id,
                         'name' => $holiday->company->name
                     ] : null,
                     'is_past' => $holiday->date->isPast(),

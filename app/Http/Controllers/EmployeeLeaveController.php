@@ -93,7 +93,7 @@ class EmployeeLeaveController extends Controller
         return Inertia::render('Attendance/Leaves/Index', [
             'leaves' => $leaves,
             'filters' => $request->only(['status', 'type', 'employee_search', 'department_id', 'date_from', 'date_to']),
-            'departments' => Department::select(['id', 'name'])->get(),
+            'departments' => Department::select(['department_id as id', 'name'])->get(),
             'statuses' => [
                 ['value' => 'pending', 'label' => 'Pending'],
                 ['value' => 'approved', 'label' => 'Approved'],
@@ -119,11 +119,11 @@ class EmployeeLeaveController extends Controller
     public function create()
     {
         $employees = Employee::with('department')
-            ->select(['id', 'first_name', 'last_name', 'employee_number', 'department_id'])
+            ->select(['employee_id', 'first_name', 'last_name', 'employee_number', 'department_id'])
             ->orderBy('first_name')
             ->get()
             ->map(fn($emp) => [
-                'id' => $emp->id,
+                'id' => $emp->employee_id,
                 'name' => $emp->first_name . ' ' . $emp->last_name,
                 'employee_number' => $emp->employee_number,
                 'department' => $emp->department->name ?? 'N/A'
@@ -150,7 +150,7 @@ class EmployeeLeaveController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'employee_id' => ['required', 'exists:employees,id'],
+            'employee_id' => ['required', 'exists:employees,employee_id'],
             'type' => ['required', 'string', 'in:sick,vacation,emergency,unpaid,other'],
             'date_from' => ['required', 'date', 'after_or_equal:today'],
             'date_to' => ['required', 'date', 'after_or_equal:date_from'],

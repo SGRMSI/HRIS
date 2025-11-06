@@ -58,7 +58,7 @@ export default function LeavesCreate({ employees = [], types = [] }: Props) {
         }
     };
 
-    const selectedEmployee = employees.find(emp => emp.id.toString() === data.employee_id);
+    const selectedEmployee = employees.find(emp => emp.id && emp.id.toString() === data.employee_id);
     const selectedType = types.find(t => t.value === data.type);
 
     const calculateDuration = () => {

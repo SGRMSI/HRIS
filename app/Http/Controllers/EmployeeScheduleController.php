@@ -100,7 +100,7 @@ class EmployeeScheduleController extends Controller
         return Inertia::render('Attendance/Schedules/Index', [
             'schedules' => $schedules,
             'filters' => $request->only(['employee_search', 'department_id', 'shift_id', 'date_from', 'date_to']),
-            'departments' => Department::select(['id', 'name'])->get(),
+            'departments' => Department::select(['department_id as id', 'name'])->get(),
             'shifts' => Shift::select(['shift_id', 'name'])->get(),
             'departmentGroups' => $departmentGroups
         ]);
@@ -114,11 +114,11 @@ class EmployeeScheduleController extends Controller
     public function create()
     {
         $employees = Employee::with('department')
-            ->select(['id', 'first_name', 'last_name', 'employee_number', 'department_id'])
+            ->select(['employee_id', 'first_name', 'last_name', 'employee_number', 'department_id'])
             ->orderBy('first_name')
             ->get()
             ->map(fn($emp) => [
-                'id' => $emp->id,
+                'id' => $emp->employee_id,
                 'name' => $emp->first_name . ' ' . $emp->last_name,
                 'employee_number' => $emp->employee_number,
                 'department' => $emp->department->name ?? 'N/A'
@@ -150,7 +150,7 @@ class EmployeeScheduleController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'employee_id' => ['required', 'exists:employees,id'],
+            'employee_id' => ['required', 'exists:employees,employee_id'],
             'shift_id' => ['required', 'exists:shifts,shift_id'],
             'date_start' => ['required', 'date', 'after_or_equal:today'],
             'date_end' => ['nullable', 'date', 'after_or_equal:date_start'],
@@ -324,7 +324,7 @@ class EmployeeScheduleController extends Controller
     {
         $validated = $request->validate([
             'employee_ids' => ['required', 'array'],
-            'employee_ids.*' => ['required', 'exists:employees,id'],
+            'employee_ids.*' => ['required', 'exists:employees,employee_id'],
             'shift_id' => ['required', 'exists:shifts,shift_id'],
             'date_start' => ['required', 'date', 'after_or_equal:today'],
             'date_end' => ['nullable', 'date', 'after_or_equal:date_start'],
