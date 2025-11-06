@@ -296,7 +296,7 @@ class EmployeeScheduleController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Schedule updated successfully.');
+            return redirect()->route('attendance.schedules.index')->with('success', 'Schedule updated successfully.');
 
         } catch (ValidationException $e) {
             DB::rollBack();
