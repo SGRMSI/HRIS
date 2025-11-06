@@ -333,7 +333,7 @@ class HolidayController extends Controller
     {
         $request->validate([
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:2048'],
-            'company_id' => ['nullable', 'exists:companies,id'],
+            'company_id' => ['nullable', 'exists:companies,company_id'],
             'skip_duplicates' => ['nullable', 'boolean']
         ]);
 
@@ -379,7 +379,7 @@ class HolidayController extends Controller
     {
         $request->validate([
             'year' => ['nullable', 'integer', 'min:2020', 'max:2100'],
-            'company_id' => ['nullable', 'exists:companies,id'],
+            'company_id' => ['nullable', 'exists:companies,company_id'],
             'type' => ['nullable', 'string', 'in:regular,special,company']
         ]);
 

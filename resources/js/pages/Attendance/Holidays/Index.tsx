@@ -454,14 +454,14 @@ export default function HolidaysIndex({
                         <div className="space-y-2">
                             <Label htmlFor="import_company">Company (Optional)</Label>
                             <Select
-                                value={selectedCompanyForImport}
-                                onValueChange={setSelectedCompanyForImport}
+                                value={selectedCompanyForImport || 'none'}
+                                onValueChange={(value) => setSelectedCompanyForImport(value === 'none' ? '' : value)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select company" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">None - All Companies</SelectItem>
+                                    <SelectItem value="none">None - All Companies</SelectItem>
                                     {Array.isArray(companies) && companies
                                         .filter(company => company && company.id != null)
                                         .map((company) => (
