@@ -635,6 +635,49 @@ export default function LeavesIndex({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Leave Request</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to permanently delete this leave request?
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedLeave && (
+                        <div className="space-y-4 py-4">
+                            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+                                <div className="space-y-2">
+                                    <div className="text-sm font-medium">Employee</div>
+                                    <div>{selectedLeave.employee.name}</div>
+                                </div>
+                                <div className="space-y-2 mt-2">
+                                    <div className="text-sm font-medium">Period</div>
+                                    <div className="text-sm">
+                                        {new Date(selectedLeave.date_from).toLocaleDateString()} - {new Date(selectedLeave.date_to).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                                This action cannot be undone. This will permanently delete the leave request and any attached documents.
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleDelete}
+                            variant="destructive"
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Permanently
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

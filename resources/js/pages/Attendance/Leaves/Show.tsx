@@ -78,32 +78,56 @@ export default function LeavesShow({ leave }: Props) {
     };
 
     const handleApproval = () => {
+        console.log('handleApproval called', { 
+            leave_id: leave.id, 
+            action: approvalAction, 
+            remarks: approvalRemarks 
+        });
+        
         router.post(route('attendance.leaves.approve'), {
             leave_id: leave.id,
             action: approvalAction,
             remarks: approvalRemarks
         }, {
             onSuccess: () => {
+                console.log('Approval successful');
                 setShowApprovalDialog(false);
+            },
+            onError: (errors) => {
+                console.error('Approval failed - Full error object:', errors);
+                console.error('Error keys:', Object.keys(errors));
+                console.error('Error values:', Object.values(errors));
             }
         });
     };
 
     const handleCancel = () => {
+        console.log('handleCancel called', { leave_id: leave.id, reason: cancelReason });
+        
         router.post(route('attendance.leaves.cancel'), {
             leave_id: leave.id,
             reason: cancelReason
         }, {
             onSuccess: () => {
+                console.log('Cancel successful');
                 setShowCancelDialog(false);
+            },
+            onError: (errors) => {
+                console.error('Cancel failed:', errors);
             }
         });
     };
 
     const handleDelete = () => {
+        console.log('handleDelete called', { leave_id: leave.id });
+        
         router.delete(route('attendance.leaves.destroy', leave.id), {
             onSuccess: () => {
+                console.log('Delete successful');
                 setShowDeleteDialog(false);
+            },
+            onError: (errors) => {
+                console.error('Delete failed:', errors);
             }
         });
     };
@@ -310,7 +334,7 @@ export default function LeavesShow({ leave }: Props) {
                                             </div>
                                         </div>
                                         <a
-                                            href={`/storage/${leave.document_path}`}
+                                            href={route('attendance.leaves.download', leave.id)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >
@@ -485,11 +509,11 @@ export default function LeavesShow({ leave }: Props) {
                             Are you sure you want to delete this leave request? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4">
+                    <div className="space-y-4 py-4">
                         <Alert>
                             <AlertCircle className="h-4 w-4" />
                             <AlertDescription>
-                                Only pending or rejected leaves can be deleted. This will permanently remove the leave request and any attached documents.
+                                Only pending, rejected, or cancelled leaves can be deleted. This will permanently remove the leave request and any attached documents.
                             </AlertDescription>
                         </Alert>
                     </div>

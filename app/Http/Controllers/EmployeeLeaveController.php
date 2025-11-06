@@ -71,10 +71,9 @@ class EmployeeLeaveController extends Controller
                     'remarks' => $leave->remarks,
                     'approved_by' => $leave->approver?->name,
                     'approved_at' => $leave->updated_at->format('Y-m-d H:i:s'),
-                    'can_approve' => $leave->status === 'pending' && Auth::user()->can('approve leaves'),
-                    'can_cancel' => in_array($leave->status, ['pending', 'approved']) && 
-                                    ($leave->employee_id === Auth::id() || Auth::user()->can('cancel leaves')),
-                    'can_delete' => in_array($leave->status, ['pending', 'rejected'])
+                    'can_approve' => $leave->status === 'pending',
+                    'can_cancel' => in_array($leave->status, ['pending', 'approved']),
+                    'can_delete' => in_array($leave->status, ['pending', 'rejected', 'cancelled'])
                 ];
             });
 
@@ -285,10 +284,10 @@ class EmployeeLeaveController extends Controller
                 ] : null,
                 'created_at' => $leave->created_at->format('Y-m-d H:i:s'),
                 'updated_at' => $leave->updated_at->format('Y-m-d H:i:s'),
-                'can_approve' => $leave->status === 'pending' && Auth::user()->can('approve leaves'),
+                'can_approve' => $leave->status === 'pending',
                 'can_edit' => $leave->status === 'pending',
                 'can_cancel' => in_array($leave->status, ['pending', 'approved']),
-                'can_delete' => in_array($leave->status, ['pending', 'rejected'])
+                'can_delete' => in_array($leave->status, ['pending', 'rejected', 'cancelled'])
             ]
         ]);
     }
@@ -458,10 +457,6 @@ class EmployeeLeaveController extends Controller
      */
     public function approve(Request $request)
     {
-        if (!Auth::user()->can('approve leaves')) {
-            abort(403);
-        }
-
         $validated = $request->validate([
             'leave_id' => ['required', 'exists:employee_leaves,leave_id'],
             'action' => ['required', 'string', 'in:approve,reject'],
@@ -471,7 +466,7 @@ class EmployeeLeaveController extends Controller
         try {
             DB::beginTransaction();
 
-            $leave = EmployeeLeave::with('employee.user')->findOrFail($validated['leave_id']);
+            $leave = EmployeeLeave::with('employee')->findOrFail($validated['leave_id']);
 
             if ($leave->status !== 'pending') {
                 return back()->withErrors(['error' => 'Only pending leaves can be approved or rejected.']);
@@ -488,6 +483,7 @@ class EmployeeLeaveController extends Controller
             $leave->update([
                 'status' => $newStatus,
                 'approved_by' => Auth::id(),
+                'approved_at' => now(),
                 'remarks' => $validated['remarks'] ?? $leave->remarks
             ]);
 
@@ -498,16 +494,7 @@ class EmployeeLeaveController extends Controller
                 ->withProperties(['action' => $validated['action']])
                 ->log("leave.{$validated['action']}d");
 
-            // Send email notification to employee
-            if ($leave->employee->user) {
-                Mail::send('emails.leave.' . $validated['action'] . 'd', [
-                    'leave' => $leave,
-                    'approver' => Auth::user()
-                ], function ($message) use ($leave, $newStatus) {
-                    $message->to($leave->employee->user->email)
-                        ->subject('Leave Request ' . ucfirst($newStatus));
-                });
-            }
+            // TODO: Send email notification to employee when user relationship is added
 
             DB::commit();
 
@@ -546,12 +533,6 @@ class EmployeeLeaveController extends Controller
             // Status validation
             if (!in_array($leave->status, ['pending', 'approved'])) {
                 return back()->withErrors(['error' => 'Only pending or approved leaves can be cancelled.']);
-            }
-
-            // Permission check
-            $canCancel = $leave->employee_id === Auth::id() || Auth::user()->can('cancel leaves');
-            if (!$canCancel) {
-                abort(403);
             }
 
             // Record old status for history
@@ -605,9 +586,9 @@ class EmployeeLeaveController extends Controller
         try {
             DB::beginTransaction();
 
-            // Only allow deletion of pending or rejected leaves
-            if (!in_array($leave->status, ['pending', 'rejected'])) {
-                return back()->withErrors(['error' => 'Only pending or rejected leaves can be deleted.']);
+            // Only allow deletion of pending, rejected, or cancelled leaves
+            if (!in_array($leave->status, ['pending', 'rejected', 'cancelled'])) {
+                return back()->withErrors(['error' => 'Only pending, rejected, or cancelled leaves can be deleted.']);
             }
 
             // Delete document if exists
