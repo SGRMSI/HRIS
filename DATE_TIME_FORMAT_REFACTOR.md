@@ -1,25 +1,59 @@
 # Date and Time Format Refactor
 
 ## Overview
-Moved date and time formatting logic from backend (Laravel) to frontend (React/TypeScript) for better separation of concerns and flexibility.
+Moved date and time formatting logic from backend (Laravel) to frontend (React/TypeScript) for better separation of concerns and flexibility. Backend now relies on Eloquent model casts for automatic JSON serialization.
 
 ## Changes Made
 
 ### Backend (Laravel)
+
+#### 1. Model Casts (Automatic Serialization)
+
+**File: `app/Models/Shift.php`**
+```php
+protected $casts = [
+    'time_in' => 'datetime:H:i',    // Serializes to "08:00"
+    'time_out' => 'datetime:H:i',   // Serializes to "17:00"
+    'break_start' => 'datetime:H:i',
+    'break_end' => 'datetime:H:i',
+];
+```
+
+**File: `app/Models/Employee.php`**
+```php
+protected $casts = [
+    'birth_date' => 'date',         // Serializes to "2025-11-07"
+    'date_hired' => 'date',         // Serializes to "2025-11-07"
+    'date_regularized' => 'date',
+];
+```
+
+**File: `app/Models/EmployeeSchedule.php`**
+```php
+protected $casts = [
+    'date_start' => 'date',         // Serializes to "2025-11-07"
+    'date_end' => 'date',           // Serializes to "2025-11-07"
+];
+```
+
+#### 2. Controller Changes
+
 **File: `app/Http/Controllers/EmployeeController.php`**
 
-Reverted date/time formats to standard formats:
-- **Time Format:** `H:i` (24-hour format: 08:00, 17:30)
-- **Date Format:** `Y-m-d` (ISO format: 2025-11-07)
+Removed all `.format()` calls - let model casts handle serialization:
 
 ```php
-// Before (Formatted in backend)
-'time_in' => $currentSchedule->shift->time_in->format('g:i A'),  // 8:00 AM
-'date_start' => $currentSchedule->date_start->format('M d, Y'),  // Nov 07, 2025
+// Before (Manual formatting)
+'current_shift' => [
+    'time_in' => $currentSchedule->shift->time_in->format('H:i'),  // ❌ Manual
+    'date_start' => $currentSchedule->date_start->format('Y-m-d'), // ❌ Manual
+]
 
-// After (Raw format from backend)
-'time_in' => $currentSchedule->shift->time_in->format('H:i'),     // 08:00
-'date_start' => $currentSchedule->date_start->format('Y-m-d'),    // 2025-11-07
+// After (Model casts handle it)
+'current_shift' => [
+    'time_in' => $currentSchedule->shift->time_in,    // ✅ Cast handles it
+    'date_start' => $currentSchedule->date_start,     // ✅ Cast handles it
+]
 ```
 
 ### Frontend (React/TypeScript)
@@ -51,15 +85,23 @@ Created utility functions for formatting:
 
 ### ✅ Separation of Concerns
 - Backend focuses on data retrieval and business logic
+- Eloquent model casts handle automatic serialization
 - Frontend handles presentation and formatting
 
 ### ✅ Consistency
-- Single source of truth for date/time formatting
+- Model casts ensure consistent format across all API responses
+- Single source of truth for date/time formatting in frontend
 - Reusable utility functions across the entire frontend
 
+### ✅ No Redundant Formatting
+- Removed manual `.format()` calls in controllers
+- Laravel's model casts automatically serialize dates/times to JSON
+- Less code to maintain
+
 ### ✅ Flexibility
-- Easy to change formats without touching backend
+- Easy to change display formats without touching backend
 - Can display same data in different formats in different components
+- Frontend utilities can be enhanced without backend changes
 
 ### ✅ Internationalization Ready
 - Frontend formatting uses `Intl.DateTimeFormatOptions`

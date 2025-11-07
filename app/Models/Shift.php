@@ -19,10 +19,10 @@ class Shift extends Model
     ];
 
     protected $casts = [
-        'time_in' => 'datetime',
-        'time_out' => 'datetime',
-        'break_start' => 'datetime',
-        'break_end' => 'datetime',
+        'time_in' => 'datetime:H:i',
+        'time_out' => 'datetime:H:i',
+        'break_start' => 'datetime:H:i',
+        'break_end' => 'datetime:H:i',
         'grace_period' => 'integer',
     ];
 
