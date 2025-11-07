@@ -56,7 +56,6 @@ interface Employee {
     age?: number;
     date_regularized?: string;
     date_separated?: string;
-    work_shift?: string;
     sss_number?: string;
     phic_number?: string;
     hdmf_number?: string;
@@ -66,6 +65,14 @@ interface Employee {
     position_id?: number;
     account_id?: number;
     remarks?: string;
+    current_shift?: {
+        shift_id: number;
+        name: string;
+        time_in: string;
+        time_out: string;
+        date_start: string;
+        date_end: string | null;
+    } | null;
 }
 
 interface EmployeeDocument {
@@ -126,7 +133,6 @@ export default function EditEmployee({ employee, companies, departments, positio
         tin_number: employee.tin_number || '',
         date_hired: employee.date_hired || '',
         date_regularized: employee.date_regularized || '',
-        work_shift: employee.work_shift || '',
         employment_status: employee.employment_status || '',
         remarks: employee.remarks || '',
     });
@@ -466,19 +472,46 @@ export default function EditEmployee({ employee, companies, departments, positio
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                                <div className="space-y-2">
-                                    <Label htmlFor="work_shift">Work Schedule</Label>
-                                    <Select value={data.work_shift} onValueChange={(value) => setData('work_shift', value)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select work schedule" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Dayshift">Dayshift</SelectItem>
-                                            <SelectItem value="Graveyard">Graveyard</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                            {/* Current Schedule Display */}
+                            {employee.current_shift ? (
+                                <div className="rounded-md border border-green-200 bg-green-50 p-4 dark:bg-green-950/20 dark:border-green-800">
+                                    <div className="mb-2 flex items-center gap-2">
+                                        <span className="text-sm font-semibold text-green-800 dark:text-green-200">Current Schedule</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2 lg:grid-cols-4">
+                                        <div>
+                                            <span className="font-medium text-green-700 dark:text-green-300">Shift:</span>
+                                            <span className="ml-2 text-green-800 dark:text-green-200">{employee.current_shift.name}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-green-700 dark:text-green-300">Time In:</span>
+                                            <span className="ml-2 text-green-800 dark:text-green-200">{employee.current_shift.time_in}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-green-700 dark:text-green-300">Time Out:</span>
+                                            <span className="ml-2 text-green-800 dark:text-green-200">{employee.current_shift.time_out}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-green-700 dark:text-green-300">Period:</span>
+                                            <span className="ml-2 text-green-800 dark:text-green-200">
+                                                {employee.current_shift.date_start} - {employee.current_shift.date_end || 'Ongoing'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
+                            ) : (
+                                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 dark:bg-yellow-950/20 dark:border-yellow-800">
+                                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                        <strong>No schedule assigned.</strong> This employee doesn't have an active shift schedule.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="rounded-md bg-blue-50 p-4 dark:bg-blue-950/20">
+                                <p className="text-sm text-blue-800 dark:text-blue-200">
+                                    <strong>Note:</strong> Work schedules are now managed through the Attendance module. 
+                                    To assign or update this employee's shift schedule, go to <Link href="/attendance/schedules" className="underline font-semibold">Attendance → Schedules</Link>.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>

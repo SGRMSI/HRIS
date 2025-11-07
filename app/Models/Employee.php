@@ -70,5 +70,42 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeeDocument::class, 'employee_id', 'employee_id');
     }
+
+    public function schedules()
+    {
+        return $this->hasMany(EmployeeSchedule::class, 'employee_id', 'employee_id');
+    }
+
+    public function currentSchedule()
+    {
+        return $this->hasOne(EmployeeSchedule::class, 'employee_id', 'employee_id')
+            ->where(function ($query) {
+                $query->where(function ($q) {
+                    // Currently active schedules (started and not ended)
+                    $q->where('date_start', '<=', now())
+                      ->where(function ($q2) {
+                          $q2->whereNull('date_end')
+                             ->orWhere('date_end', '>=', now());
+                      });
+                })
+                ->orWhere(function ($q) {
+                    // Upcoming schedules (will start soon, within 30 days)
+                    $q->where('date_start', '>', now())
+                      ->where('date_start', '<=', now()->addDays(30));
+                });
+            })
+            ->with('shift')
+            ->latest('date_start');
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class, 'employee_id', 'employee_id');
+    }
+
+    public function leaves()
+    {
+        return $this->hasMany(EmployeeLeave::class, 'employee_id', 'employee_id');
+    }
 }
 

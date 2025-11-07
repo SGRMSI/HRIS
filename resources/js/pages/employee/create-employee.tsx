@@ -72,7 +72,6 @@ export default function CreateEmployee({ companies, departments, positions, acco
         tin_number: '',
         date_hired: '',
         date_regularized: '',
-        work_shift: '',
         employment_status: '',
         remarks: '',
     });
@@ -395,19 +394,13 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                             onChange={(e) => setData('date_regularized', e.target.value)}
                                         />
                                     </div>
+                                </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="work_shift">Work Schedule</Label>
-                                        <Select value={data.work_shift} onValueChange={(value) => setData('work_shift', value)}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select work schedule" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Dayshift">Dayshift</SelectItem>
-                                                <SelectItem value="Graveyard">Graveyard</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                <div className="rounded-md bg-blue-50 p-4 dark:bg-blue-950/20">
+                                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                                        <strong>Note:</strong> Work schedules are now managed through the Attendance module. 
+                                        After creating the employee, you can assign their shift schedule in <strong>Attendance → Schedules</strong>.
+                                    </p>
                                 </div>
                             </div>
 

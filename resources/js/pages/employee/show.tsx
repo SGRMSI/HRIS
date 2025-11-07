@@ -17,6 +17,7 @@ interface Employee {
     last_name: string;
     full_name: string;
     company: string;
+    company_id?: number;
     department: string;
     position: string;
     employment_status: 'Probationary' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated';
@@ -32,13 +33,19 @@ interface Employee {
     age?: number;
     date_regularized?: string;
     date_separated?: string;
-    work_shift?: string;
     absents?: number;
     infractions?: number;
     sss_number?: string;
     phic_number?: string;
     hdmf_number?: string;
     tin_number?: string;
+    current_shift?: {
+        name: string;
+        time_in: string;
+        time_out: string;
+        date_start: string;
+        date_end: string | null;
+    } | null;
 }
 
 interface EmployeeDocument {
@@ -100,17 +107,6 @@ export default function EmployeeShow({ employee, documents }: Props) {
                 return 'bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
             case 'Resigned':
             case 'Terminated':
-                return 'bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
-            default:
-                return 'bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
-        }
-    };
-
-    const getShiftColor = (shift: string | null) => {
-        switch (shift) {
-            case 'Dayshift':
-                return 'bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
-            case 'Graveyard':
                 return 'bg-red-100 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
             default:
                 return 'bg-gray-100 text-gray-800 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
@@ -206,14 +202,76 @@ export default function EmployeeShow({ employee, documents }: Props) {
                             {/* Work Schedule Card */}
                             <Card className="border shadow-sm">
                                 <CardContent className="p-6">
-                                    <div className="flex flex-col items-center justify-between h-full">
-                                        <div
-                                            className={`inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-medium ${getShiftColor(employee.work_shift || null)}`}
-                                        >
-                                            {employee.work_shift || 'Not Set'}
+                                    {employee.current_shift ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                                    {employee.current_shift.name}
+                                                </span>
+                                                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                                    Active
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Time In:</span>
+                                                    <span className="font-medium">{employee.current_shift.time_in}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Time Out:</span>
+                                                    <span className="font-medium">{employee.current_shift.time_out}</span>
+                                                </div>
+                                                <div className="flex justify-between border-t pt-1 mt-2">
+                                                    <span className="text-muted-foreground">Period:</span>
+                                                    <span className="font-medium text-xs">
+                                                        {employee.current_shift.date_start} - {employee.current_shift.date_end || 'Ongoing'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 mt-3">
+                                                <Link 
+                                                    href={`/attendance/schedules/create?employee_id=${employee.employee_id}&company_id=${employee.company_id || ''}`}
+                                                    className="flex-1"
+                                                >
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="w-full text-xs"
+                                                    >
+                                                        Change Schedule
+                                                    </Button>
+                                                </Link>
+                                                <Link 
+                                                    href="/attendance/schedules"
+                                                    className="flex-1"
+                                                >
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="w-full text-xs"
+                                                    >
+                                                        View All
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                            <p className="mt-2 text-xs text-muted-foreground text-center">Current Work Schedule</p>
                                         </div>
-                                        <p className="mt-2 text-sm text-muted-foreground">Work Schedule</p>
-                                    </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full space-y-2">
+                                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                                                Not Assigned
+                                            </span>
+                                            <p className="text-xs text-muted-foreground text-center">
+                                                No schedule assigned.<br />
+                                                <Link 
+                                                    href={`/attendance/schedules/create?employee_id=${employee.employee_id}&company_id=${employee.company_id || ''}`}
+                                                    className="text-blue-600 hover:underline dark:text-blue-400"
+                                                >
+                                                    Assign Schedule
+                                                </Link>
+                                            </p>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>

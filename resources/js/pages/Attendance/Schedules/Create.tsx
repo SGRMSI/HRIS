@@ -35,14 +35,24 @@ interface Shift {
     time_out: string;
 }
 
+interface PrefilledEmployee {
+    employee_id: number;
+    full_name: string;
+    id_number: string;
+    company_id: number;
+    company_name: string;
+}
+
 interface Props {
     companies: Company[];
     shifts: Shift[];
+    prefilledEmployee?: PrefilledEmployee | null;
+    prefilledCompanyId?: number | null;
 }
 
-export default function SchedulesCreate({ companies = [], shifts = [] }: Props) {
+export default function SchedulesCreate({ companies = [], shifts = [], prefilledEmployee = null, prefilledCompanyId = null }: Props) {
     const { data, setData, post, processing, errors } = useForm({
-        employee_id: '',
+        employee_id: prefilledEmployee ? prefilledEmployee.employee_id.toString() : '',
         shift_id: '',
         date_start: '',
         date_end: '',
@@ -52,10 +62,30 @@ export default function SchedulesCreate({ companies = [], shifts = [] }: Props) 
     const [showConflictWarning, setShowConflictWarning] = useState(false);
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loadingEmployees, setLoadingEmployees] = useState(false);
-    const [selectedCompanyId, setSelectedCompanyId] = useState('');
+    const [selectedCompanyId, setSelectedCompanyId] = useState(
+        prefilledCompanyId ? prefilledCompanyId.toString() : 
+        (prefilledEmployee ? prefilledEmployee.company_id.toString() : '')
+    );
+
+    // If prefilled employee exists, add it to the employees list
+    useEffect(() => {
+        if (prefilledEmployee) {
+            setEmployees([{
+                id: prefilledEmployee.employee_id,
+                name: prefilledEmployee.full_name,
+                employee_number: prefilledEmployee.id_number,
+                department: prefilledEmployee.company_name || '',
+            }]);
+        }
+    }, [prefilledEmployee]);
 
     // Fetch employees when company is selected
     useEffect(() => {
+        // Skip fetching if we already have a prefilled employee and the company hasn't changed
+        if (prefilledEmployee && selectedCompanyId === prefilledEmployee.company_id.toString()) {
+            return;
+        }
+
         if (selectedCompanyId) {
             setLoadingEmployees(true);
             axios.get(route('attendance.schedules.employees', selectedCompanyId))

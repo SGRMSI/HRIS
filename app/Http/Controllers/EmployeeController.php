@@ -23,9 +23,11 @@ class EmployeeController extends Controller
 
     public function index()
     {
-        $employees = Employee::with(['company', 'department', 'position'])
+        $employees = Employee::with(['company', 'department', 'position', 'currentSchedule.shift'])
             ->get()
             ->map(function ($employee) {
+                $currentSchedule = $employee->currentSchedule;
+                
                 return [
                     'employee_id' => $employee->employee_id,
                     'id_number' => $employee->id_number,
@@ -40,6 +42,7 @@ class EmployeeController extends Controller
                     'employment_status' => $employee->employment_status,
                     'date_hired' => $employee->date_hired->format('Y-m-d'),
                     'contact_number' => $employee->contact_number,
+                    'current_shift' => $currentSchedule && $currentSchedule->shift ? $currentSchedule->shift->name : ($employee->work_shift ?? 'Not Assigned'),
                     'created_at' => $employee->created_at->toISOString(),
                 ];
             });
@@ -98,7 +101,6 @@ class EmployeeController extends Controller
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
             'date_regularized' => 'nullable|date|after_or_equal:date_hired', // Changed from 'after' to 'after_or_equal'
-            'work_shift' => 'nullable|in:Dayshift,Graveyard',
             'employment_status' => 'required|in:Probationary,Regular,Contractual,Terminated',
             'remarks' => 'nullable|string',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -159,6 +161,11 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee)
     {
+        // Load current schedule with shift details and company
+        $employee->load(['currentSchedule.shift', 'company', 'department', 'position']);
+        
+        $currentSchedule = $employee->currentSchedule;
+        
         $employeeData = [
             'employee_id' => $employee->employee_id,
             'id_number' => $employee->id_number,
@@ -167,12 +174,20 @@ class EmployeeController extends Controller
             'last_name' => $employee->last_name,
             'full_name' => trim($employee->first_name . ' ' . ($employee->middle_name ? $employee->middle_name . ' ' : '') . $employee->last_name),
             'company' => $employee->company ? $employee->company->name : 'N/A',
+            'company_id' => $employee->company_id,
             'department' => $employee->department ? $employee->department->name : 'N/A',
             'position' => $employee->position ? $employee->position->title : 'N/A',
             'employment_status' => $employee->employment_status,
             'date_hired' => $employee->date_hired ? date('Y-m-d', strtotime($employee->date_hired)) : null,
             'date_regularized' => $employee->date_regularized ? date('Y-m-d', strtotime($employee->date_regularized)) : null,
-            'work_shift' => $employee->work_shift,
+            'work_shift' => $employee->work_shift, // Keep for backward compatibility
+            'current_shift' => $currentSchedule && $currentSchedule->shift ? [
+                'name' => $currentSchedule->shift->name,
+                'time_in' => $currentSchedule->shift->time_in->format('H:i'),
+                'time_out' => $currentSchedule->shift->time_out->format('H:i'),
+                'date_start' => $currentSchedule->date_start->format('Y-m-d'),
+                'date_end' => $currentSchedule->date_end ? $currentSchedule->date_end->format('Y-m-d') : null,
+            ] : null,
             'contact_number' => $employee->contact_number,
             'email' => $employee->email,
             'address' => $employee->address,
@@ -248,6 +263,11 @@ class EmployeeController extends Controller
             ];
         });
 
+        // Load current schedule with shift details
+        $employee->load(['currentSchedule.shift']);
+        
+        $currentSchedule = $employee->currentSchedule;
+
         // Prepare employee data for editing
         $employeeData = [
             'employee_id' => $employee->employee_id,
@@ -266,7 +286,15 @@ class EmployeeController extends Controller
             'employment_status' => $employee->employment_status,
             'date_hired' => $employee->date_hired ? $employee->date_hired->format('Y-m-d') : '',
             'date_regularized' => $employee->date_regularized ? $employee->date_regularized->format('Y-m-d') : null,
-            'work_shift' => $employee->work_shift,
+            'work_shift' => $employee->work_shift, // Keep for backward compatibility
+            'current_shift' => $currentSchedule && $currentSchedule->shift ? [
+                'shift_id' => $currentSchedule->shift->shift_id,
+                'name' => $currentSchedule->shift->name,
+                'time_in' => $currentSchedule->shift->time_in->format('H:i'),
+                'time_out' => $currentSchedule->shift->time_out->format('H:i'),
+                'date_start' => $currentSchedule->date_start->format('Y-m-d'),
+                'date_end' => $currentSchedule->date_end ? $currentSchedule->date_end->format('Y-m-d') : null,
+            ] : null,
             'contact_number' => $employee->contact_number,
             'address' => $employee->address,
             'date_of_birth' => $employee->birth_date ? $employee->birth_date->format('Y-m-d') : null,
@@ -337,7 +365,6 @@ class EmployeeController extends Controller
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
             'date_regularized' => 'nullable|date|after_or_equal:date_hired',
-            'work_shift' => 'nullable|in:Dayshift,Graveyard',
             'employment_status' => 'required|in:Probationary,Regular,Contractual,Resigned,Terminated',
             'remarks' => 'nullable|string',
         ]);
@@ -370,7 +397,6 @@ class EmployeeController extends Controller
                 'tin_number' => $validated['tin_number'],
                 'date_hired' => $validated['date_hired'],
                 'date_regularized' => $validated['date_regularized'],
-                'work_shift' => $validated['work_shift'],
                 'employment_status' => $validated['employment_status'],
                 'remarks' => $validated['remarks'],
             ]);

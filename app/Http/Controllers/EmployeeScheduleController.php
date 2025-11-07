@@ -103,9 +103,10 @@ class EmployeeScheduleController extends Controller
     /**
      * Show the form for creating a new schedule
      *
+     * @param Request $request
      * @return \Inertia\Response
      */
-    public function create()
+    public function create(Request $request)
     {
         $companies = Company::select(['company_id as id', 'name'])->get();
 
@@ -127,9 +128,26 @@ class EmployeeScheduleController extends Controller
                 ];
             });
 
+        // Get pre-filled employee data if provided
+        $prefilledEmployee = null;
+        if ($request->employee_id) {
+            $employee = Employee::with('company')->find($request->employee_id);
+            if ($employee) {
+                $prefilledEmployee = [
+                    'employee_id' => $employee->employee_id,
+                    'full_name' => trim($employee->first_name . ' ' . ($employee->middle_name ? $employee->middle_name . ' ' : '') . $employee->last_name),
+                    'id_number' => $employee->id_number,
+                    'company_id' => $employee->company_id,
+                    'company_name' => $employee->company ? $employee->company->name : null,
+                ];
+            }
+        }
+
         return Inertia::render('Attendance/Schedules/Create', [
             'companies' => $companies,
-            'shifts' => $shifts
+            'shifts' => $shifts,
+            'prefilledEmployee' => $prefilledEmployee,
+            'prefilledCompanyId' => $request->company_id ? (int)$request->company_id : null,
         ]);
     }
 
