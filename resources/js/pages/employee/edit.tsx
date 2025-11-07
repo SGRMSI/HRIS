@@ -8,6 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 import { ArrowLeft, FileUp, ExternalLink, Trash } from 'lucide-react';
+import { formatTime12Hour, formatDate } from '@/lib/date-utils';
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
@@ -485,16 +486,16 @@ export default function EditEmployee({ employee, companies, departments, positio
                                         </div>
                                         <div>
                                             <span className="font-medium text-green-700 dark:text-green-300">Time In:</span>
-                                            <span className="ml-2 text-green-800 dark:text-green-200">{employee.current_shift.time_in}</span>
+                                            <span className="ml-2 text-green-800 dark:text-green-200">{formatTime12Hour(employee.current_shift.time_in)}</span>
                                         </div>
                                         <div>
                                             <span className="font-medium text-green-700 dark:text-green-300">Time Out:</span>
-                                            <span className="ml-2 text-green-800 dark:text-green-200">{employee.current_shift.time_out}</span>
+                                            <span className="ml-2 text-green-800 dark:text-green-200">{formatTime12Hour(employee.current_shift.time_out)}</span>
                                         </div>
                                         <div>
                                             <span className="font-medium text-green-700 dark:text-green-300">Period:</span>
                                             <span className="ml-2 text-green-800 dark:text-green-200">
-                                                {employee.current_shift.date_start} - {employee.current_shift.date_end || 'Ongoing'}
+                                                {formatDate(employee.current_shift.date_start)} - {employee.current_shift.date_end ? formatDate(employee.current_shift.date_end) : 'Ongoing'}
                                             </span>
                                         </div>
                                     </div>

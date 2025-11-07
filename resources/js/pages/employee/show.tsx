@@ -8,6 +8,7 @@ import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dial
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 import { useState } from 'react';
 import { DeleteDocumentDialog } from '@/components/employee/delete-document-dialog';
+import { formatTime12Hour, formatDate } from '@/lib/date-utils';
 
 interface Employee {
     employee_id: number;
@@ -229,18 +230,18 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
                                                             <span className="text-xs text-muted-foreground">Time In</span>
-                                                            <span className="text-sm font-semibold text-foreground">{employee.current_shift.time_in}</span>
+                                                            <span className="text-sm font-semibold text-foreground">{formatTime12Hour(employee.current_shift.time_in)}</span>
                                                         </div>
                                                         <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
                                                             <span className="text-xs text-muted-foreground">Time Out</span>
-                                                            <span className="text-sm font-semibold text-foreground">{employee.current_shift.time_out}</span>
+                                                            <span className="text-sm font-semibold text-foreground">{formatTime12Hour(employee.current_shift.time_out)}</span>
                                                         </div>
                                                     </div>
                                                     {/* Period - Full Width */}
                                                     <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
                                                         <span className="text-xs text-muted-foreground">Period</span>
                                                         <span className="text-sm font-semibold text-foreground">
-                                                            {employee.current_shift.date_start} - {employee.current_shift.date_end || 'Ongoing'}
+                                                            {formatDate(employee.current_shift.date_start)} - {employee.current_shift.date_end ? formatDate(employee.current_shift.date_end) : 'Ongoing'}
                                                         </span>
                                                     </div>
                                                 </div>
