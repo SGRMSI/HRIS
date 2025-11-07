@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('attendances', function (Blueprint $table) {
             $table->id('attendance_id');
-            $table->foreignId('employee_id')->constrained('employees', 'employee_id');
+            $table->foreignId('employee_id')->constrained('employees', 'employee_id')->cascadeOnDelete();
             $table->date('date');
-            $table->foreignId('shift_id')->nullable()->constrained('shifts', 'shift_id');
+            $table->foreignId('shift_id')->nullable()->constrained('shifts', 'shift_id')->nullOnDelete();
             $table->time('clock_in')->nullable();
             $table->time('break_out')->nullable();
             $table->time('break_in')->nullable();
@@ -26,12 +26,16 @@ return new class extends Migration
             $table->decimal('undertime_hours', 5, 2)->default(0.00);
             $table->string('status')->comment('"Present", "Absent", "On Leave", "Holiday"');
             $table->text('remarks')->nullable();
-            $table->string('created_by')->nullable();
-            $table->foreign('created_by')->references('id')->on('users');
-            $table->string('approved_by')->nullable();
-            $table->foreign('approved_by')->references('id')->on('users');
-            $table->foreignId('holiday_id')->nullable()->constrained('holidays', 'holiday_id');
-            $table->foreignId('leave_id')->nullable()->constrained('employee_leaves', 'leave_id');
+            
+            // Fixed: Use unsignedBigInteger and reference user_id
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->foreign('created_by')->references('user_id')->on('users')->nullOnDelete();
+            
+            $table->unsignedBigInteger('approved_by')->nullable();
+            $table->foreign('approved_by')->references('user_id')->on('users')->nullOnDelete();
+            
+            $table->foreignId('holiday_id')->nullable()->constrained('holidays', 'holiday_id')->nullOnDelete();
+            $table->foreignId('leave_id')->nullable()->constrained('employee_leaves', 'leave_id')->nullOnDelete();
             $table->boolean('requires_approval')->default(false);
             $table->timestamp('approved_at')->nullable();
             $table->timestamps();
