@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash, Calendar } from 'lucide-react';
 import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dialog';
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 import { useState } from 'react';
@@ -184,95 +184,136 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         </Card>
 
                         {/* Status and Work Schedule Row */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-4">
                             {/* Status Card */}
                             <Card className="border shadow-sm">
-                                <CardContent className="p-6">
-                                    <div className="flex flex-col items-center justify-between h-full">
+                                <CardContent className="p-1">
+                                    <div className="flex flex-col items-center justify-center gap-3">
                                         <div
-                                            className={`inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
+                                            className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
                                         >
                                             {employee.employment_status}
                                         </div>
-                                        <p className="mt-2 text-sm text-muted-foreground">Status</p>
+                                        <p className="text-sm text-muted-foreground">Employment Status</p>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Work Schedule Card */}
-                            <Card className="border shadow-sm">
-                                <CardContent className="p-6">
-                                    {employee.current_shift ? (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-semibold text-green-700 dark:text-green-400">
-                                                    {employee.current_shift.name}
+                            <Card className="border shadow-sm overflow-hidden">
+                                {employee.current_shift ? (
+                                    <>
+                                        {/* Status Badge on Top */}
+                                        <div className="bg-green-50 dark:bg-green-950/20 px-4 py-2 border-b border-green-200 dark:border-green-800">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                                                <span className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
+                                                    Active Schedule
                                                 </span>
-                                                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                                                    Active
-                                                </span>
                                             </div>
-                                            <div className="space-y-1 text-sm">
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Time In:</span>
-                                                    <span className="font-medium">{employee.current_shift.time_in}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Time Out:</span>
-                                                    <span className="font-medium">{employee.current_shift.time_out}</span>
-                                                </div>
-                                                <div className="flex justify-between border-t pt-1 mt-2">
-                                                    <span className="text-muted-foreground">Period:</span>
-                                                    <span className="font-medium text-xs">
-                                                        {employee.current_shift.date_start} - {employee.current_shift.date_end || 'Ongoing'}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 mt-3">
-                                                <Link 
-                                                    href={`/attendance/schedules/create?employee_id=${employee.employee_id}&company_id=${employee.company_id || ''}`}
-                                                    className="flex-1"
-                                                >
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
-                                                        className="w-full text-xs"
-                                                    >
-                                                        Change Schedule
-                                                    </Button>
-                                                </Link>
-                                                <Link 
-                                                    href="/attendance/schedules"
-                                                    className="flex-1"
-                                                >
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        className="w-full text-xs"
-                                                    >
-                                                        View All
-                                                    </Button>
-                                                </Link>
-                                            </div>
-                                            <p className="mt-2 text-xs text-muted-foreground text-center">Current Work Schedule</p>
                                         </div>
+                                        
+                                        <CardContent className="p-6">
+                                            <div className="space-y-4">
+                                                {/* Shift Name */}
+                                                <div className="text-center pb-3 border-b">
+                                                    <h3 className="text-lg font-bold text-foreground">
+                                                        {employee.current_shift.name}
+                                                    </h3>
+                                                    <p className="text-xs text-muted-foreground mt-1">Work Schedule</p>
+                                                </div>
+
+                                                {/* Schedule Details */}
+                                                <div className="space-y-2.5">
+                                                    {/* Time In and Time Out - Side by Side */}
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
+                                                            <span className="text-xs text-muted-foreground">Time In</span>
+                                                            <span className="text-sm font-semibold text-foreground">{employee.current_shift.time_in}</span>
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
+                                                            <span className="text-xs text-muted-foreground">Time Out</span>
+                                                            <span className="text-sm font-semibold text-foreground">{employee.current_shift.time_out}</span>
+                                                        </div>
+                                                    </div>
+                                                    {/* Period - Full Width */}
+                                                    <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
+                                                        <span className="text-xs text-muted-foreground">Period</span>
+                                                        <span className="text-sm font-semibold text-foreground">
+                                                            {employee.current_shift.date_start} - {employee.current_shift.date_end || 'Ongoing'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div className="flex gap-2 pt-2">
+                                                    <Link 
+                                                        href={`/attendance/schedules/create?employee_id=${employee.employee_id}&company_id=${employee.company_id || ''}`}
+                                                        className="flex-1"
+                                                    >
+                                                        <Button 
+                                                            variant="default" 
+                                                            size="sm" 
+                                                            className="w-full"
+                                                        >
+                                                            Change Schedule
+                                                        </Button>
+                                                    </Link>
+                                                    <Link 
+                                                        href="/attendance/schedules"
+                                                        className="flex-1"
+                                                    >
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="w-full"
+                                                        >
+                                                            View All
+                                                        </Button>
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center h-full space-y-2">
-                                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
-                                                Not Assigned
-                                            </span>
-                                            <p className="text-xs text-muted-foreground text-center">
-                                                No schedule assigned.<br />
+                                    <>
+                                        {/* Status Badge on Top */}
+                                        <div className="bg-yellow-50 dark:bg-yellow-950/20 px-4 py-2 border-b border-yellow-200 dark:border-yellow-800">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                                                <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">
+                                                    Not Assigned
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <CardContent className="p-6">
+                                            <div className="flex flex-col items-center justify-center py-4 space-y-4">
+                                                <div className="text-center space-y-2">
+                                                    <div className="mx-auto w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                                                        <Calendar className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+                                                    </div>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        No work schedule has been assigned to this employee yet.
+                                                    </p>
+                                                </div>
                                                 <Link 
                                                     href={`/attendance/schedules/create?employee_id=${employee.employee_id}&company_id=${employee.company_id || ''}`}
-                                                    className="text-blue-600 hover:underline dark:text-blue-400"
+                                                    className="w-full"
                                                 >
-                                                    Assign Schedule
+                                                    <Button 
+                                                        variant="default" 
+                                                        size="sm" 
+                                                        className="w-full"
+                                                    >
+                                                        <Calendar className="mr-2 h-4 w-4" />
+                                                        Assign Schedule
+                                                    </Button>
                                                 </Link>
-                                            </p>
-                                        </div>
+                                            </div>
+                                        </CardContent>
+                                    </>
                                     )}
-                                </CardContent>
                             </Card>
                         </div>
 
