@@ -1,8 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useForm } from '@inertiajs/react';
-import { FileUp, Upload } from 'lucide-react';
-import {  useState } from 'react';
+import { Download, FileUp, Upload } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 export function EmployeeImportCsv() {
@@ -41,6 +41,11 @@ export function EmployeeImportCsv() {
         });
     };
 
+    const downloadTemplate = () => {
+        // Use the existing template from public folder
+        window.location.href = '/Employee_Import_Template.csv';
+    };
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -52,8 +57,12 @@ export function EmployeeImportCsv() {
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Import Employees from CSV</DialogTitle>
-                    <DialogDescription>
-                        Upload a CSV file with employee data. The file should have headers matching the database fields.
+                    <DialogDescription className="space-y-4">
+                        <p>Upload a CSV file with employee data. The file should have headers matching the database fields.</p>
+                        <Button type="button" variant="outline" onClick={downloadTemplate} className="flex items-center gap-2">
+                            <Download className="h-4 w-4" />
+                            Download Template
+                        </Button>
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
