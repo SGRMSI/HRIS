@@ -53,37 +53,99 @@ class AttendanceProcessService
                     continue;
                 }
 
-                // Get the most recent instance of each state (no exception checking)
-                // Group by date first to handle multiple days
-                $eventsByDate = $events->groupBy(fn($e) => Carbon::parse($e->time_log)->toDateString());
+                // Process attendance by pairing Clock In -> Clock Out sequences
+                // First, deduplicate events that occur within 5 minutes of each other
+                // Take the most recent instance within the time window
                 
-                foreach ($eventsByDate as $date => $dailyEvents) {
-                    // For each date, get the most recent instance of each state
-                    $clockIn = $dailyEvents
-                        ->where('state', 'C/In')
-                        ->sortByDesc('time_log')
-                        ->first();
+                $deduplicatedEvents = $this->deduplicateEvents($events);
+                
+                // Get all clock-in events sorted by time
+                $clockInEvents = $deduplicatedEvents
+                    ->where('state', 'C/In')
+                    ->sortBy('time_log')
+                    ->values();
+                
+                // Process each clock-in and find its corresponding clock-out
+                foreach ($clockInEvents as $clockIn) {
+                    $clockInTime = $clockIn->time_log;
+                    $attendanceDate = $clockInTime->toDateString();
                     
-                    $clockOut = $dailyEvents
+                    // Find the next clock-out AFTER this clock-in
+                    $clockOut = $deduplicatedEvents
                         ->where('state', 'C/Out')
-                        ->sortByDesc('time_log')
+                        ->filter(fn($e) => $e->time_log->gt($clockInTime))
+                        ->sortBy('time_log')
                         ->first();
                     
-                    $breakStart = $dailyEvents
-                        ->where('state', 'OverTime In')
-                        ->sortByDesc('time_log')
-                        ->first();
+                    $clockOutTime = $clockOut?->time_log;
                     
-                    $breakEnd = $dailyEvents
-                        ->where('state', 'OverTime Out')
-                        ->sortByDesc('time_log')
-                        ->first();
+                    // Validate sequence: Check if there's another C/In between this C/In and C/Out
+                    // If yes, it means employee forgot to clock out and the C/Out belongs to next shift
+                    if ($clockOutTime) {
+                        $nextClockIn = $deduplicatedEvents
+                            ->where('state', 'C/In')
+                            ->filter(fn($e) => $e->time_log->gt($clockInTime) && $e->time_log->lt($clockOutTime))
+                            ->sortBy('time_log')
+                            ->first();
+                        
+                        if ($nextClockIn) {
+                            // There's another clock-in before the clock-out, which means forgot to clock out
+                            Log::warning("Missing clock-out detected", [
+                                'employee_id' => $employee->employee_id,
+                                'employee_name' => $employeeName,
+                                'clock_in' => $clockInTime->format('Y-m-d H:i:s'),
+                                'next_clock_in' => $nextClockIn->time_log->format('Y-m-d H:i:s'),
+                                'ignored_clock_out' => $clockOutTime->format('Y-m-d H:i:s')
+                            ]);
+                            
+                            // Invalidate this clock-out, treat as missing
+                            $clockOut = null;
+                            $clockOutTime = null;
+                        }
+                    }
+                    
+                    // Find breaks between clock-in and clock-out
+                    $breakStart = null;
+                    $breakEnd = null;
+                    
+                    if ($clockOutTime) {
+                        // Get breaks that fall between clock-in and clock-out
+                        $breakStart = $deduplicatedEvents
+                            ->where('state', 'OverTime In')
+                            ->filter(fn($e) => $e->time_log->gte($clockInTime) && $e->time_log->lte($clockOutTime))
+                            ->sortBy('time_log')
+                            ->first();
+                        
+                        $breakEnd = $deduplicatedEvents
+                            ->where('state', 'OverTime Out')
+                            ->filter(fn($e) => $e->time_log->gte($clockInTime) && $e->time_log->lte($clockOutTime))
+                            ->sortBy('time_log')
+                            ->first();
+                    }
 
                     // Calculate break minutes if both break start and end exist
                     $breakMinutes = 0;
                     $breakPairs = [];
+                    $breakWarnings = [];
                     
-                    if ($breakStart && $breakEnd) {
+                    // Validate break sequence
+                    if ($breakStart && !$breakEnd) {
+                        $breakWarnings[] = 'Break started but no break end recorded';
+                        Log::warning("Incomplete break sequence", [
+                            'employee_id' => $employee->employee_id,
+                            'employee_name' => $employeeName,
+                            'date' => $attendanceDate,
+                            'break_start' => $breakStart->time_log->format('Y-m-d H:i:s'),
+                        ]);
+                    } elseif (!$breakStart && $breakEnd) {
+                        $breakWarnings[] = 'Break end recorded but no break start';
+                        Log::warning("Incomplete break sequence", [
+                            'employee_id' => $employee->employee_id,
+                            'employee_name' => $employeeName,
+                            'date' => $attendanceDate,
+                            'break_end' => $breakEnd->time_log->format('Y-m-d H:i:s'),
+                        ]);
+                    } elseif ($breakStart && $breakEnd) {
                         $breakStartTime = $breakStart->time_log;
                         $breakEndTime = $breakEnd->time_log;
                         
@@ -95,6 +157,15 @@ class AttendanceProcessService
                                 'end' => $breakEndTime->format('Y-m-d H:i:s'),
                                 'minutes' => $minutes
                             ];
+                        } else {
+                            $breakWarnings[] = 'Break end time is before break start time';
+                            Log::warning("Invalid break sequence", [
+                                'employee_id' => $employee->employee_id,
+                                'employee_name' => $employeeName,
+                                'date' => $attendanceDate,
+                                'break_start' => $breakStartTime->format('Y-m-d H:i:s'),
+                                'break_end' => $breakEndTime->format('Y-m-d H:i:s'),
+                            ]);
                         }
                     }
 
@@ -103,22 +174,38 @@ class AttendanceProcessService
                     $status = 'Present';
                     $meta = [];
 
-                    $clockInTime = $clockIn?->time_log;
-                    $clockOutTime = $clockOut?->time_log;
-
+                    // Validate that clock-in is before clock-out
                     if ($clockInTime && $clockOutTime) {
-                        // Calculate minutes worked (always positive)
-                        $totalMinutes = abs($clockInTime->diffInMinutes($clockOutTime, false)) - $breakMinutes;
-
-                        if ($totalMinutes < 0) {
-                            Log::warning("Negative total minutes calculated", [
+                        if ($clockOutTime->lt($clockInTime)) {
+                            // Clock out is before clock in - this should not happen with our new logic
+                            Log::warning("Invalid attendance: Clock out before clock in", [
                                 'employee_id' => $employee->employee_id,
-                                'date' => $date,
+                                'employee_name' => $employeeName,
+                                'date' => $attendanceDate,
                                 'clock_in' => $clockInTime->format('Y-m-d H:i:s'),
                                 'clock_out' => $clockOutTime->format('Y-m-d H:i:s'),
-                                'break_minutes' => $breakMinutes
                             ]);
-                            $totalMinutes = 0;
+                            
+                            // Set status as incomplete with error
+                            $status = 'Incomplete';
+                            $meta['errors'] = [
+                                'invalid_sequence' => 'Clock out time is before clock in time'
+                            ];
+                            $totalMinutes = null;
+                        } else {
+                            // Calculate minutes worked (always positive)
+                            $totalMinutes = abs($clockInTime->diffInMinutes($clockOutTime, false)) - $breakMinutes;
+
+                            if ($totalMinutes < 0) {
+                                Log::warning("Negative total minutes calculated", [
+                                    'employee_id' => $employee->employee_id,
+                                    'date' => $attendanceDate,
+                                    'clock_in' => $clockInTime->format('Y-m-d H:i:s'),
+                                    'clock_out' => $clockOutTime->format('Y-m-d H:i:s'),
+                                    'break_minutes' => $breakMinutes
+                                ]);
+                                $totalMinutes = 0;
+                            }
                         }
                     } else {
                         $status = 'Incomplete';
@@ -132,12 +219,20 @@ class AttendanceProcessService
                     if (!empty($breakPairs)) {
                         $meta['breaks'] = $breakPairs;
                     }
+                    
+                    // Add break warnings to meta if any
+                    if (!empty($breakWarnings)) {
+                        if (!isset($meta['warnings'])) {
+                            $meta['warnings'] = [];
+                        }
+                        $meta['warnings']['break_issues'] = $breakWarnings;
+                    }
 
                     AttendanceProcessed::updateOrCreate(
                         [
                             'batch_id' => $batch->batch_id,
                             'employee_id' => $employee->employee_id,
-                            'date' => $date,
+                            'date' => $attendanceDate,
                         ],
                         [
                             'clock_in' => $clockInTime?->format('Y-m-d H:i:s'),
@@ -179,6 +274,40 @@ class AttendanceProcessService
 
             throw $e;
         }
+    }
+
+    /**
+     * Deduplicate consecutive events of the same state
+     * Takes the FIRST instance of consecutive duplicate states
+     *
+     * @param Collection $events
+     * @return Collection
+     */
+    private function deduplicateEvents(Collection $events): Collection
+    {
+        $deduplicated = collect();
+        $sorted = $events->sortBy('time_log')->values();
+        
+        $lastState = null;
+        
+        foreach ($sorted as $event) {
+            $currentState = $event->state;
+            
+            // If this is a different state from the last one, add it
+            if ($currentState !== $lastState) {
+                $deduplicated->push($event);
+                $lastState = $currentState;
+            } else {
+                // Same state as previous - this is a duplicate, skip it
+                Log::info("Skipped duplicate consecutive event", [
+                    'state' => $currentState,
+                    'skipped_time' => $event->time_log->format('Y-m-d H:i:s'),
+                    'kept_previous' => $deduplicated->last()->time_log->format('Y-m-d H:i:s'),
+                ]);
+            }
+        }
+        
+        return $deduplicated;
     }
 
     /**
