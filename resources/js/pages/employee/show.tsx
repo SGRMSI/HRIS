@@ -286,11 +286,11 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                     </>
                                     ) : (
                                     <>
-                                        {/* Status Badge on Top */}
-                                        <div className="bg-yellow-50 dark:bg-yellow-950/20 px-4 py-2 border-b border-yellow-200 dark:border-yellow-800">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                                                <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400 uppercase tracking-wide">
+                                        {/* Status Badge on Top Corner */}
+                                        <div className="absolute top-0 right-0 bg-yellow-500 text-white px-3 py-1 rounded-bl-lg shadow-md z-10">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white"></div>
+                                                <span className="text-xs font-semibold uppercase tracking-wide">
                                                     Not Assigned
                                                 </span>
                                             </div>
