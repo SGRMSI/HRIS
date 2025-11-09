@@ -395,38 +395,17 @@ export default function Processed({ batches, processed, filters, companies, empl
                                                 <Alert className="border-green-500 bg-green-50">
                                                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                                                     <AlertDescription className="text-green-800 text-sm">
-                                                        Batch finalized! Records are now in Final Attendance.
+                                                        Batch finalized! Data is locked for audit purposes.
                                                     </AlertDescription>
                                                 </Alert>
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        onClick={() => router.visit(route('attendance.final.index'))}
-                                                        className="flex-1 bg-green-600 hover:bg-green-700"
-                                                        size="sm"
-                                                    >
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        View Final Attendance
-                                                    </Button>
-                                                    <Button
-                                                        onClick={() => handleReprocess(batch.id)}
-                                                        disabled={reprocessing === batch.id}
-                                                        className="flex-1"
-                                                        size="sm"
-                                                        variant="outline"
-                                                    >
-                                                        {reprocessing === batch.id ? (
-                                                            <>
-                                                                <Clock className="mr-2 h-4 w-4 animate-spin" />
-                                                                Reprocessing...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <RotateCcw className="mr-2 h-4 w-4" />
-                                                                Reprocess
-                                                            </>
-                                                        )}
-                                                    </Button>
-                                                </div>
+                                                <Button
+                                                    onClick={() => router.visit(route('attendance.final.index'))}
+                                                    className="w-full bg-green-600 hover:bg-green-700"
+                                                    size="sm"
+                                                >
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    View Final Attendance
+                                                </Button>
                                             </div>
                                         ) : null}
                                     </CardContent>

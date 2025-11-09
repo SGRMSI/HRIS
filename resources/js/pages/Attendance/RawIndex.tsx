@@ -1,10 +1,29 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BatchCard } from '@/components/attendance/batch-card';
-import { FileText, AlertCircle, Upload, Trash2, CheckCircle2 } from 'lucide-react';
+import { 
+    FileText, 
+    AlertCircle, 
+    Upload, 
+    Trash2, 
+    CheckCircle2, 
+    Filter, 
+    X, 
+    Search,
+    TrendingUp,
+    Users,
+    Calendar,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown
+} from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -37,6 +56,38 @@ interface Batch {
     status: string;
 }
 
+interface StatusCount {
+    status: string;
+    count: number;
+}
+
+interface Stats {
+    total_batches: number;
+    total_records: number;
+    by_status: Record<string, StatusCount>;
+    recent_uploads: number;
+}
+
+interface Uploader {
+    id: number;
+    name: string;
+}
+
+interface Status {
+    value: string;
+    label: string;
+}
+
+interface Filters {
+    search?: string;
+    status?: string;
+    uploaded_by?: string;
+    date_from?: string;
+    date_to?: string;
+    sort_by?: string;
+    sort_direction?: string;
+}
+
 interface RawIndexProps {
     batches: {
         data: Batch[];
@@ -44,7 +95,16 @@ interface RawIndexProps {
         last_page: number;
         per_page: number;
         total: number;
+        links: Array<{
+            url: string | null;
+            label: string;
+            active: boolean;
+        }>;
     };
+    filters: Filters;
+    uploaders: Uploader[];
+    stats: Stats;
+    statuses: Status[];
     flash?: {
         success?: string;
         error?: string;
@@ -53,22 +113,26 @@ interface RawIndexProps {
     };
 }
 
-export default function RawIndex({ batches, flash }: RawIndexProps) {
+export default function RawIndex({ batches, filters, uploaders, stats, statuses, flash }: RawIndexProps) {
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [showFilters, setShowFilters] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     const uploadForm = useForm({
         file: null as File | null,
     });
 
+    // Local filter state
+    const [localFilters, setLocalFilters] = useState<Filters>(filters || {});
+
     // Force reload data when component mounts to prevent stale cache
     useEffect(() => {
         const hasNavigatedFromUpload = sessionStorage.getItem('attendance_uploaded');
         if (hasNavigatedFromUpload) {
-            router.reload({ only: ['batches'] });
+            router.reload({ only: ['batches', 'stats'] });
             sessionStorage.removeItem('attendance_uploaded');
         }
     }, []);
@@ -87,6 +151,51 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
             toast.info(flash.info);
         }
     }, [flash]);
+
+    const handleFilter = (key: string, value: string) => {
+        const newFilters = { ...localFilters, [key]: value || undefined };
+        setLocalFilters(newFilters);
+        router.get(route('attendance.raw.index'), newFilters, { 
+            preserveState: true, 
+            replace: true 
+        });
+    };
+
+    const handleClearFilters = () => {
+        setLocalFilters({});
+        router.get(route('attendance.raw.index'), {}, { 
+            preserveState: true, 
+            replace: true 
+        });
+    };
+
+    const handleSort = (field: string) => {
+        const currentSortBy = localFilters.sort_by || 'created_at';
+        const currentDirection = localFilters.sort_direction || 'desc';
+        
+        let newDirection = 'asc';
+        if (currentSortBy === field) {
+            newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+        }
+        
+        const newFilters = { ...localFilters, sort_by: field, sort_direction: newDirection };
+        setLocalFilters(newFilters);
+        router.get(route('attendance.raw.index'), newFilters, { 
+            preserveState: true, 
+            replace: true 
+        });
+    };
+
+    const getSortIcon = (field: string) => {
+        if (localFilters.sort_by !== field) {
+            return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+        }
+        return localFilters.sort_direction === 'asc' ? 
+            <ArrowUp className="h-4 w-4 ml-1" /> : 
+            <ArrowDown className="h-4 w-4 ml-1" />;
+    };
+
+    const activeFiltersCount = Object.values(localFilters).filter(v => v).length;
 
     const handleUpload = () => {
         if (!uploadForm.data.file) {
@@ -111,7 +220,6 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
                 clearInterval(progressInterval);
                 setUploadProgress(100);
                 setTimeout(() => {
-                    // Force full page reload to refresh all data
                     window.location.href = route('attendance.raw.index');
                 }, 500);
             },
@@ -130,7 +238,6 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
 
         router.delete(route('attendance.raw.destroy', selectedBatch.id), {
             onSuccess: () => {
-                // Force full page reload to refresh all data
                 window.location.href = route('attendance.raw.index');
             },
             onError: (errors) => {
@@ -151,6 +258,7 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
             <Head title="Raw Attendance Data" />
             
             <div className="space-y-6 p-6 md:p-4">
+                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">Raw Attendance Data</h1>
@@ -164,21 +272,246 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
                     </Button>
                 </div>
 
+                {/* Statistics Dashboard */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Batches</CardTitle>
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.total_batches}</div>
+                            <p className="text-xs text-muted-foreground">
+                                All uploaded batches
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Records</CardTitle>
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.total_records.toLocaleString()}</div>
+                            <p className="text-xs text-muted-foreground">
+                                Attendance logs imported
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Recent Uploads</CardTitle>
+                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.recent_uploads}</div>
+                            <p className="text-xs text-muted-foreground">
+                                Last 7 days
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Status Breakdown</CardTitle>
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-1">
+                                {Object.entries(stats.by_status).map(([status, data]) => (
+                                    <div key={status} className="flex items-center justify-between text-xs">
+                                        <span className="capitalize">{status}</span>
+                                        <span className="font-medium">{data.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Filters */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Filter className="h-4 w-4" />
+                                <CardTitle className="text-base">Filters & Search</CardTitle>
+                                {activeFiltersCount > 0 && (
+                                    <Badge variant="secondary">{activeFiltersCount} active</Badge>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                {activeFiltersCount > 0 && (
+                                    <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                                        <X className="h-4 w-4 mr-1" />
+                                        Clear All
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowFilters(!showFilters)}
+                                >
+                                    {showFilters ? 'Hide' : 'Show'} Filters
+                                </Button>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    {showFilters && (
+                        <CardContent>
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {/* Search */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="search">Search Filename</Label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="search"
+                                            placeholder="Search by filename..."
+                                            value={localFilters.search || ''}
+                                            onChange={(e) => handleFilter('search', e.target.value)}
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Status Filter */}
+                                <div className="space-y-2">
+                                    <Label>Status</Label>
+                                    <Select 
+                                        value={localFilters.status || 'all'} 
+                                        onValueChange={(value) => handleFilter('status', value === 'all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All statuses" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Statuses</SelectItem>
+                                            {statuses.map((status) => (
+                                                <SelectItem key={status.value} value={status.value}>
+                                                    {status.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Uploaded By Filter */}
+                                <div className="space-y-2">
+                                    <Label>Uploaded By</Label>
+                                    <Select 
+                                        value={localFilters.uploaded_by || 'all'} 
+                                        onValueChange={(value) => handleFilter('uploaded_by', value === 'all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All users" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Users</SelectItem>
+                                            {uploaders.map((uploader) => (
+                                                <SelectItem key={uploader.id} value={uploader.id.toString()}>
+                                                    {uploader.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Date From */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_from">Date From</Label>
+                                    <Input
+                                        id="date_from"
+                                        type="date"
+                                        value={localFilters.date_from || ''}
+                                        onChange={(e) => handleFilter('date_from', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Date To */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_to">Date To</Label>
+                                    <Input
+                                        id="date_to"
+                                        type="date"
+                                        value={localFilters.date_to || ''}
+                                        onChange={(e) => handleFilter('date_to', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </CardContent>
+                    )}
+                </Card>
+
+                {/* Sorting Options */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-muted-foreground">Sort by:</span>
+                    <Button
+                        variant={localFilters.sort_by === 'created_at' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleSort('created_at')}
+                    >
+                        Upload Date
+                        {getSortIcon('created_at')}
+                    </Button>
+                    <Button
+                        variant={localFilters.sort_by === 'filename' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleSort('filename')}
+                    >
+                        Filename
+                        {getSortIcon('filename')}
+                    </Button>
+                    <Button
+                        variant={localFilters.sort_by === 'status' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleSort('status')}
+                    >
+                        Status
+                        {getSortIcon('status')}
+                    </Button>
+                    <Button
+                        variant={localFilters.sort_by === 'total_rows' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handleSort('total_rows')}
+                    >
+                        Record Count
+                        {getSortIcon('total_rows')}
+                    </Button>
+                </div>
+
+                {/* Batches Grid */}
                 {batches.data.length === 0 ? (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-10">
                             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
                             <p className="text-muted-foreground text-center">
-                                No attendance data uploaded yet
+                                {activeFiltersCount > 0 
+                                    ? 'No batches found matching your filters'
+                                    : 'No attendance data uploaded yet'
+                                }
                             </p>
-                            <Button 
-                                variant="outline" 
-                                className="mt-4"
-                                onClick={() => setUploadDialogOpen(true)}
-                            >
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload Attendance File
-                            </Button>
+                            {activeFiltersCount > 0 ? (
+                                <Button 
+                                    variant="outline" 
+                                    className="mt-4"
+                                    onClick={handleClearFilters}
+                                >
+                                    <X className="mr-2 h-4 w-4" />
+                                    Clear Filters
+                                </Button>
+                            ) : (
+                                <Button 
+                                    variant="outline" 
+                                    className="mt-4"
+                                    onClick={() => setUploadDialogOpen(true)}
+                                >
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload Attendance File
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
                 ) : (
@@ -206,46 +539,54 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
                                                 }}
                                             />
                                         </Link>
-                                        <Button
-                                            variant="destructive"
-                                            size="icon"
-                                            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                setSelectedBatch(batch);
-                                                setDeleteDialogOpen(true);
-                                            }}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {batch.status !== 'finalized' && (
+                                            <Button
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setSelectedBatch(batch);
+                                                    setDeleteDialogOpen(true);
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {batches.last_page > 1 && (
+                        {/* Enhanced Pagination */}
                             <div className="flex items-center justify-between">
                                 <p className="text-sm text-muted-foreground">
-                                    Showing {batches.data.length} of {batches.total} batches
+                                    Showing {(batches.current_page - 1) * batches.per_page + 1} to{' '}
+                                    {Math.min(batches.current_page * batches.per_page, batches.total)} of {batches.total} batches
+                                    {' · '}Page {batches.current_page} of {batches.last_page}
                                 </p>
                                 <div className="flex gap-2">
-                                    {batches.current_page > 1 && (
-                                        <Link href={route('attendance.raw.index', { page: batches.current_page - 1 })}>
-                                            <Button variant="outline" size="sm">
-                                                Previous
-                                            </Button>
-                                        </Link>
-                                    )}
-                                    {batches.current_page < batches.last_page && (
-                                        <Link href={route('attendance.raw.index', { page: batches.current_page + 1 })}>
-                                            <Button variant="outline" size="sm">
-                                                Next
-                                            </Button>
-                                        </Link>
-                                    )}
+                                    {batches.links.map((link, index) => (
+                                        <Button
+                                            key={index}
+                                            variant={link.active ? 'default' : 'outline'}
+                                            size="sm"
+                                            disabled={!link.url}
+                                            onClick={() => {
+                                                if (link.url) {
+                                                    router.get(link.url, Object.fromEntries(
+                                                        Object.entries(localFilters).filter(([_, v]) => v != null)
+                                                    ), {
+                                                        preserveState: true,
+                                                        preserveScroll: true,
+                                                    });
+                                                }
+                                            }}
+                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                        />
+                                    ))}
                                 </div>
                             </div>
-                        )}
                     </>
                 )}
             </div>
@@ -315,25 +656,16 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
                             <p className="font-medium text-sm">📋 Required Columns in Excel File:</p>
                             <ul className="ml-2 list-inside list-disc space-y-1.5 text-sm text-muted-foreground">
                                 <li>
-                                    <span className="font-mono text-foreground">Name</span> - Employee full name (will be matched against system records)
+                                    <span className="font-mono text-foreground">Name</span> - Employee full name
                                 </li>
                                 <li>
                                     <span className="font-mono text-foreground">Time</span> - Timestamp of attendance log
                                 </li>
                                 <li>
-                                    <span className="font-mono text-foreground">State</span> - Attendance state (C/In, C/Out, OverTime In, OverTime Out)
+                                    <span className="font-mono text-foreground">State</span> - Attendance state
                                 </li>
                                 <li>
-                                    <span className="font-mono text-foreground">AC-No.</span> - Employee AC number (optional)
-                                </li>
-                                <li>
-                                    <span className="font-mono text-foreground">New State</span> - Updated state (optional)
-                                </li>
-                                <li>
-                                    <span className="font-mono text-foreground">Exception</span> - Any exceptions (optional)
-                                </li>
-                                <li>
-                                    <span className="font-mono text-foreground">Operation</span> - Operation type (optional)
+                                    <span className="font-mono text-foreground">AC-No.</span> - Employee AC number
                                 </li>
                             </ul>
                         </div>
@@ -344,10 +676,9 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
                             <AlertDescription className="text-sm space-y-2">
                                 <p className="font-medium">Important Notes:</p>
                                 <ul className="list-disc list-inside space-y-1 ml-2">
-                                    <li>Employee names will be matched against First Name + Last Name in the system</li>
-                                    <li>Duplicate events within the same sequence will be automatically removed</li>
-                                    <li>The first instance of consecutive duplicates will be kept</li>
-                                    <li>Attendance processing will validate proper clock-in/clock-out sequences</li>
+                                    <li>Employee names will be matched against system records</li>
+                                    <li>Duplicate events will be automatically removed</li>
+                                    <li>Attendance processing validates clock-in/clock-out sequences</li>
                                 </ul>
                             </AlertDescription>
                         </Alert>

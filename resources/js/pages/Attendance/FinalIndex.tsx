@@ -47,11 +47,14 @@ interface AttendanceRecord {
     clock_out: string | null;
     break_in: string | null;
     break_out: string | null;
-    total_hours: string;
+    break_minutes: number | null;
+    total_hours: number | null;
+    total_minutes: number | null;
     late_minutes: number | null;
     overtime_hours: string;
     undertime_hours: string;
     status: string;
+    is_holiday: boolean;
     remarks: string | null;
     approved_by: string | null;
     approved_at: string | null;
@@ -177,6 +180,20 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                     setBulkProcessing(false);
                     setSelectedIds([]);
                 },
+            }
+        );
+    };
+
+    const handleApprove = (id: number) => {
+        if (!confirm('Are you sure you want to approve this attendance record?')) {
+            return;
+        }
+
+        router.post(
+            route('attendance.final.bulk-approve'),
+            { ids: [id] },
+            {
+                preserveScroll: true,
             }
         );
     };
@@ -421,16 +438,14 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                                 />
                                             </TableHead>
                                             <TableHead>Employee</TableHead>
-                                            <TableHead>Company</TableHead>
                                             <TableHead>Date</TableHead>
                                             <TableHead>Shift</TableHead>
                                             <TableHead>Clock-In</TableHead>
                                             <TableHead>Clock-Out</TableHead>
-                                            <TableHead>Break-Out</TableHead>
-                                            <TableHead>Break-In</TableHead>
                                             <TableHead>Total Hours</TableHead>
+                                            <TableHead>Break Time</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead>Approved</TableHead>
+                                            <TableHead>Approval</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -438,7 +453,7 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                         {attendances.data.map((record) => (
                                             <TableRow key={record.id}>
                                                 <TableCell>
-                                                    {!record.approved_by && record.can_approve && (
+                                                    {!record.approved_by && (
                                                         <Checkbox
                                                             checked={selectedIds.includes(record.id)}
                                                             onCheckedChange={(checked) => handleSelectOne(record.id, !!checked)}
@@ -446,45 +461,31 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <User className="h-4 w-4 text-gray-400" />
-                                                        <div>
-                                                            <p className="font-medium">{record.employee.name}</p>
-                                                            <p className="text-xs text-gray-500">{record.employee.id_number}</p>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="text-sm">{record.employee.company || 'N/A'}</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4 text-gray-400" />
-                                                        {formatDate(record.date)}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
                                                     <div>
                                                         <p className="font-medium">{record.employee.name}</p>
-                                                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                                                            <Building2 className="h-3 w-3" />
-                                                            {record.employee.company || 'N/A'}
+                                                        <div className="flex gap-2 mt-1">
+                                                            <Badge variant="outline" className="text-xs">
+                                                                {record.employee.id_number}
+                                                            </Badge>
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                {record.employee.company || 'N/A'}
+                                                            </Badge>
                                                         </div>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Calendar className="h-4 w-4 text-gray-400" />
-                                                        {formatDate(record.date)}
+                                                        <span className="text-sm">{formatDate(record.date)}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     {record.shift ? (
-                                                        <div className="text-sm">
-                                                            <p className="font-medium">{record.shift.name}</p>
-                                                            <p className="text-xs text-gray-500">
+                                                        <div>
+                                                            <p className="font-medium text-sm">{record.shift.name}</p>
+                                                            <Badge variant="outline" className="text-xs mt-1">
                                                                 {record.shift.time_in} - {record.shift.time_out}
-                                                            </p>
+                                                            </Badge>
                                                         </div>
                                                     ) : (
                                                         <span className="text-gray-400">-</span>
@@ -493,65 +494,91 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Clock className="h-3 w-3 text-green-600" />
-                                                        {record.clock_in || '-'}
+                                                        <span className="text-sm">{record.clock_in || '-'}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Clock className="h-3 w-3 text-red-600" />
-                                                        {record.clock_out || '-'}
+                                                        <span className="text-sm">{record.clock_out || '-'}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="h-3 w-3 text-orange-600" />
-                                                        {record.break_out || '-'}
-                                                    </div>
+                                                    {record.total_hours !== null ? (
+                                                        record.total_minutes !== null ? (
+                                                            <span className="font-medium text-sm">{record.total_hours}h {record.total_minutes}m</span>
+                                                        ) : (
+                                                            <span className="font-medium text-sm">{record.total_hours}h</span>
+                                                        )
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="h-3 w-3 text-orange-600" />
-                                                        {record.break_in || '-'}
-                                                    </div>
+                                                    <span className="text-sm">
+                                                        {record.break_minutes !== null && record.break_minutes !== undefined ? `${record.break_minutes} min` : '-'}
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="text-sm">
-                                                        <p className="font-medium">{record.total_hours} hrs</p>
-                                                        {record.overtime_hours !== '0.00' && (
-                                                            <p className="text-xs text-blue-600">
-                                                                +{record.overtime_hours} OT
-                                                            </p>
+                                                    <div className="flex flex-col gap-1">
+                                                        {record.status === 'late' ? (
+                                                            <Badge variant="destructive" className="text-xs">
+                                                                Late
+                                                            </Badge>
+                                                        ) : record.status === 'undertime' ? (
+                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
+                                                                Undertime
+                                                            </Badge>
+                                                        ) : record.status === 'present' ? (
+                                                            <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                                                                Present
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                {record.status}
+                                                            </Badge>
                                                         )}
-                                                        {record.late_minutes && record.late_minutes > 0 && (
-                                                            <p className="text-xs text-red-600">
-                                                                Late: {record.late_minutes}m
-                                                            </p>
+                                                        {record.is_holiday && (
+                                                            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                                                                Holiday Worked
+                                                            </Badge>
                                                         )}
                                                     </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {getStatusBadge(record.status, !!record.approved_by)}
                                                 </TableCell>
                                                 <TableCell>
                                                     {record.approved_by ? (
-                                                        <div className="text-sm">
-                                                            <p className="font-medium">{record.approved_by}</p>
-                                                            <p className="text-xs text-gray-500">
-                                                                {new Date(record.approved_at!).toLocaleDateString()}
-                                                            </p>
+                                                        <div>
+                                                            <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                                                                Approved
+                                                            </Badge>
+                                                            <p className="text-xs text-gray-500 mt-1">{record.approved_by}</p>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-gray-400">Pending</span>
+                                                        <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
+                                                            Pending
+                                                        </Badge>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => router.visit(route('attendance.final.show', record.id))}
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => router.visit(route('attendance.final.show', record.id))}
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        {!record.approved_by && (
+                                                            <Button
+                                                                variant="default"
+                                                                size="sm"
+                                                                onClick={() => handleApprove(record.id)}
+                                                            >
+                                                                <CheckCircle2 className="h-4 w-4 mr-1" />
+                                                                Approve
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))}

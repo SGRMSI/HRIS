@@ -173,10 +173,12 @@ export default function RawShow({ batch, records, stats, filters }: RawShowProps
                         </p>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Batch
-                        </Button>
+                        {batch.status !== 'finalized' && (
+                            <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Batch
+                            </Button>
+                        )}
                         <Button onClick={handleExport}>
                             <Download className="h-4 w-4 mr-2" />
                             Export to Excel

@@ -203,6 +203,13 @@ class AttendanceProcessedController extends Controller
 
             $batch = AttendanceUploadBatch::findOrFail($request->batch_id);
             
+            // Prevent reprocessing of finalized batches
+            if ($batch->status === 'finalized') {
+                return back()->withErrors([
+                    'reprocess' => 'Cannot reprocess finalized batches. Finalized data is locked for audit purposes.'
+                ]);
+            }
+            
             // Mark selected records for reprocessing
             AttendanceProcessed::whereIn('processed_id', $request->records)
                 ->where('batch_id', $batch->batch_id)

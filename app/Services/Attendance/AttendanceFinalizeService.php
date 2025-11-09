@@ -125,7 +125,9 @@ class AttendanceFinalizeService
                         'break_out' => $processed->break_out,
                         'break_in' => $processed->break_in,
                         'clock_out' => $processed->clock_out,
+                        'break_minutes' => $processed->break_minutes,
                         'total_hours' => $processed->total_hours,
+                        'total_minutes' => $processed->total_minutes,
                         'late_minutes' => $lateMinutes,
                         'overtime_hours' => $overtimeHours,
                         'undertime_hours' => $undertimeHours,
@@ -269,15 +271,13 @@ class AttendanceFinalizeService
         bool $isHoliday,
         bool $isOnLeave
     ): string {
-        // Check for holiday first
-        if ($isHoliday) {
-            return $attendance->clock_in ? 'holiday_worked' : 'holiday';
-        }
-
-        // Check for leave
+        // Check for leave first (this overrides everything)
         if ($isOnLeave) {
             return $attendance->clock_in ? 'leave_worked' : 'on_leave';
         }
+
+        // For holidays, we still determine the normal status (present/late/undertime)
+        // The holiday_id field will indicate it was a holiday
 
         // Handle invalid schedule case
         if (!$schedule || !$schedule->shift) {
@@ -289,7 +289,6 @@ class AttendanceFinalizeService
             return 'incomplete';
         }
 
-        // Handle overnight shifts and lateness
         $shift = $schedule->shift;
         
         // Get just the date portion (Y-m-d) to avoid double time specification
@@ -297,26 +296,50 @@ class AttendanceFinalizeService
             ? $attendance->date->format('Y-m-d')
             : substr($attendance->date, 0, 10);
             
-        // Get shift time from raw attributes
-        $shiftTimeIn = $shift->getAttributes()['time_in'] . ':00';
+        // Get shift times from raw attributes (time only, no date)
+        $shiftTimeIn = $shift->getAttributes()['time_in'];
+        $shiftTimeOut = $shift->getAttributes()['time_out'];
         
-        $scheduledClockIn = Carbon::parse($dateOnly . ' ' . $shiftTimeIn);
-        
+        // For overnight shifts, the shift starts the day before the attendance date
+        // and ends on the attendance date
         if ($shift->isOvernight()) {
-            $scheduledClockIn->subDay();
+            // Shift starts day before
+            $scheduledClockIn = Carbon::parse($dateOnly)->subDay()->setTimeFromTimeString($shiftTimeIn);
+            $scheduledClockOut = Carbon::parse($dateOnly)->setTimeFromTimeString($shiftTimeOut);
+        } else {
+            // Regular shift - both on the same day
+            $scheduledClockIn = Carbon::parse($dateOnly)->setTimeFromTimeString($shiftTimeIn);
+            $scheduledClockOut = Carbon::parse($dateOnly)->setTimeFromTimeString($shiftTimeOut);
         }
 
         $actualClockIn = $attendance->clock_in instanceof \Carbon\Carbon
             ? $attendance->clock_in
             : Carbon::parse($attendance->clock_in);
+            
+        $actualClockOut = $attendance->clock_out instanceof \Carbon\Carbon
+            ? $attendance->clock_out
+            : Carbon::parse($attendance->clock_out);
         
-        // Use shift's grace period
-        $graceEnd = $scheduledClockIn->copy()->addMinutes($shift->grace_period ?? 0);
+        // Calculate shift expected hours (in minutes)
+        $shiftDurationMinutes = $shift->getDurationMinutes();
         
-        if ($actualClockIn->gt($graceEnd)) {
+        // Calculate actual worked minutes (total_hours * 60 + total_minutes)
+        $actualWorkedMinutes = ($attendance->total_hours ?? 0) * 60 + ($attendance->total_minutes ?? 0);
+        
+        // Check if late (clocked in more than 1 minute after shift start)
+        $lateThresholdMinutes = 1;
+        $minutesLate = $actualClockIn->diffInMinutes($scheduledClockIn, false);
+        
+        if ($minutesLate > $lateThresholdMinutes) {
             return 'late';
         }
-
+        
+        // Check if undertime (worked less hours than shift duration)
+        if ($actualWorkedMinutes < $shiftDurationMinutes) {
+            return 'undertime';
+        }
+        
+        // Otherwise, they're present
         return 'present';
     }
 

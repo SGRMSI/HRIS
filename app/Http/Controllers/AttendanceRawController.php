@@ -25,12 +25,76 @@ class AttendanceRawController extends Controller
      */
     public function index(Request $request)
     {
-        // Get batches with statistics
-        $batches = AttendanceUploadBatch::query()
+        // Extract filters
+        $filters = $request->only([
+            'search',
+            'status',
+            'uploaded_by',
+            'date_from',
+            'date_to',
+            'sort_by',
+            'sort_direction',
+        ]);
+
+        // Get unique uploaders for filter dropdown
+        $uploaders = \App\Models\User::whereIn('id', function ($query) {
+            $query->select('uploaded_by')
+                ->from('attendance_upload_batches')
+                ->whereNotNull('uploaded_by')
+                ->distinct();
+        })->select('id', 'name')->get();
+
+        // Build query with filters
+        $query = AttendanceUploadBatch::query()
             ->with('uploadedBy:id,name')
-            ->withCount('raws')
-            ->latest('created_at')
-            ->paginate(10)
+            ->withCount('raws');
+
+        // Apply filters
+        if (!empty($filters['search'])) {
+            $query->where('filename', 'like', '%' . $filters['search'] . '%');
+        }
+
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['uploaded_by'])) {
+            $query->where('uploaded_by', $filters['uploaded_by']);
+        }
+
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('created_at', '>=', $filters['date_from']);
+        }
+
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('created_at', '<=', $filters['date_to']);
+        }
+
+        // Apply sorting
+        $sortBy = $filters['sort_by'] ?? 'created_at';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+        
+        // Validate sort fields
+        $allowedSortFields = ['created_at', 'filename', 'status', 'total_rows'];
+        if (!in_array($sortBy, $allowedSortFields)) {
+            $sortBy = 'created_at';
+        }
+        
+        $query->orderBy($sortBy, $sortDirection);
+
+        // Get statistics for dashboard
+        $stats = [
+            'total_batches' => AttendanceUploadBatch::count(),
+            'total_records' => AttendanceUploadBatch::sum('total_rows'),
+            'by_status' => AttendanceUploadBatch::select('status', DB::raw('count(*) as count'))
+                ->groupBy('status')
+                ->get()
+                ->keyBy('status'),
+            'recent_uploads' => AttendanceUploadBatch::where('created_at', '>=', now()->subDays(7))->count(),
+        ];
+
+        $batches = $query->paginate(10)
+            ->withQueryString()
             ->through(fn ($batch) => [
                 'id' => $batch->batch_id,
                 'filename' => $batch->filename,
@@ -43,6 +107,16 @@ class AttendanceRawController extends Controller
 
         return Inertia::render('Attendance/RawIndex', [
             'batches' => $batches,
+            'filters' => $filters,
+            'uploaders' => $uploaders,
+            'stats' => $stats,
+            'statuses' => [
+                ['value' => 'uploaded', 'label' => 'Uploaded'],
+                ['value' => 'processing', 'label' => 'Processing'],
+                ['value' => 'processed', 'label' => 'Processed'],
+                ['value' => 'failed', 'label' => 'Failed'],
+                ['value' => 'finalized', 'label' => 'Finalized'],
+            ],
         ]);
     }
 
@@ -218,6 +292,13 @@ class AttendanceRawController extends Controller
             DB::beginTransaction();
 
             $batch = AttendanceUploadBatch::findOrFail($batchId);
+
+            // Prevent deletion of finalized batches
+            if ($batch->status === 'finalized') {
+                return redirect()
+                    ->route('attendance.raw.index')
+                    ->withErrors(['delete' => 'Cannot delete finalized batches. Finalized data is locked for audit purposes.']);
+            }
 
             // Delete the physical file
             if ($batch->file_path && Storage::exists($batch->file_path)) {
