@@ -49,6 +49,7 @@ interface Shift {
     attendances_count: number;
     is_active: boolean;
     can_delete: boolean;
+    has_usage: boolean;
 }
 
 interface Props {
@@ -324,9 +325,21 @@ export default function ShiftsIndex({ shifts, filters }: Props) {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete Shift</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to delete "{deleteShift?.name}"? This action cannot be
-                            undone.
+                        <AlertDialogDescription className="space-y-3">
+                            <p>
+                                Are you sure you want to delete "{deleteShift?.name}"? This action cannot be
+                                undone.
+                            </p>
+                            {deleteShift?.has_usage && (
+                                <div className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
+                                    <div className="font-semibold mb-1">⚠️ Warning: Shift is in use</div>
+                                    <p>
+                                        This shift is currently assigned to {deleteShift.schedules_count} schedule(s) 
+                                        and has {deleteShift.attendances_count} attendance record(s). 
+                                        Deletion will be prevented.
+                                    </p>
+                                </div>
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

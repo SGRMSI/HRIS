@@ -61,7 +61,8 @@ class ShiftController extends Controller
                     'schedules_count' => $shift->schedules_count,
                     'attendances_count' => $shift->attendances_count,
                     'is_active' => $shift->schedules_count > 0,
-                    'can_delete' => $shift->schedules_count === 0 && $shift->attendances_count === 0
+                    'can_delete' => true, // Always allow delete, will validate in destroy method
+                    'has_usage' => $shift->schedules_count > 0 || $shift->attendances_count > 0
                 ];
             });
 
