@@ -18,6 +18,7 @@ public function run(): void
         EmployeeScheduleSeeder::class,
         HolidaySeeder::class,
         EmployeeLeaveSeeder::class,
+        EmployeeOvertimeSeeder::class,
     ]);
 }
 }

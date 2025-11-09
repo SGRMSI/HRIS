@@ -38,23 +38,27 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
                 $exception = trim($row['exception'] ?? '');
                 $operation = trim($row['operation'] ?? '');
 
-                if (empty($acNo) || empty($timeLog)) {
+                if (empty($name) || empty($timeLog)) {
                     continue; // Skip invalid rows
                 }
 
-                // Try to match employee by AC-No
-                // First try to match by employee_id (if AC-No is numeric)
-                // Then fall back to id_number (if it's alphanumeric)
+                // Match employee by name (First Name + Last Name)
                 $employee = null;
                 
-                if (is_numeric($acNo)) {
-                    // If AC-No is numeric, match by employee_id
-                    $employee = Employee::find((int) $acNo);
-                }
-                
-                // If not found by employee_id, try matching by id_number
-                if (!$employee) {
-                    $employee = Employee::where('id_number', $acNo)->first();
+                if (!empty($name)) {
+                    // Try to find employee by matching first_name + last_name
+                    $employee = Employee::whereRaw(
+                        "TRIM(LOWER(first_name || ' ' || last_name)) = ?", 
+                        [strtolower(trim($name))]
+                    )->first();
+                    
+                    // If not found, try reversed order (last_name + first_name)
+                    if (!$employee) {
+                        $employee = Employee::whereRaw(
+                            "TRIM(LOWER(last_name || ' ' || first_name)) = ?", 
+                            [strtolower(trim($name))]
+                        )->first();
+                    }
                 }
 
                 AttendanceRaw::create([
@@ -84,13 +88,13 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
     public function rules(): array
     {
         return [
-            // AC-No. can be numeric or string from biometric device
+            // Name is now the primary identifier
+            '*.name' => ['nullable'],
             '*.ac_no' => ['nullable'],
             '*.ac-no' => ['nullable'],
             '*.acno' => ['nullable'],
             '*.no' => ['nullable'], // Sometimes "No." column exists
             '*.time' => ['nullable'],
-            '*.name' => ['nullable'],
             '*.state' => ['nullable'],
         ];
     }

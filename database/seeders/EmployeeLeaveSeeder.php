@@ -31,7 +31,7 @@ class EmployeeLeaveSeeder extends Seeder
         }
 
         $approver = $users->first();
-        $leaveTypes = ['sick', 'vacation', 'emergency', 'maternity', 'paternity', 'bereavement', 'parental', 'personal', 'paid'];
+        $leaveTypes = ['sick', 'vacation', 'emergency', 'unpaid', 'parental', 'personal', 'paid', 'other'];
         $statuses = ['pending', 'approved', 'rejected', 'cancelled'];
 
         // Create sample leaves for each employee
@@ -189,21 +189,34 @@ class EmployeeLeaveSeeder extends Seeder
                 'Unforeseen circumstances',
                 'Critical family situation',
             ],
-            'maternity' => [
-                'Maternity leave',
-                'Pre-natal check-up',
-                'Childbirth preparation',
+            'unpaid' => [
+                'Extended personal leave',
+                'Personal reasons',
+                'Additional time off needed',
             ],
-            'paternity' => [
-                'Paternity leave',
-                'Support spouse during childbirth',
+            'parental' => [
+                'Parental leave',
                 'Care for newborn',
+                'Support spouse during childbirth',
+                'Adoption leave',
+                'Childcare responsibilities',
             ],
-            'bereavement' => [
-                'Death in the family',
-                'Funeral arrangements',
-                'Mourning period',
-                'Attend funeral service',
+            'personal' => [
+                'Personal matters',
+                'Family obligations',
+                'Personal appointment',
+                'Handle personal affairs',
+            ],
+            'paid' => [
+                'Scheduled time off',
+                'Rest and recuperation',
+                'Personal vacation',
+                'Annual leave',
+            ],
+            'other' => [
+                'Other reasons',
+                'Miscellaneous leave',
+                'Special circumstances',
             ],
         ];
 
