@@ -43,7 +43,7 @@ interface ProcessedRecord {
     break_minutes: number | null;
     total_hours: number | null;
     total_minutes: number | null;
-    status: 'Present' | 'Incomplete';
+    status: 'Present' | 'Incomplete' | 'finalized';
     status_message: string | null;
     meta: any;
     errors: any;
@@ -102,7 +102,11 @@ function getStatusBadge(status: Batch['status']) {
     );
 }
 
-function getRecordStatusBadge(status: 'Present' | 'Incomplete', statusMessage?: string | null) {
+function getRecordStatusBadge(status: string, statusMessage?: string | null) {
+    if (status === 'finalized') {
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">Finalized</Badge>;
+    }
+    
     if (status === 'Present') {
         if (statusMessage?.startsWith('Warning:')) {
             return (
