@@ -22,7 +22,7 @@ class LoginRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
      */
     public function rules(): array
     {
@@ -41,11 +41,37 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        // First, check if credentials are valid
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => __('auth.failed'),
+                'email' => trans('auth.failed'),
+            ]);
+        }
+
+        // Check if user is active
+        $user = Auth::user();
+        if (!$user->is_active) {
+            // Log the user out immediately
+            Auth::logout();
+
+            // Invalidate the session
+            $this->session()->invalidate();
+            $this->session()->regenerateToken();
+
+            // Log activity for audit trail (per Copilot instructions - Activity Logging)
+            activity()
+                ->causedBy($user)
+                ->withProperties([
+                    'user_id' => $user->user_id,
+                    'email' => $user->email,
+                    'reason' => 'account_inactive'
+                ])
+                ->log('Login attempt on inactive account');
+
+            throw ValidationException::withMessages([
+                'email' => 'Your account has been deactivated. Please contact the administrator.',
             ]);
         }
 
@@ -68,7 +94,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => __('auth.throttle', [
+            'email' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),

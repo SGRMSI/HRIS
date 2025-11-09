@@ -19,6 +19,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
+        'employee_id',
         'is_active',
     ];
 
@@ -48,5 +49,8 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
     }
 
-    // No employee relationship - keeping them separate
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
+    }
 }
