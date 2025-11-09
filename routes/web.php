@@ -8,6 +8,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
     return Inertia::render('auth/login');
@@ -15,10 +16,9 @@ Route::get('/', function () {
 
 // Apply check.user.active middleware to all authenticated routes
 Route::middleware(['auth', 'verified', 'check.user.active'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
+
 
 Route::middleware(['auth', 'verified', 'admin', 'check.user.active'])->group(function () {
     Route::get('user', [UserController::class, 'index'])->name('user.index');
