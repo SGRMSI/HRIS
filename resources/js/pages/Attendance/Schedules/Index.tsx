@@ -50,10 +50,10 @@ import {
     Calendar, 
     Users, 
     AlertTriangle,
-    CheckCircle2,
     Filter,
     UserPlus
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Employee {
     id: number;
@@ -108,9 +108,15 @@ interface Props {
     };
     companies: Company[];
     shifts: ShiftOption[];
+    flash?: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
-export default function SchedulesIndex({ schedules, filters = {}, companies = [], shifts = [] }: Props) {
+export default function SchedulesIndex({ schedules, filters = {}, companies = [], shifts = [], flash }: Props) {
     const [employeeSearch, setEmployeeSearch] = useState(filters.employee_search || '');
     const [deleteSchedule, setDeleteSchedule] = useState<Schedule | null>(null);
     const [showBulkDialog, setShowBulkDialog] = useState(false);
@@ -152,6 +158,21 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
             },
         });
     };
+
+     useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.warning) {
+            toast.warning(flash.warning);
+        }
+        if (flash?.info) {
+            toast.info(flash.info);
+        }
+    }, [flash]);
 
     // Load employees when company is selected for bulk assignment
     useEffect(() => {
@@ -456,7 +477,7 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => setDeleteSchedule(schedule)}
-                                                                className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                                                className="dark:hover:text-red-300"
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -534,7 +555,7 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDelete}
-                            className="bg-red-600 hover:bg-red-700"
+                            className=""
                         >
                             Delete
                         </AlertDialogAction>

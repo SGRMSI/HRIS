@@ -1,12 +1,13 @@
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm, router } from '@inertiajs/react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { FileUpload } from '@/components/attendance/file-upload';
 import { BatchCard } from '@/components/attendance/batch-card';
+import { FileUpload } from '@/components/attendance/file-upload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm } from '@inertiajs/react';
+import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface Batch {
     id: number;
@@ -28,6 +29,8 @@ interface UploadPageProps {
     flash?: {
         success?: string;
         error?: string;
+        warning?: string;
+        info?: string;
     };
 }
 
@@ -37,6 +40,21 @@ export default function Upload({ batches, flash }: UploadPageProps) {
         file: null as File | null,
     });
 
+    useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.warning) {
+            toast.warning(flash.warning);
+        }
+        if (flash?.info) {
+            toast.info(flash.info);
+        }
+    }, [flash]);
+
     const handleFileSelect = (file: File) => {
         setSelectedFile(file);
         setData('file', file);
@@ -44,7 +62,7 @@ export default function Upload({ batches, flash }: UploadPageProps) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!data.file) {
             return;
         }
@@ -73,21 +91,17 @@ export default function Upload({ batches, flash }: UploadPageProps) {
             ]}
         >
             <Head title="Upload Attendance" />
-            
+
             <div className="space-y-6 p-6 md:p-4">
                 <div>
                     <h1 className="text-3xl font-bold">Upload Attendance</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Import attendance records from Excel files
-                    </p>
+                    <p className="mt-1 text-muted-foreground">Import attendance records from Excel files</p>
                 </div>
 
                 {flash?.success && (
                     <Alert className="border-green-200 bg-green-50">
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-green-800">
-                            {flash.success}
-                        </AlertDescription>
+                        <AlertDescription className="text-green-800">{flash.success}</AlertDescription>
                     </Alert>
                 )}
 
@@ -108,23 +122,14 @@ export default function Upload({ batches, flash }: UploadPageProps) {
                 <Card>
                     <CardHeader>
                         <CardTitle>Import Attendance File</CardTitle>
-                        <CardDescription>
-                            Upload an Excel file containing attendance records. Maximum file size: 10MB
-                        </CardDescription>
+                        <CardDescription>Upload an Excel file containing attendance records. Maximum file size: 10MB</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <FileUpload
-                                onFileSelect={handleFileSelect}
-                                accept=".xlsx,.xls"
-                                maxSize={10}
-                            />
+                            <FileUpload onFileSelect={handleFileSelect} accept=".xlsx,.xls" maxSize={10} />
 
                             <div className="flex items-center gap-3">
-                                <Button
-                                    type="submit"
-                                    disabled={!selectedFile || processing}
-                                >
+                                <Button type="submit" disabled={!selectedFile || processing}>
                                     {processing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     {processing ? 'Uploading...' : 'Upload & Import'}
                                 </Button>
@@ -143,18 +148,32 @@ export default function Upload({ batches, flash }: UploadPageProps) {
                                 )}
                             </div>
 
-                            <div className="text-sm text-muted-foreground space-y-1">
+                            <div className="space-y-1 text-sm text-muted-foreground">
                                 <p className="font-medium">Required Columns in Excel File:</p>
-                                <ul className="list-disc list-inside space-y-1 ml-2">
-                                    <li><span className="font-mono">AC-No.</span> - Employee ID (numeric) or ID Number (alphanumeric)</li>
-                                    <li><span className="font-mono">Name</span> - Employee name</li>
-                                    <li><span className="font-mono">Time</span> - Timestamp of attendance log</li>
-                                    <li><span className="font-mono">State</span> - Attendance state</li>
-                                    <li><span className="font-mono">New State</span> - Updated state (optional)</li>
-                                    <li><span className="font-mono">Exception</span> - Any exceptions (optional)</li>
-                                    <li><span className="font-mono">Operation</span> - Operation type (optional)</li>
+                                <ul className="ml-2 list-inside list-disc space-y-1">
+                                    <li>
+                                        <span className="font-mono">AC-No.</span> - Employee ID (numeric) or ID Number (alphanumeric)
+                                    </li>
+                                    <li>
+                                        <span className="font-mono">Name</span> - Employee name
+                                    </li>
+                                    <li>
+                                        <span className="font-mono">Time</span> - Timestamp of attendance log
+                                    </li>
+                                    <li>
+                                        <span className="font-mono">State</span> - Attendance state
+                                    </li>
+                                    <li>
+                                        <span className="font-mono">New State</span> - Updated state (optional)
+                                    </li>
+                                    <li>
+                                        <span className="font-mono">Exception</span> - Any exceptions (optional)
+                                    </li>
+                                    <li>
+                                        <span className="font-mono">Operation</span> - Operation type (optional)
+                                    </li>
                                 </ul>
-                                <p className="text-xs mt-2 text-muted-foreground/80">
+                                <p className="mt-2 text-xs text-muted-foreground/80">
                                     Note: AC-No. will match employees by Employee ID (1, 2, 3...) or ID Number (TNT001, TH001...).
                                 </p>
                             </div>
@@ -163,7 +182,7 @@ export default function Upload({ batches, flash }: UploadPageProps) {
                 </Card>
 
                 <div>
-                    <h2 className="text-2xl font-bold mb-4">Recent Uploads</h2>
+                    <h2 className="mb-4 text-2xl font-bold">Recent Uploads</h2>
 
                     {batches.data.length === 0 ? (
                         <Card>

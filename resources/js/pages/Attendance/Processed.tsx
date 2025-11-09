@@ -1,28 +1,17 @@
-import { useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-    PlayCircle, 
-    CheckCircle2, 
-    XCircle, 
-    Clock, 
-    Calendar,
-    FileText,
-    User,
-    Filter,
-    Download,
-    Send,
-    RotateCcw
-} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
+import { Calendar, CheckCircle2, Clock, Download, FileText, Filter, PlayCircle, RotateCcw, Send, User, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Batch {
     id: number;
@@ -79,6 +68,12 @@ interface Props {
     };
     employees: Array<{ id: number; name: string }>;
     statuses: Array<{ value: string; label: string }>;
+    flash?: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
 function getStatusBadge(status: Batch['status']) {
@@ -114,6 +109,21 @@ export default function Processed({ batches, processed, filters, employees, stat
     const [finalizing, setFinalizing] = useState<number | null>(null);
     const [reprocessing, setReprocessing] = useState<number | null>(null);
 
+    useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.warning) {
+            toast.warning(flash.warning);
+        }
+        if (flash?.info) {
+            toast.info(flash.info);
+        }
+    }, [flash]);
+
     const handleProcess = (batchId: number) => {
         if (!confirm('Are you sure you want to process this batch? This will group clock in/out times and calculate work hours.')) {
             return;
@@ -125,7 +135,7 @@ export default function Processed({ batches, processed, filters, employees, stat
             {},
             {
                 onFinish: () => setProcessing(null),
-            }
+            },
         );
     };
 
@@ -140,7 +150,7 @@ export default function Processed({ batches, processed, filters, employees, stat
             {},
             {
                 onFinish: () => setReprocessing(null),
-            }
+            },
         );
     };
 
@@ -155,18 +165,14 @@ export default function Processed({ batches, processed, filters, employees, stat
             {},
             {
                 onFinish: () => setFinalizing(null),
-            }
+            },
         );
     };
 
     const handleFilter = (key: string, value: string) => {
         // Handle special "all" value by removing the filter
         const filterValue = value === 'all' ? undefined : value;
-        router.get(
-            route('attendance.processed.index'),
-            { ...filters, [key]: filterValue || undefined },
-            { preserveState: true, replace: true }
-        );
+        router.get(route('attendance.processed.index'), { ...filters, [key]: filterValue || undefined }, { preserveState: true, replace: true });
     };
 
     const formatTime = (datetime: string | null) => {
@@ -175,23 +181,23 @@ export default function Processed({ batches, processed, filters, employees, stat
             // Parse the datetime string as-is without timezone conversion
             // The datetime is already in the correct timezone from the database
             const date = new Date(datetime);
-            
+
             // Extract the parts directly from the ISO string to avoid timezone conversion
             const dateStr = datetime.split('T')[0]; // YYYY-MM-DD
             const timeStr = datetime.split('T')[1]?.split('.')[0]; // HH:mm:ss
-            
+
             if (dateStr && timeStr) {
                 const [year, month, day] = dateStr.split('-');
                 const [hours, minutes] = timeStr.split(':');
-                
+
                 // Format manually to avoid timezone issues
                 const hour12 = parseInt(hours) % 12 || 12;
                 const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                
+
                 return `${monthNames[parseInt(month) - 1]} ${parseInt(day)}, ${hour12}:${minutes} ${ampm}`;
             }
-            
+
             return format(date, 'MMM d, h:mm a');
         } catch {
             return '-';
@@ -207,15 +213,18 @@ export default function Processed({ batches, processed, filters, employees, stat
     };
 
     return (
-        <AppLayout breadcrumbs={[{ title: 'Attendance', href: '/attendance/upload' }, { title: 'Processed Data', href: '/attendance/processed' }]}>
+        <AppLayout
+            breadcrumbs={[
+                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Processed Data', href: '/attendance/processed' },
+            ]}
+        >
             <Head title="Processed Attendance" />
 
             <div className="space-y-6 p-6 md:p-4">
                 <div>
                     <h1 className="text-3xl font-bold">Processed Attendance</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Process uploaded attendance data and review results
-                    </p>
+                    <p className="mt-1 text-muted-foreground">Process uploaded attendance data and review results</p>
                 </div>
 
                 {flash?.success && (
@@ -230,21 +239,19 @@ export default function Processed({ batches, processed, filters, employees, stat
                 {flash?.errors && (
                     <Alert variant="destructive">
                         <XCircle className="h-4 w-4" />
-                        <AlertDescription>
-                            {Object.values(flash.errors).flat().join(', ')}
-                        </AlertDescription>
+                        <AlertDescription>{Object.values(flash.errors).flat().join(', ')}</AlertDescription>
                     </Alert>
                 )}
 
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Upload Batches</h3>
-                    
+
                     {batches.length === 0 ? (
                         <Card>
                             <CardContent className="py-12 text-center text-gray-500">
-                                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                <FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
                                 <p>No batches available for processing</p>
-                                <p className="text-sm mt-2">Upload attendance files to get started</p>
+                                <p className="mt-2 text-sm">Upload attendance files to get started</p>
                             </CardContent>
                         </Card>
                     ) : (
@@ -253,11 +260,9 @@ export default function Processed({ batches, processed, filters, employees, stat
                                 <Card key={batch.id} className="relative">
                                     <CardHeader>
                                         <div className="flex items-start justify-between">
-                                            <div className="flex-1 min-w-0">
-                                                <CardTitle className="text-base truncate">
-                                                    {batch.filename}
-                                                </CardTitle>
-                                                <CardDescription className="text-xs mt-1">
+                                            <div className="min-w-0 flex-1">
+                                                <CardTitle className="truncate text-base">{batch.filename}</CardTitle>
+                                                <CardDescription className="mt-1 text-xs">
                                                     Uploaded {formatDate(batch.created_at)} by {batch.uploaded_by}
                                                 </CardDescription>
                                             </div>
@@ -378,7 +383,7 @@ export default function Processed({ batches, processed, filters, employees, stat
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
+                            <CardTitle className="flex items-center gap-2 text-base">
                                 <Filter className="h-4 w-4" />
                                 Filters
                             </CardTitle>
@@ -387,10 +392,7 @@ export default function Processed({ batches, processed, filters, employees, stat
                             <div className="grid gap-4 md:grid-cols-5">
                                 <div className="space-y-2">
                                     <Label>Batch</Label>
-                                    <Select
-                                        value={filters.batch_id?.toString() || 'all'}
-                                        onValueChange={(value) => handleFilter('batch_id', value)}
-                                    >
+                                    <Select value={filters.batch_id?.toString() || 'all'} onValueChange={(value) => handleFilter('batch_id', value)}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="All Batches" />
                                         </SelectTrigger>
@@ -427,10 +429,7 @@ export default function Processed({ batches, processed, filters, employees, stat
 
                                 <div className="space-y-2">
                                     <Label>Status</Label>
-                                    <Select
-                                        value={filters.status || 'all'}
-                                        onValueChange={(value) => handleFilter('status', value)}
-                                    >
+                                    <Select value={filters.status || 'all'} onValueChange={(value) => handleFilter('status', value)}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="All Statuses" />
                                         </SelectTrigger>
@@ -447,20 +446,12 @@ export default function Processed({ batches, processed, filters, employees, stat
 
                                 <div className="space-y-2">
                                     <Label>Date From</Label>
-                                    <Input
-                                        type="date"
-                                        value={filters.date_from || ''}
-                                        onChange={(e) => handleFilter('date_from', e.target.value)}
-                                    />
+                                    <Input type="date" value={filters.date_from || ''} onChange={(e) => handleFilter('date_from', e.target.value)} />
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label>Date To</Label>
-                                    <Input
-                                        type="date"
-                                        value={filters.date_to || ''}
-                                        onChange={(e) => handleFilter('date_to', e.target.value)}
-                                    />
+                                    <Input type="date" value={filters.date_to || ''} onChange={(e) => handleFilter('date_to', e.target.value)} />
                                 </div>
                             </div>
                         </CardContent>
@@ -470,9 +461,9 @@ export default function Processed({ batches, processed, filters, employees, stat
                         <CardContent className="p-0">
                             {processed.data.length === 0 ? (
                                 <div className="py-12 text-center text-gray-500">
-                                    <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                    <User className="mx-auto mb-4 h-12 w-12 opacity-50" />
                                     <p>No processed records found</p>
-                                    <p className="text-sm mt-2">Process a batch to see attendance records here</p>
+                                    <p className="mt-2 text-sm">Process a batch to see attendance records here</p>
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
@@ -545,9 +536,7 @@ export default function Processed({ batches, processed, filters, employees, stat
                                                             <span className="text-gray-400">-</span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell>
-                                                        {getRecordStatusBadge(record.status)}
-                                                    </TableCell>
+                                                    <TableCell>{getRecordStatusBadge(record.status)}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -560,9 +549,8 @@ export default function Processed({ batches, processed, filters, employees, stat
                     {processed.last_page > 1 && (
                         <div className="flex items-center justify-between">
                             <p className="text-sm text-gray-600">
-                                Showing {((processed.current_page - 1) * processed.per_page) + 1} to{' '}
-                                {Math.min(processed.current_page * processed.per_page, processed.total)} of{' '}
-                                {processed.total} records
+                                Showing {(processed.current_page - 1) * processed.per_page + 1} to{' '}
+                                {Math.min(processed.current_page * processed.per_page, processed.total)} of {processed.total} records
                             </p>
                             <div className="flex gap-2">
                                 {processed.links.map((link, index) => (

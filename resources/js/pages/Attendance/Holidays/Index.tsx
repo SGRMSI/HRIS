@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +50,7 @@ import {
     Upload,
     Download
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Holiday {
     id: number;
@@ -94,6 +95,12 @@ interface Props {
     types: TypeOption[];
     availableYears: number[];
     currentYear: number;
+    flash?: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
 export default function HolidaysIndex({ 
@@ -102,7 +109,7 @@ export default function HolidaysIndex({
     companies = [], 
     types = [],
     availableYears = [],
-    currentYear 
+    currentYear, flash 
 }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [deleteHoliday, setDeleteHoliday] = useState<Holiday | null>(null);
@@ -180,6 +187,21 @@ export default function HolidaysIndex({
     };
 
     const displayYear = filters.year ? Number(filters.year) : currentYear;
+
+     useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.warning) {
+            toast.warning(flash.warning);
+        }
+        if (flash?.info) {
+            toast.info(flash.info);
+        }
+    }, [flash]);
 
     return (
         <AppLayout
@@ -420,7 +442,7 @@ export default function HolidaysIndex({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                        <AlertDialogAction onClick={handleDelete} className="">
                             Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>

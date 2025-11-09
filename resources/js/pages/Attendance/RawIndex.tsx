@@ -6,6 +6,7 @@ import { BatchCard } from '@/components/attendance/batch-card';
 import { FileText, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface Batch {
     id: number;
@@ -25,9 +26,15 @@ interface RawIndexProps {
         per_page: number;
         total: number;
     };
+    flash?: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
-export default function RawIndex({ batches }: RawIndexProps) {
+export default function RawIndex({ batches, flash }: RawIndexProps) {
     // Force reload data when component mounts to prevent stale cache
     useEffect(() => {
         const hasNavigatedFromUpload = sessionStorage.getItem('attendance_uploaded');
@@ -36,6 +43,21 @@ export default function RawIndex({ batches }: RawIndexProps) {
             sessionStorage.removeItem('attendance_uploaded');
         }
     }, []);
+
+        useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.warning) {
+            toast.warning(flash.warning);
+        }
+        if (flash?.info) {
+            toast.info(flash.info);
+        }
+    }, [flash]);
 
     return (
         <AppLayout

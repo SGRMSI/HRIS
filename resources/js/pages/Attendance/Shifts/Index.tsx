@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Trash2, Moon, Clock, Users, FileText } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Shift {
     id: number;
@@ -64,9 +65,31 @@ interface Props {
         search?: string;
         status?: string;
     };
+    flash?: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
-export default function ShiftsIndex({ shifts, filters }: Props) {
+export default function ShiftsIndex({ shifts, filters, flash }: Props) {
+
+    useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.warning) {
+            toast.warning(flash.warning);
+        }
+        if (flash?.info) {
+            toast.info(flash.info);
+        }
+    }, [flash]);
+
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || 'all');
     const [deleteShift, setDeleteShift] = useState<Shift | null>(null);
@@ -257,7 +280,7 @@ export default function ShiftsIndex({ shifts, filters }: Props) {
                                                             size="sm"
                                                             onClick={() => setDeleteShift(shift)}
                                                             disabled={!shift.can_delete}
-                                                            className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                                                            className="disabled:opacity-50"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -346,7 +369,7 @@ export default function ShiftsIndex({ shifts, filters }: Props) {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDelete}
-                            className="bg-red-600 hover:bg-red-700"
+                            className=""
                         >
                             Delete
                         </AlertDialogAction>

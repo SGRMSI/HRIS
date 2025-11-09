@@ -1,6 +1,6 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,7 @@ import {
     FileText,
     Clock
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Leave {
     id: number;
@@ -101,6 +102,12 @@ interface Props {
     statuses: StatusOption[];
     types: TypeOption[];
     departmentGroups?: Record<string, { count: number; employees: number; total_days: number }>;
+    flash?: {
+        success?: string;
+        error?: string;
+        warning?: string;
+        info?: string;
+    };
 }
 
 export default function LeavesIndex({ 
@@ -108,7 +115,8 @@ export default function LeavesIndex({
     filters = {}, 
     companies = [],
     statuses = [],
-    types = []
+    types = [],
+    flash
 }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters.employee_search || '');
     const [showApprovalDialog, setShowApprovalDialog] = useState(false);
@@ -239,6 +247,21 @@ export default function LeavesIndex({
                 return 'outline';
         }
     };
+
+    useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+        if (flash?.warning) {
+            toast.warning(flash.warning);
+        }
+        if (flash?.info) {
+            toast.info(flash.info);
+        }
+    }, [flash]);
 
     return (
         <AppLayout
@@ -486,7 +509,7 @@ export default function LeavesIndex({
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => openDeleteDialog(leave)}
-                                                            className="text-red-600 hover:text-red-700"
+                                                            className=""
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -694,7 +717,7 @@ export default function LeavesIndex({
                         </Button>
                         <Button 
                             onClick={handleDelete}
-                            variant="destructive"
+                            variant="default"
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Permanently
