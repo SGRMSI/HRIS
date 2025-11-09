@@ -111,12 +111,8 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
                 clearInterval(progressInterval);
                 setUploadProgress(100);
                 setTimeout(() => {
-                    setUploadDialogOpen(false);
-                    uploadForm.reset();
-                    setUploadProgress(0);
-                    if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                    }
+                    // Force full page reload to refresh all data
+                    window.location.href = route('attendance.raw.index');
                 }, 500);
             },
             onError: (errors) => {
@@ -134,8 +130,8 @@ export default function RawIndex({ batches, flash }: RawIndexProps) {
 
         router.delete(route('attendance.raw.destroy', selectedBatch.id), {
             onSuccess: () => {
-                setDeleteDialogOpen(false);
-                setSelectedBatch(null);
+                // Force full page reload to refresh all data
+                window.location.href = route('attendance.raw.index');
             },
             onError: (errors) => {
                 if (errors.delete) {

@@ -224,10 +224,16 @@ class AttendanceRawController extends Controller
                 Storage::delete($batch->file_path);
             }
 
-            // Cascade delete will handle:
-            // - AttendanceRaw records (via database foreign key)
-            // - AttendanceProcessed records (via database foreign key)
-            // Note: Make sure migrations have onDelete('cascade') set
+            // Explicitly delete related records (SQLite may not enforce cascade)
+            // Delete processed records first
+            DB::table('attendance_processed')
+                ->where('batch_id', $batch->batch_id)
+                ->delete();
+            
+            // Delete raw records
+            DB::table('attendance_raws')
+                ->where('batch_id', $batch->batch_id)
+                ->delete();
             
             $filename = $batch->filename;
             
