@@ -164,11 +164,15 @@ This is a Human Resource Information System built with Laravel and React (Inerti
    - **Methods:**
      - Standard CRUD
      - `bulkUpdate()` - Bulk schedule assignment
+     - `getEmployeesByCompany($company)` - API endpoint for company-filtered employees
    - **Features:**
      - Conflict detection (overlapping schedules)
-     - Department-based grouping
+     - Company-based filtering and grouping
      - Bulk assignment with error collection
      - Date range validation
+     - Prefilled employee support (via query params: employee_id, company_id)
+     - Uses `id_number` field from Employee model (not `employee_number`)
+     - Redirect to schedules index after create/update
 
 7. **HolidayController** (`app/Http/Controllers/HolidayController.php`)
    - **Purpose:** Manage company holidays
@@ -353,12 +357,26 @@ Employee -> hasMany(EmployeeLeave::class, 'employee_id')
 - `$casts`: date (date), clock_in (datetime), clock_out (datetime), work_hours (decimal:2), errors (array)
 
 **Attendance:**
-- `$fillable`: employee_id, shift_id, date, clock_in, clock_out, work_hours, break_minutes, late_minutes, status, remarks, approved_by, approved_at
-- `$casts`: date (date), clock_in (datetime), clock_out (datetime), approved_at (datetime), work_hours (decimal:2)
+- `$fillable`: employee_id, shift_id, date, clock_in, break_out, break_in, clock_out, total_hours, late_minutes, overtime_hours, undertime_hours, status, remarks, created_by, approved_by, holiday_id, leave_id, requires_approval, approved_at
+- `$casts`: date (date), clock_in (time), break_out (time), break_in (time), clock_out (time), approved_at (datetime), total_hours (decimal:2), overtime_hours (decimal:2), undertime_hours (decimal:2)
+- **Foreign Keys**: 
+  - employee_id → employees.employee_id
+  - shift_id → shifts.shift_id (nullable)
+  - created_by → users.user_id (nullable)
+  - approved_by → users.user_id (nullable)
+  - holiday_id → holidays.holiday_id (nullable)
+  - leave_id → employee_leaves.leave_id (nullable)
 
 **Shift:**
-- `$fillable`: name, code, clock_in, clock_out, break_start, break_end, grace_period_minutes, is_active
-- `$casts`: clock_in (datetime:H:i), clock_out (datetime:H:i), is_active (boolean)
+- `$primaryKey`: shift_id
+- `$fillable`: name, time_in, time_out, break_start, break_end, grace_period, description
+- `$casts`: time_in (datetime:H:i), time_out (datetime:H:i), break_start (datetime:H:i), break_end (datetime:H:i), grace_period (integer)
+- **Methods:**
+  - `isOvernight()`: Check if shift crosses midnight
+  - `getDurationMinutes()`: Calculate expected duration in minutes
+  - `getBreakDurationMinutes()`: Calculate break duration in minutes
+  - `getWorkingHours()`: Get working hours (shift duration minus break)
+  - `getLateThreshold()`: Get late threshold time with grace period
 
 **EmployeeSchedule:**
 - `$fillable`: employee_id, shift_id, date_start, date_end, is_recurring, days_of_week
@@ -529,6 +547,7 @@ export default function ComponentName({ prop1, prop2 }: ComponentProps) {
 14. Foreign keys: Always validate relationships before deletion
 15. Batch operations: Collect errors instead of failing fast for better UX
 16. Status enums: Use consistent status values across related models
+17. **Employee ID Field**: Employee model uses `id_number` field, NOT `employee_number`. Always use `$employee->id_number` when accessing employee ID numbers
 
 ### Frontend
 15. Check file paths casing when importing components (Components vs components)
