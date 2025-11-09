@@ -15,6 +15,13 @@ class AttendanceProcessService
 {
     /**
      * Process raw attendance records into processed format
+     * 
+     * Handles intelligent merging of overlapping attendance data:
+     * - Example: User uploads Oct 1-15 (Batch 1), then Oct 14-31 (Batch 2)
+     * - System detects overlap (Oct 14-15)
+     * - Merges raw data from both batches for overlapping dates
+     * - Deduplicates by sequence (C/In, OverTime In, OverTime Out, C/Out)
+     * - Processes non-overlapping dates normally (Oct 1-13, Oct 16-31)
      *
      * @param AttendanceUploadBatch $batch
      * @return void
@@ -23,6 +30,40 @@ class AttendanceProcessService
     {
         try {
             DB::beginTransaction();
+
+            // Delete existing processed records for this batch to avoid duplicates on reprocess
+            AttendanceProcessed::where('batch_id', $batch->batch_id)->delete();
+            
+            Log::info("Deleted existing processed records for batch", [
+                'batch_id' => $batch->batch_id,
+            ]);
+
+            // Get date range of this batch
+            $batchDateRange = $batch->raws()
+                ->selectRaw('MIN(DATE(time_log)) as min_date, MAX(DATE(time_log)) as max_date')
+                ->first();
+            
+            // Find overlapping dates from other processed batches
+            $overlappingDates = [];
+            if ($batchDateRange->min_date && $batchDateRange->max_date) {
+                $overlappingDates = AttendanceProcessed::whereBetween('date', [
+                        $batchDateRange->min_date, 
+                        $batchDateRange->max_date
+                    ])
+                    ->where('batch_id', '!=', $batch->batch_id)
+                    ->distinct()
+                    ->pluck('date')
+                    ->map(fn($d) => Carbon::parse($d)->toDateString())
+                    ->toArray();
+                
+                if (!empty($overlappingDates)) {
+                    Log::info("Found overlapping dates with other batches", [
+                        'batch_id' => $batch->batch_id,
+                        'overlapping_dates' => $overlappingDates,
+                        'count' => count($overlappingDates)
+                    ]);
+                }
+            }
 
             // Group raw records by employee name (not AC-No)
             $rows = $batch->raws()
@@ -53,11 +94,39 @@ class AttendanceProcessService
                     continue;
                 }
 
+                // For overlapping dates, merge raw data from all batches
+                $mergedEvents = $events;
+                if (!empty($overlappingDates)) {
+                    // Get raw data from other batches for this employee on overlapping dates
+                    $additionalRaws = AttendanceRaw::where('name', $employeeName)
+                        ->where('batch_id', '!=', $batch->batch_id)
+                        ->whereIn(DB::raw('DATE(time_log)'), $overlappingDates)
+                        ->orderBy('time_log')
+                        ->get();
+                    
+                    if ($additionalRaws->count() > 0) {
+                        Log::info("Merging overlapping data for employee", [
+                            'employee_name' => $employeeName,
+                            'employee_id' => $employee->employee_id,
+                            'current_batch' => $batch->batch_id,
+                            'additional_records' => $additionalRaws->count(),
+                            'overlapping_dates' => $overlappingDates
+                        ]);
+                        
+                        // Merge the collections
+                        $mergedEvents = $events->merge($additionalRaws)->sortBy('time_log');
+                        
+                        // Delete old processed records for this employee on overlapping dates
+                        AttendanceProcessed::where('employee_id', $employee->employee_id)
+                            ->whereIn('date', $overlappingDates)
+                            ->where('batch_id', '!=', $batch->batch_id)
+                            ->delete();
+                    }
+                }
+
                 // Process attendance by pairing Clock In -> Clock Out sequences
-                // First, deduplicate events that occur within 5 minutes of each other
-                // Take the most recent instance within the time window
-                
-                $deduplicatedEvents = $this->deduplicateEvents($events);
+                // Deduplicate events based on sequence (consecutive same states)
+                $deduplicatedEvents = $this->deduplicateEvents($mergedEvents);
                 
                 // Get all clock-in events sorted by time
                 $clockInEvents = $deduplicatedEvents
@@ -104,29 +173,66 @@ class AttendanceProcessService
                         }
                     }
                     
-                    // Find breaks between clock-in and clock-out
+                    // Find breaks - check even if no clock-out exists
                     $breakStart = null;
                     $breakEnd = null;
                     
-                    if ($clockOutTime) {
-                        // Get breaks that fall between clock-in and clock-out
-                        $breakStart = $deduplicatedEvents
-                            ->where('state', 'OverTime In')
-                            ->filter(fn($e) => $e->time_log->gte($clockInTime) && $e->time_log->lte($clockOutTime))
-                            ->sortBy('time_log')
-                            ->first();
-                        
-                        $breakEnd = $deduplicatedEvents
-                            ->where('state', 'OverTime Out')
-                            ->filter(fn($e) => $e->time_log->gte($clockInTime) && $e->time_log->lte($clockOutTime))
-                            ->sortBy('time_log')
-                            ->first();
+                    // Define the time range for finding breaks
+                    $breakRangeStart = $clockInTime;
+                    $breakRangeEnd = $clockOutTime ?? Carbon::now(); // If no clock out, use current time
+                    
+                    // Get breaks that fall after clock-in
+                    // Normal sequence: OverTime In (break start) -> OverTime Out (break end)
+                    // But handle reversed sequence: OverTime Out -> OverTime In (employee mistake)
+                    $overtimeIn = $deduplicatedEvents
+                        ->where('state', 'OverTime In')
+                        ->filter(fn($e) => $e->time_log->gte($breakRangeStart) && $e->time_log->lte($breakRangeEnd))
+                        ->sortBy('time_log')
+                        ->first();
+                    
+                    $overtimeOut = $deduplicatedEvents
+                        ->where('state', 'OverTime Out')
+                        ->filter(fn($e) => $e->time_log->gte($breakRangeStart) && $e->time_log->lte($breakRangeEnd))
+                        ->sortBy('time_log')
+                        ->first();
+                    
+                    // Track if break sequence is reversed
+                    $breakSequenceReversed = false;
+                    
+                    // Determine correct order based on timestamps
+                    if ($overtimeIn && $overtimeOut) {
+                        if ($overtimeIn->time_log->lt($overtimeOut->time_log)) {
+                            // Normal order: OverTime In first, then OverTime Out
+                            $breakStart = $overtimeIn;
+                            $breakEnd = $overtimeOut;
+                        } else {
+                            // Reversed order: OverTime Out first, then OverTime In (employee pressed wrong buttons)
+                            $breakStart = $overtimeOut;
+                            $breakEnd = $overtimeIn;
+                            $breakSequenceReversed = true;
+                        }
+                    } elseif ($overtimeIn) {
+                        $breakStart = $overtimeIn;
+                    } elseif ($overtimeOut) {
+                        $breakStart = $overtimeOut;
                     }
 
                     // Calculate break minutes if both break start and end exist
                     $breakMinutes = 0;
                     $breakPairs = [];
                     $breakWarnings = [];
+                    
+                    // Add warning if break sequence was reversed
+                    if ($breakSequenceReversed) {
+                        $breakWarnings[] = 'OverTime In and OverTime Out buttons were pressed in reversed order';
+                        Log::warning("Reversed break button sequence", [
+                            'employee_id' => $employee->employee_id,
+                            'employee_name' => $employeeName,
+                            'date' => $attendanceDate,
+                            'overtime_out' => $overtimeOut->time_log->format('Y-m-d H:i:s'),
+                            'overtime_in' => $overtimeIn->time_log->format('Y-m-d H:i:s'),
+                        ]);
+                    }
                     
                     // Validate break sequence
                     if ($breakStart && !$breakEnd) {
@@ -169,9 +275,10 @@ class AttendanceProcessService
                         }
                     }
 
-                    // Calculate total hours
+                    // Calculate total hours and determine status
                     $totalMinutes = null;
                     $status = 'Present';
+                    $statusMessage = null;
                     $meta = [];
 
                     // Validate that clock-in is before clock-out
@@ -188,6 +295,7 @@ class AttendanceProcessService
                             
                             // Set status as incomplete with error
                             $status = 'Incomplete';
+                            $statusMessage = 'Invalid: Clock-out before clock-in';
                             $meta['errors'] = [
                                 'invalid_sequence' => 'Clock out time is before clock in time'
                             ];
@@ -206,9 +314,25 @@ class AttendanceProcessService
                                 ]);
                                 $totalMinutes = 0;
                             }
+                            
+                            // Check for break issues
+                            if (!empty($breakWarnings)) {
+                                $status = 'Present';
+                                $statusMessage = 'Warning: ' . implode(', ', $breakWarnings);
+                            }
                         }
                     } else {
                         $status = 'Incomplete';
+                        
+                        // Create descriptive status message
+                        if (!$clockInTime && !$clockOutTime) {
+                            $statusMessage = 'Missing: No clock-in or clock-out';
+                        } elseif (!$clockInTime) {
+                            $statusMessage = 'Missing: No clock-in';
+                        } else {
+                            $statusMessage = 'Missing: No clock-out';
+                        }
+                        
                         $meta['warnings'] = [
                             'missing_clock_in' => !$clockInTime,
                             'missing_clock_out' => !$clockOutTime
@@ -242,6 +366,7 @@ class AttendanceProcessService
                             'total_hours' => $totalMinutes ? round($totalMinutes / 60, 2) : null,
                             'break_minutes' => $breakMinutes,
                             'status' => $status,
+                            'status_message' => $statusMessage,
                             'meta' => $meta,
                             'created_at' => now(),
                         ]

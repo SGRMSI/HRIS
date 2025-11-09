@@ -19,7 +19,8 @@ import {
     CheckCircle2, 
     XCircle,
     Filter,
-    FileSpreadsheet
+    FileSpreadsheet,
+    Trash2
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -29,6 +30,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface Employee {
     id: number;
@@ -84,6 +96,7 @@ interface RawShowProps {
 export default function RawShow({ batch, records, stats, filters }: RawShowProps) {
     const [search, setSearch] = useState(filters.search || '');
     const [matchFilter, setMatchFilter] = useState(filters.has_employee || 'all');
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
     const handleSearch = () => {
         router.get(
@@ -98,6 +111,20 @@ export default function RawShow({ batch, records, stats, filters }: RawShowProps
 
     const handleExport = () => {
         window.location.href = route('attendance.raw.export', batch.id);
+    };
+
+    const handleDelete = () => {
+        router.delete(route('attendance.raw.destroy', batch.id), {
+            onSuccess: () => {
+                setDeleteDialogOpen(false);
+                router.visit(route('attendance.raw.index'));
+            },
+            onError: (errors) => {
+                if (errors.delete) {
+                    toast.error(errors.delete);
+                }
+            },
+        });
     };
 
     const getMatchBadge = (employee: Employee | null) => {
@@ -145,10 +172,16 @@ export default function RawShow({ batch, records, stats, filters }: RawShowProps
                             Uploaded by {batch.uploaded_by} on {batch.uploaded_at}
                         </p>
                     </div>
-                    <Button onClick={handleExport}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Export to Excel
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Batch
+                        </Button>
+                        <Button onClick={handleExport}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Export to Excel
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Statistics Cards */}
@@ -337,6 +370,40 @@ export default function RawShow({ batch, records, stats, filters }: RawShowProps
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Attendance Batch?</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <p>
+                                Are you sure you want to delete the batch <strong>"{batch.filename}"</strong>?
+                            </p>
+                            <p className="text-destructive font-semibold">
+                                ⚠️ Warning: This will permanently delete:
+                            </p>
+                            <ul className="list-disc list-inside space-y-1 text-sm">
+                                <li>All raw attendance logs ({stats.total} records)</li>
+                                <li>All processed attendance records</li>
+                                <li>The uploaded file from storage</li>
+                            </ul>
+                            <p className="text-sm">
+                                This action cannot be undone.
+                            </p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            Delete Batch
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </AppLayout>
     );
 }

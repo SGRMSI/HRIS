@@ -14,15 +14,15 @@ use Illuminate\Support\Facades\Route;
 // Attendance Management Routes
 Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.')->group(function () {
     
-    // Upload & Import
-    Route::get('upload', [AttendanceController::class, 'upload'])->name('upload');
-    Route::post('import', [AttendanceController::class, 'import'])->name('import');
+    // Upload & Import (moved to AttendanceRawController)
+    Route::post('import', [AttendanceRawController::class, 'import'])->name('import');
     
     // Raw Attendance Records
     Route::prefix('raw')->name('raw.')->group(function () {
         Route::get('/', [AttendanceRawController::class, 'index'])->name('index');
         Route::get('{batch}', [AttendanceRawController::class, 'show'])->name('show');
         Route::get('{batch}/export', [AttendanceRawController::class, 'export'])->name('export');
+        Route::delete('{batch}', [AttendanceRawController::class, 'destroy'])->name('destroy');
     });
     
         // Processed Attendance

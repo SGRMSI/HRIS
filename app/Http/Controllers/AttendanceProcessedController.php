@@ -73,7 +73,13 @@ class AttendanceProcessedController extends Controller
                 $query->whereDate('date', '<=', $dateTo);
             })
             ->when($request->status, function ($query, $status) {
-                $query->where('status', $status);
+                if ($status === 'Present with Warnings') {
+                    // Filter for Present status with warnings in status_message
+                    $query->where('status', 'Present')
+                          ->where('status_message', 'LIKE', 'Warning:%');
+                } else {
+                    $query->where('status', $status);
+                }
             })
             ->when($request->batch_id, function ($query, $batchId) {
                 $query->where('batch_id', $batchId);
@@ -99,6 +105,7 @@ class AttendanceProcessedController extends Controller
                     'break_minutes' => $record->break_minutes,
                     'total_hours' => $record->total_hours,
                     'status' => $record->status,
+                    'status_message' => $record->status_message,
                     'meta' => $record->meta,
                     'errors' => $record->errors,
                 ];
@@ -121,6 +128,7 @@ class AttendanceProcessedController extends Controller
             'employees' => $employees,
             'statuses' => [
                 ['value' => 'Present', 'label' => 'Present'],
+                ['value' => 'Present with Warnings', 'label' => 'Present with Warnings'],
                 ['value' => 'Incomplete', 'label' => 'Incomplete'],
             ]
         ]);
@@ -132,7 +140,8 @@ class AttendanceProcessedController extends Controller
     public function process(AttendanceUploadBatch $batch)
     {
         try {
-            if (!in_array($batch->status, ['imported', 'failed'])) {
+            // Allow processing for imported, failed, and processed (reprocess) statuses
+            if (!in_array($batch->status, ['imported', 'failed', 'processed'])) {
                 throw new \Exception('Batch cannot be processed in its current state.');
             }
 

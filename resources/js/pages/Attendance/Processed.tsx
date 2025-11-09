@@ -1,4 +1,5 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +42,7 @@ interface ProcessedRecord {
     break_minutes: number | null;
     total_hours: number | null;
     status: 'Present' | 'Incomplete';
+    status_message: string | null;
     meta: any;
     errors: any;
 }
@@ -96,11 +98,25 @@ function getStatusBadge(status: Batch['status']) {
     );
 }
 
-function getRecordStatusBadge(status: 'Present' | 'Incomplete') {
+function getRecordStatusBadge(status: 'Present' | 'Incomplete', statusMessage?: string | null) {
     if (status === 'Present') {
+        if (statusMessage?.startsWith('Warning:')) {
+            return (
+                <div className="flex flex-col gap-1">
+                    <Badge variant="default">Present</Badge>
+                    <span className="text-xs text-orange-600 whitespace-normal break-words max-w-[200px]">{statusMessage}</span>
+                </div>
+            );
+        }
         return <Badge variant="default">Present</Badge>;
     }
-    return <Badge variant="destructive">Incomplete</Badge>;
+    
+    return (
+        <div className="flex flex-col gap-1">
+            <Badge variant="destructive">Incomplete</Badge>
+            {statusMessage && <span className="text-xs text-muted-foreground whitespace-normal break-words max-w-[200px]">{statusMessage}</span>}
+        </div>
+    );
 }
 
 export default function Processed({ batches, processed, filters, employees, statuses }: Props) {
@@ -108,6 +124,9 @@ export default function Processed({ batches, processed, filters, employees, stat
     const [processing, setProcessing] = useState<number | null>(null);
     const [finalizing, setFinalizing] = useState<number | null>(null);
     const [reprocessing, setReprocessing] = useState<number | null>(null);
+    const [processDialogOpen, setProcessDialogOpen] = useState(false);
+    const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
+    const [dialogAction, setDialogAction] = useState<'process' | 'reprocess' | 'finalize'>('process');
 
     useEffect(() => {
         if (flash?.success) {
@@ -124,49 +143,51 @@ export default function Processed({ batches, processed, filters, employees, stat
         }
     }, [flash]);
 
-    const handleProcess = (batchId: number) => {
-        if (!confirm('Are you sure you want to process this batch? This will group clock in/out times and calculate work hours.')) {
-            return;
-        }
+    const openProcessDialog = (batchId: number, action: 'process' | 'reprocess' | 'finalize') => {
+        setSelectedBatchId(batchId);
+        setDialogAction(action);
+        setProcessDialogOpen(true);
+    };
 
-        setProcessing(batchId);
-        router.post(
-            route('attendance.processed.process', batchId),
-            {},
-            {
-                onFinish: () => setProcessing(null),
-            },
-        );
+    const confirmProcess = () => {
+        if (!selectedBatchId) return;
+
+        setProcessDialogOpen(false);
+
+        if (dialogAction === 'process' || dialogAction === 'reprocess') {
+            dialogAction === 'process' ? setProcessing(selectedBatchId) : setReprocessing(selectedBatchId);
+            router.post(
+                route('attendance.processed.process', selectedBatchId),
+                {},
+                {
+                    onFinish: () => {
+                        setProcessing(null);
+                        setReprocessing(null);
+                    },
+                },
+            );
+        } else if (dialogAction === 'finalize') {
+            setFinalizing(selectedBatchId);
+            router.post(
+                route('attendance.processed.finalize', selectedBatchId),
+                {},
+                {
+                    onFinish: () => setFinalizing(null),
+                },
+            );
+        }
+    };
+
+    const handleProcess = (batchId: number) => {
+        openProcessDialog(batchId, 'process');
     };
 
     const handleReprocess = (batchId: number) => {
-        if (!confirm('Are you sure you want to reprocess this batch? This will re-calculate all attendance records.')) {
-            return;
-        }
-
-        setReprocessing(batchId);
-        router.post(
-            route('attendance.processed.process', batchId),
-            {},
-            {
-                onFinish: () => setReprocessing(null),
-            },
-        );
+        openProcessDialog(batchId, 'reprocess');
     };
 
     const handleFinalize = (batchId: number) => {
-        if (!confirm('Are you sure you want to finalize this batch? This will move all processed records to Final Attendance.')) {
-            return;
-        }
-
-        setFinalizing(batchId);
-        router.post(
-            route('attendance.processed.finalize', batchId),
-            {},
-            {
-                onFinish: () => setFinalizing(null),
-            },
-        );
+        openProcessDialog(batchId, 'finalize');
     };
 
     const handleFilter = (key: string, value: string) => {
@@ -478,7 +499,7 @@ export default function Processed({ batches, processed, filters, employees, stat
                                                 <TableHead>Break In</TableHead>
                                                 <TableHead>Break (min)</TableHead>
                                                 <TableHead>Hours</TableHead>
-                                                <TableHead>Status</TableHead>
+                                                <TableHead className="w-[220px]">Status</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -536,7 +557,7 @@ export default function Processed({ batches, processed, filters, employees, stat
                                                             <span className="text-gray-400">-</span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell>{getRecordStatusBadge(record.status)}</TableCell>
+                                                    <TableCell className="w-[220px]">{getRecordStatusBadge(record.status, record.status_message)}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -559,7 +580,14 @@ export default function Processed({ batches, processed, filters, employees, stat
                                         variant={link.active ? 'default' : 'outline'}
                                         size="sm"
                                         disabled={!link.url}
-                                        onClick={() => link.url && router.get(link.url)}
+                                        onClick={() => {
+                                            if (link.url) {
+                                                router.get(link.url, filters, {
+                                                    preserveState: true,
+                                                    preserveScroll: true,
+                                                });
+                                            }
+                                        }}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 ))}
@@ -568,6 +596,31 @@ export default function Processed({ batches, processed, filters, employees, stat
                     )}
                 </div>
             </div>
+
+            <AlertDialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {dialogAction === 'process' && 'Process Batch?'}
+                            {dialogAction === 'reprocess' && 'Reprocess Batch?'}
+                            {dialogAction === 'finalize' && 'Finalize Batch?'}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {dialogAction === 'process' && 'This will group clock in/out times and calculate work hours for all records in this batch.'}
+                            {dialogAction === 'reprocess' && 'This will re-calculate all attendance records in this batch. Existing processed data will be updated.'}
+                            {dialogAction === 'finalize' && 'This will move all processed records to Final Attendance. This action cannot be undone.'}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmProcess}>
+                            {dialogAction === 'process' && 'Process'}
+                            {dialogAction === 'reprocess' && 'Reprocess'}
+                            {dialogAction === 'finalize' && 'Finalize'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </AppLayout>
     );
 }

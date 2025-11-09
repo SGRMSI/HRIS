@@ -46,11 +46,6 @@ const mainNavItems: NavItem[] = [
         icon: Notebook,
         items: [
             {
-                title: 'Upload Attendance',
-                href: '/attendance/upload',
-                icon: FileUp,
-            },
-            {
                 title: 'Raw Data',
                 href: '/attendance/raw',
                 icon: ClipboardList,

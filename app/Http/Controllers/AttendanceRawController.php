@@ -6,9 +6,12 @@ use App\Models\AttendanceRaw;
 use App\Models\AttendanceUploadBatch;
 use App\Models\Employee;
 use App\Exports\AttendanceRawExport;
+use App\Imports\AttendanceRawImport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -136,5 +139,119 @@ class AttendanceRawController extends Controller
             new AttendanceRawExport($records, $batch), 
             'attendance_raw_' . $batch->filename . '_' . now()->format('Y-m-d_His') . '.xlsx'
         );
+    }
+
+    /**
+     * Handle file upload and import
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'], // 10MB max
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $file = $request->file('file');
+            $originalName = $file->getClientOriginalName();
+            $timestamp = now()->format('YmdHis');
+            $filename = "{$timestamp}_{$originalName}";
+
+            // Store the file
+            $path = $file->storeAs('attendance-imports', $filename);
+
+            // Create batch record
+            $batch = AttendanceUploadBatch::create([
+                'filename' => $originalName,
+                'file_path' => $path,
+                'total_rows' => 0,
+                'processed_rows' => 0,
+                'status' => 'importing',
+                'created_by' => Auth::id(),
+            ]);
+
+            // Import the Excel data
+            $import = new AttendanceRawImport($batch->batch_id);
+            Excel::import($import, $file);
+
+            // Update batch with row count
+            $batch->update([
+                'total_rows' => $import->getRowCount(),
+                'status' => 'imported',
+            ]);
+
+            // Log activity
+            activity()
+                ->causedBy(Auth::user())
+                ->performedOn($batch)
+                ->withProperties(['filename' => $originalName, 'rows' => $import->getRowCount()])
+                ->log('Uploaded attendance file');
+
+            DB::commit();
+
+            return redirect()
+                ->route('attendance.raw.index')
+                ->with('success', "File uploaded successfully! {$import->getRowCount()} records imported.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->back()
+                ->withErrors(['file' => 'Failed to import file: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Delete a batch and all related records
+     *
+     * @param int $batchId
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy($batchId)
+    {
+        try {
+            DB::beginTransaction();
+
+            $batch = AttendanceUploadBatch::findOrFail($batchId);
+
+            // Delete the physical file
+            if ($batch->file_path && Storage::exists($batch->file_path)) {
+                Storage::delete($batch->file_path);
+            }
+
+            // Cascade delete will handle:
+            // - AttendanceRaw records (via database foreign key)
+            // - AttendanceProcessed records (via database foreign key)
+            // Note: Make sure migrations have onDelete('cascade') set
+            
+            $filename = $batch->filename;
+            
+            // Log activity before deletion
+            activity()
+                ->causedBy(Auth::user())
+                ->performedOn($batch)
+                ->withProperties(['filename' => $filename])
+                ->log('Deleted attendance batch');
+
+            $batch->delete();
+
+            DB::commit();
+
+            return redirect()
+                ->route('attendance.raw.index')
+                ->with('success', "Batch '{$filename}' and all related records have been deleted.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()
+                ->back()
+                ->withErrors(['delete' => 'Failed to delete batch: ' . $e->getMessage()]);
+        }
     }
 }

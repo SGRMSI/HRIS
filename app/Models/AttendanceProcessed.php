@@ -21,6 +21,7 @@ class AttendanceProcessed extends Model
         'break_minutes',
         'total_hours',
         'status',
+        'status_message',
         'remarks',
         'meta',
     ];
