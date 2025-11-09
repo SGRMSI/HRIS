@@ -32,12 +32,28 @@ class AttendanceProcessedController extends Controller
     public function index(Request $request)
     {
         $filters = $request->only([
+            'company_id',
             'employee_id',
             'date_from',
             'date_to',
             'status',
             'batch_id'
         ]);
+
+        // Get companies for filter
+        $companies = \App\Models\Company::select(['company_id as id', 'name'])->get();
+        
+        // Get employees filtered by company if selected
+        $employees = \App\Models\Employee::query()
+            ->select(['employee_id as id', 'first_name', 'last_name', 'id_number', 'company_id'])
+            ->when($request->company_id, fn($q) => $q->where('company_id', $request->company_id))
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($emp) => [
+                'id' => $emp->id,
+                'name' => "{$emp->first_name} {$emp->last_name} ({$emp->id_number})",
+                'company_id' => $emp->company_id
+            ]);
 
         // Query batches
         $batches = AttendanceUploadBatch::query()
@@ -62,7 +78,10 @@ class AttendanceProcessedController extends Controller
 
         // Query processed records
         $processed = AttendanceProcessed::query()
-            ->with(['employee:employee_id,first_name,last_name,id_number'])
+            ->with(['employee.company:company_id,name', 'employee:employee_id,first_name,last_name,id_number,company_id'])
+            ->when($request->company_id, function ($query, $companyId) {
+                $query->whereHas('employee', fn($q) => $q->where('company_id', $companyId));
+            })
             ->when($request->employee_id, function ($query, $employeeId) {
                 $query->where('employee_id', $employeeId);
             })
@@ -96,6 +115,7 @@ class AttendanceProcessedController extends Controller
                             ? "{$record->employee->first_name} {$record->employee->last_name}"
                             : 'Unmatched',
                         'id_number' => $record->employee->id_number ?? null,
+                        'company' => $record->employee->company->name ?? null,
                     ],
                     'date' => $record->date,
                     'clock_in' => $record->clock_in,
@@ -104,6 +124,7 @@ class AttendanceProcessedController extends Controller
                     'break_in' => $record->break_in,
                     'break_minutes' => $record->break_minutes,
                     'total_hours' => $record->total_hours,
+                    'total_minutes' => $record->total_minutes,
                     'status' => $record->status,
                     'status_message' => $record->status_message,
                     'meta' => $record->meta,
@@ -111,20 +132,11 @@ class AttendanceProcessedController extends Controller
                 ];
             });
 
-        // Get employees for filter dropdown
-        $employees = Employee::select(['employee_id', 'first_name', 'last_name'])
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get()
-            ->map(fn($emp) => [
-                'id' => $emp->employee_id,
-                'name' => $emp->first_name . ' ' . $emp->last_name,
-            ]);
-
         return Inertia::render('Attendance/Processed', [
             'batches' => $batches,
             'processed' => $processed,
             'filters' => $filters,
+            'companies' => $companies,
             'employees' => $employees,
             'statuses' => [
                 ['value' => 'Present', 'label' => 'Present'],
@@ -226,21 +238,49 @@ class AttendanceProcessedController extends Controller
     public function finalize(AttendanceUploadBatch $batch)
     {
         try {
+            Log::info('Finalize attempt started', [
+                'batch_id' => $batch->batch_id,
+                'batch_status' => $batch->status,
+                'user_id' => Auth::id()
+            ]);
+
             if ($batch->status !== 'processed') {
-                throw new \Exception('Only processed batches can be finalized.');
+                throw new \Exception('Only processed batches can be finalized. Current status: ' . $batch->status);
             }
 
             DB::beginTransaction();
 
-            // Get all processed records for this batch
-            $processedIds = AttendanceProcessed::where('batch_id', $batch->batch_id)
+            // Get all processed records for this batch that haven't been finalized yet
+            $processedRecords = AttendanceProcessed::where('batch_id', $batch->batch_id)
                 ->whereNotNull('employee_id') // Only finalize matched records
-                ->pluck('processed_id')
-                ->toArray();
+                ->where('status', '!=', 'Incomplete') // Don't finalize incomplete records
+                ->get();
+            
+            Log::info('Found processed records', [
+                'batch_id' => $batch->batch_id,
+                'total_records' => $processedRecords->count()
+            ]);
+
+            // Filter out already finalized records
+            $recordsToFinalize = $processedRecords->filter(function($record) {
+                return !in_array(strtolower($record->status), ['finalized', 'completed']);
+            });
+
+            $processedIds = $recordsToFinalize->pluck('processed_id')->toArray();
 
             if (empty($processedIds)) {
-                throw new \Exception('No valid records to finalize in this batch.');
+                // Check if all records are already finalized
+                if ($processedRecords->count() > 0) {
+                    throw new \Exception('All records in this batch have already been finalized.');
+                } else {
+                    throw new \Exception('No valid records to finalize in this batch.');
+                }
             }
+
+            Log::info('Finalizing records', [
+                'batch_id' => $batch->batch_id,
+                'record_count' => count($processedIds)
+            ]);
 
             // Push to final attendance
             $this->finalizeService->push($processedIds, Auth::id());
@@ -249,6 +289,11 @@ class AttendanceProcessedController extends Controller
             $batch->update(['status' => 'finalized']);
 
             DB::commit();
+
+            Log::info('Finalization successful', [
+                'batch_id' => $batch->batch_id,
+                'finalized_count' => count($processedIds)
+            ]);
 
             return back()->with('success', count($processedIds) . ' records finalized successfully and moved to Final Attendance!');
 

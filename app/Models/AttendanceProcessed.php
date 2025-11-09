@@ -20,6 +20,7 @@ class AttendanceProcessed extends Model
         'break_out',
         'break_minutes',
         'total_hours',
+        'total_minutes',
         'status',
         'status_message',
         'remarks',
@@ -33,7 +34,8 @@ class AttendanceProcessed extends Model
         'break_in' => 'datetime',
         'break_out' => 'datetime',
         'break_minutes' => 'integer',
-        'total_hours' => 'decimal:2',
+        'total_hours' => 'integer',
+        'total_minutes' => 'integer',
         'meta' => 'array',
         'created_at' => 'datetime',
     ];

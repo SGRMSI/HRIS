@@ -42,12 +42,12 @@ class ShiftSeeder extends Seeder
             ],
             [
                 'name' => 'Night Shift',
-                'time_in' => '22:00',
-                'time_out' => '06:00',
-                'break_start' => '02:00',
-                'break_end' => '02:30',
-                'grace_period' => 15,
-                'description' => 'Night shift from 10 PM to 6 AM (overnight)',
+                'time_in' => '19:00',
+                'time_out' => '04:00',
+                'break_start' => '01:00',
+                'break_end' => '01:30',
+                'grace_period' => 0,
+                'description' => 'Night shift from 7 PM to 4 AM (overnight)',
             ],
             [
                 'name' => 'Flexible Shift',

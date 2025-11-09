@@ -15,87 +15,68 @@ class EmployeeScheduleSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get all employees and shifts
-        $employees = Employee::all();
-        $shifts = Shift::all();
+        // Get Night Shift
+        $nightShift = Shift::where('name', 'Night Shift')->first();
 
-        if ($employees->isEmpty() || $shifts->isEmpty()) {
-            $this->command->warn('No employees or shifts found. Please run HRISSeeder and ShiftSeeder first.');
+        if (!$nightShift) {
+            $this->command->warn('Night Shift not found. Please run ShiftSeeder first.');
             return;
         }
 
+        // Get specific employees by name (first name and last name pairs)
+        $employeeNames = [
+            ['first' => 'Neil Vincent', 'last' => 'Romero'],
+            ['first' => 'Maverick', 'last' => 'Yap'],
+            ['first' => 'Junnel', 'last' => 'Baynosa'],
+            ['first' => 'Rochelle Mae', 'last' => 'Pogoy'],
+            ['first' => 'Akira', 'last' => 'Mallari'],
+        ];
+
         $schedules = [];
 
-        // Assign schedules to employees
-        foreach ($employees as $index => $employee) {
-            // Assign different shift patterns based on employee index
-            $shiftIndex = $index % $shifts->count();
-            $shift = $shifts[$shiftIndex];
+        foreach ($employeeNames as $nameData) {
+            // Handle both array format and string format
+            if (is_array($nameData)) {
+                $firstName = $nameData['first'];
+                $lastName = $nameData['last'];
+            } else {
+                // For string format, split name to search
+                $nameParts = explode(' ', $nameData);
+                $firstName = $nameParts[0];
+                $lastName = end($nameParts);
+            }
 
-            // Create ongoing schedule (no end date) for most employees
-            if ($index % 3 !== 0) {
+            // Find employee
+            $employee = Employee::where('first_name', $firstName)
+                ->where('last_name', $lastName)
+                ->first();
+
+            if ($employee) {
+                // Create ongoing schedule (no end date) with Night Shift
                 $schedules[] = [
                     'employee_id' => $employee->employee_id,
-                    'shift_id' => $shift->shift_id,
-                    'date_start' => Carbon::now()->subMonths(rand(1, 6))->startOfMonth(),
-                    'date_end' => null,
+                    'shift_id' => $nightShift->shift_id,
+                    'date_start' => Carbon::now()->subMonths(2)->startOfMonth(),
+                    'date_end' => null, // Ongoing schedule
                     'is_holiday' => false,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
-            } else {
-                // Create schedules with end dates for some employees
-                $startDate = Carbon::now()->subMonths(3);
-                $endDate = Carbon::now()->subMonth();
-                
-                // Old schedule (completed)
-                $schedules[] = [
-                    'employee_id' => $employee->employee_id,
-                    'shift_id' => $shift->shift_id,
-                    'date_start' => $startDate,
-                    'date_end' => $endDate,
-                    'is_holiday' => false,
-                    'created_at' => $startDate,
-                    'updated_at' => $endDate,
-                ];
 
-                // New schedule (current)
-                $newShiftIndex = ($shiftIndex + 1) % $shifts->count();
-                $newShift = $shifts[$newShiftIndex];
-                
-                $schedules[] = [
-                    'employee_id' => $employee->employee_id,
-                    'shift_id' => $newShift->shift_id,
-                    'date_start' => $endDate->copy()->addDay(),
-                    'date_end' => null,
-                    'is_holiday' => false,
-                    'created_at' => $endDate->copy()->addDay(),
-                    'updated_at' => $endDate->copy()->addDay(),
-                ];
+                $this->command->info("Added schedule for: {$employee->first_name} {$employee->last_name}");
+            } else {
+                $this->command->warn("Employee not found: {$firstName} {$lastName}");
             }
         }
 
-        // Add some future schedules
-        $futureEmployee = $employees->random();
-        $futureShift = $shifts->random();
-        $schedules[] = [
-            'employee_id' => $futureEmployee->employee_id,
-            'shift_id' => $futureShift->shift_id,
-            'date_start' => Carbon::now()->addMonth()->startOfMonth(),
-            'date_end' => Carbon::now()->addMonths(3)->endOfMonth(),
-            'is_holiday' => false,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
+        if (!empty($schedules)) {
+            // Bulk insert all schedules
+            EmployeeSchedule::insert($schedules);
 
-        // Bulk insert all schedules
-        EmployeeSchedule::insert($schedules);
-
-        $totalSchedules = count($schedules);
-        $activeSchedules = collect($schedules)->where('date_end', null)->count();
-        $completedSchedules = collect($schedules)->where('date_end', '!=', null)->count();
-
-        $this->command->info('Employee schedules seeded successfully!');
-        $this->command->info("Total: {$totalSchedules} | Active: {$activeSchedules} | Completed: {$completedSchedules}");
+            $this->command->info('Employee schedules seeded successfully!');
+            $this->command->info("Total schedules created: " . count($schedules));
+        } else {
+            $this->command->warn('No schedules created. Please check employee names.');
+        }
     }
 }

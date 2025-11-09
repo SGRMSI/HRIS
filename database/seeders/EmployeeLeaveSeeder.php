@@ -16,8 +16,27 @@ class EmployeeLeaveSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get employees and users
-        $employees = Employee::with('company')->get();
+        // Exclude these specific employees from leaves seeding
+        $excludedNames = [
+            ['first' => 'Neil Vincent', 'last' => 'Romero'],
+            ['first' => 'Maverick', 'last' => 'Yap'],
+            ['first' => 'Junnel', 'last' => 'Baynosa'],
+            ['first' => 'Rochelle Mae', 'last' => 'Pogoy'],
+            ['first' => 'Akira', 'last' => 'Mallari'],
+        ];
+
+        // Get employees excluding the specified ones
+        $employees = Employee::with('company')
+            ->where(function ($query) use ($excludedNames) {
+                foreach ($excludedNames as $name) {
+                    $query->where(function ($q) use ($name) {
+                        $q->where('first_name', '!=', $name['first'])
+                          ->orWhere('last_name', '!=', $name['last']);
+                    });
+                }
+            })
+            ->get();
+        
         $users = User::all();
         
         if ($employees->isEmpty()) {
@@ -34,7 +53,7 @@ class EmployeeLeaveSeeder extends Seeder
         $leaveTypes = ['sick', 'vacation', 'emergency', 'unpaid', 'parental', 'personal', 'paid', 'other'];
         $statuses = ['pending', 'approved', 'rejected', 'cancelled'];
 
-        // Create sample leaves for each employee
+        // Create sample leaves for each employee (excluding the 5 specific employees)
         foreach ($employees->take(8) as $index => $employee) {
             // Create 2-4 leaves per employee
             $leavesCount = rand(2, 4);
@@ -80,7 +99,7 @@ class EmployeeLeaveSeeder extends Seeder
             }
         }
 
-        // Create some specific scenario leaves for demonstration
+        // Create some specific scenario leaves for demonstration (only if employee is not in excluded list)
         if ($employees->count() > 0) {
             $firstEmployee = $employees->first();
             
@@ -158,6 +177,7 @@ class EmployeeLeaveSeeder extends Seeder
 
         $this->command->info("Employee leaves seeded successfully!");
         $this->command->info("Total: {$totalLeaves} | Pending: {$pending} | Approved: {$approved} | Rejected: {$rejected} | Cancelled: {$cancelled}");
+        $this->command->info("Excluded 5 specific employees from leave seeding for testing purposes.");
     }
 
     /**

@@ -27,29 +27,15 @@ import {
 interface Employee {
     id: number;
     name: string;
+    id_number: string;
     company: string | null;
-    department: string;
-    position: string | null;
+    department: string | null;
 }
 
 interface Shift {
     name: string;
-    start: string;
-    end: string;
-}
-
-interface Times {
-    clock_in: string | null;
-    break_out: string | null;
-    break_in: string | null;
-    clock_out: string | null;
-}
-
-interface Computations {
-    total_hours: string;
-    overtime_hours: string;
-    undertime_minutes: number | null;
-    break_minutes: number | null;
+    time_in: string;
+    time_out: string;
 }
 
 interface AttendanceRecord {
@@ -57,8 +43,14 @@ interface AttendanceRecord {
     employee: Employee;
     date: string;
     shift: Shift | null;
-    times: Times;
-    computations: Computations;
+    clock_in: string | null;
+    clock_out: string | null;
+    break_in: string | null;
+    break_out: string | null;
+    total_hours: string;
+    late_minutes: number | null;
+    overtime_hours: string;
+    undertime_hours: string;
     status: string;
     remarks: string | null;
     approved_by: string | null;
@@ -70,6 +62,12 @@ interface AttendanceRecord {
 interface Company {
     id: number;
     name: string;
+}
+
+interface EmployeeOption {
+    id: number;
+    name: string;
+    company_id: number;
 }
 
 interface Status {
@@ -96,14 +94,11 @@ interface Props {
         date_to?: string;
         status?: string;
         company_id?: number;
+        employee_id?: number;
     };
     companies: Company[];
+    employees: EmployeeOption[];
     statuses: Status[];
-    can: {
-        export: boolean;
-        approve: boolean;
-        edit: boolean;
-    };
 }
 
 function getStatusBadge(status: string, approved: boolean) {
@@ -125,10 +120,15 @@ function getStatusBadge(status: string, approved: boolean) {
     }
 }
 
-export default function FinalIndex({ attendances, filters = {}, companies = [], statuses = [], can = { export: false, approve: false, edit: false } }: Props) {
+export default function FinalIndex({ attendances, filters = {}, companies = [], employees = [], statuses = [] }: Props) {
     const { flash } = usePage().props as any;
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [bulkProcessing, setBulkProcessing] = useState(false);
+
+    // Filter employees based on selected company
+    const filteredEmployees = filters.company_id 
+        ? employees.filter(emp => emp.company_id === filters.company_id)
+        : employees;
 
     const handleFilter = (key: string, value: string) => {
         const filterValue = value === 'all' ? undefined : value;
@@ -235,12 +235,10 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                             Review, approve, and manage attendance records
                         </p>
                     </div>
-                    {can.export && (
-                        <Button onClick={handleExport} variant="outline">
-                            <Download className="h-4 w-4 mr-2" />
-                            Export
-                        </Button>
-                    )}
+                    <Button onClick={handleExport} variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                    </Button>
                 </div>
                 {flash?.success && (
                     <Alert className="bg-green-50 border-green-200">
@@ -325,6 +323,27 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                 </Select>
                             </div>
 
+                            {/* Employee */}
+                            <div>
+                                <Label htmlFor="employee">Employee</Label>
+                                <Select
+                                    value={filters.employee_id?.toString() || 'all'}
+                                    onValueChange={(value) => handleFilter('employee_id', value)}
+                                >
+                                    <SelectTrigger id="employee">
+                                        <SelectValue placeholder="All Employees" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Employees</SelectItem>
+                                        {filteredEmployees.map((emp) => (
+                                            <SelectItem key={emp.id} value={emp.id.toString()}>
+                                                {emp.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             {/* Status */}
                             <div>
                                 <Label htmlFor="status">Status</Label>
@@ -350,7 +369,7 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                 </Card>
 
                 {/* Bulk Actions */}
-                {can.approve && selectedIds.length > 0 && (
+                {selectedIds.length > 0 && (
                     <Card className="border-blue-200 bg-blue-50">
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between">
@@ -395,40 +414,55 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            {can.approve && (
-                                                <TableHead className="w-12">
-                                                    <Checkbox
-                                                        checked={allSelectableSelected}
-                                                        onCheckedChange={handleSelectAll}
-                                                    />
-                                                </TableHead>
-                                            )}
+                                            <TableHead className="w-12">
+                                                <Checkbox
+                                                    checked={allSelectableSelected}
+                                                    onCheckedChange={handleSelectAll}
+                                                />
+                                            </TableHead>
                                             <TableHead>Employee</TableHead>
+                                            <TableHead>Company</TableHead>
                                             <TableHead>Date</TableHead>
                                             <TableHead>Shift</TableHead>
-                                            <TableHead>Clock In</TableHead>
-                                            <TableHead>Clock Out</TableHead>
-                                            <TableHead>Hours</TableHead>
+                                            <TableHead>Clock-In</TableHead>
+                                            <TableHead>Clock-Out</TableHead>
+                                            <TableHead>Break-Out</TableHead>
+                                            <TableHead>Break-In</TableHead>
+                                            <TableHead>Total Hours</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead>Approved By</TableHead>
+                                            <TableHead>Approved</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {attendances.data.map((record) => (
                                             <TableRow key={record.id}>
-                                                {can.approve && (
-                                                    <TableCell>
-                                                        {!record.approved_by && record.can_approve && (
-                                                            <Checkbox
-                                                                checked={selectedIds.includes(record.id)}
-                                                                onCheckedChange={(checked) =>
-                                                                    handleSelectOne(record.id, checked as boolean)
-                                                                }
-                                                            />
-                                                        )}
-                                                    </TableCell>
-                                                )}
+                                                <TableCell>
+                                                    {!record.approved_by && record.can_approve && (
+                                                        <Checkbox
+                                                            checked={selectedIds.includes(record.id)}
+                                                            onCheckedChange={(checked) => handleSelectOne(record.id, !!checked)}
+                                                        />
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="h-4 w-4 text-gray-400" />
+                                                        <div>
+                                                            <p className="font-medium">{record.employee.name}</p>
+                                                            <p className="text-xs text-gray-500">{record.employee.id_number}</p>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-sm">{record.employee.company || 'N/A'}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4 text-gray-400" />
+                                                        {formatDate(record.date)}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell>
                                                     <div>
                                                         <p className="font-medium">{record.employee.name}</p>
@@ -449,7 +483,7 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                                         <div className="text-sm">
                                                             <p className="font-medium">{record.shift.name}</p>
                                                             <p className="text-xs text-gray-500">
-                                                                {formatTime(record.shift.start)} - {formatTime(record.shift.end)}
+                                                                {record.shift.time_in} - {record.shift.time_out}
                                                             </p>
                                                         </div>
                                                     ) : (
@@ -459,21 +493,38 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Clock className="h-3 w-3 text-green-600" />
-                                                        {formatTime(record.times.clock_in)}
+                                                        {record.clock_in || '-'}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
                                                         <Clock className="h-3 w-3 text-red-600" />
-                                                        {formatTime(record.times.clock_out)}
+                                                        {record.clock_out || '-'}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3 w-3 text-orange-600" />
+                                                        {record.break_out || '-'}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3 w-3 text-orange-600" />
+                                                        {record.break_in || '-'}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="text-sm">
-                                                        <p className="font-medium">{record.computations.total_hours} hrs</p>
-                                                        {record.computations.overtime_hours !== '0.00' && (
+                                                        <p className="font-medium">{record.total_hours} hrs</p>
+                                                        {record.overtime_hours !== '0.00' && (
                                                             <p className="text-xs text-blue-600">
-                                                                +{record.computations.overtime_hours} OT
+                                                                +{record.overtime_hours} OT
+                                                            </p>
+                                                        )}
+                                                        {record.late_minutes && record.late_minutes > 0 && (
+                                                            <p className="text-xs text-red-600">
+                                                                Late: {record.late_minutes}m
                                                             </p>
                                                         )}
                                                     </div>

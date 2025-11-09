@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { Head, router, usePage } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { Calendar, CheckCircle2, Clock, Download, FileText, Filter, PlayCircle, RotateCcw, Send, User, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Download, Eye, FileText, Filter, PlayCircle, RotateCcw, Send, User, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -32,6 +32,7 @@ interface ProcessedRecord {
         id: number | null;
         name: string;
         id_number: string | null;
+        company: string | null;
     };
     ac_no: string;
     date: string;
@@ -41,6 +42,7 @@ interface ProcessedRecord {
     break_in: string | null;
     break_minutes: number | null;
     total_hours: number | null;
+    total_minutes: number | null;
     status: 'Present' | 'Incomplete';
     status_message: string | null;
     meta: any;
@@ -62,13 +64,15 @@ interface Props {
         }>;
     };
     filters: {
+        company_id?: number;
         employee_id?: number;
         date_from?: string;
         date_to?: string;
         status?: string;
         batch_id?: number;
     };
-    employees: Array<{ id: number; name: string }>;
+    companies: Array<{ id: number; name: string }>;
+    employees: Array<{ id: number; name: string; company_id: number }>;
     statuses: Array<{ value: string; label: string }>;
     flash?: {
         success?: string;
@@ -119,7 +123,7 @@ function getRecordStatusBadge(status: 'Present' | 'Incomplete', statusMessage?: 
     );
 }
 
-export default function Processed({ batches, processed, filters, employees, statuses }: Props) {
+export default function Processed({ batches, processed, filters, companies, employees, statuses }: Props) {
     const { flash } = usePage().props as any;
     const [processing, setProcessing] = useState<number | null>(null);
     const [finalizing, setFinalizing] = useState<number | null>(null);
@@ -127,6 +131,11 @@ export default function Processed({ batches, processed, filters, employees, stat
     const [processDialogOpen, setProcessDialogOpen] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
     const [dialogAction, setDialogAction] = useState<'process' | 'reprocess' | 'finalize'>('process');
+
+    // Filter employees based on selected company
+    const filteredEmployees = filters.company_id 
+        ? employees.filter(emp => emp.company_id === filters.company_id)
+        : employees;
 
     useEffect(() => {
         if (flash?.success) {
@@ -172,6 +181,18 @@ export default function Processed({ batches, processed, filters, employees, stat
                 route('attendance.processed.finalize', selectedBatchId),
                 {},
                 {
+                    onSuccess: () => {
+                        toast.success('Batch finalized successfully!');
+                        // Force page reload to show updated status
+                        window.location.href = route('attendance.processed.index');
+                    },
+                    onError: (errors) => {
+                        if (errors.finalize) {
+                            toast.error(errors.finalize);
+                        } else {
+                            toast.error('Failed to finalize batch');
+                        }
+                    },
                     onFinish: () => setFinalizing(null),
                 },
             );
@@ -366,25 +387,43 @@ export default function Processed({ batches, processed, filters, employees, stat
                                         ) : null}
 
                                         {batch.status === 'finalized' ? (
-                                            <Button
-                                                onClick={() => handleReprocess(batch.id)}
-                                                disabled={reprocessing === batch.id}
-                                                className="w-full"
-                                                size="sm"
-                                                variant="outline"
-                                            >
-                                                {reprocessing === batch.id ? (
-                                                    <>
-                                                        <Clock className="mr-2 h-4 w-4 animate-spin" />
-                                                        Reprocessing...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <RotateCcw className="mr-2 h-4 w-4" />
-                                                        Reprocess Batch
-                                                    </>
-                                                )}
-                                            </Button>
+                                            <div className="space-y-2">
+                                                <Alert className="border-green-500 bg-green-50">
+                                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                    <AlertDescription className="text-green-800 text-sm">
+                                                        Batch finalized! Records are now in Final Attendance.
+                                                    </AlertDescription>
+                                                </Alert>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        onClick={() => router.visit(route('attendance.final.index'))}
+                                                        className="flex-1 bg-green-600 hover:bg-green-700"
+                                                        size="sm"
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Final Attendance
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => handleReprocess(batch.id)}
+                                                        disabled={reprocessing === batch.id}
+                                                        className="flex-1"
+                                                        size="sm"
+                                                        variant="outline"
+                                                    >
+                                                        {reprocessing === batch.id ? (
+                                                            <>
+                                                                <Clock className="mr-2 h-4 w-4 animate-spin" />
+                                                                Reprocessing...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <RotateCcw className="mr-2 h-4 w-4" />
+                                                                Reprocess
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         ) : null}
                                     </CardContent>
                                 </Card>
@@ -410,18 +449,18 @@ export default function Processed({ batches, processed, filters, employees, stat
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid gap-4 md:grid-cols-5">
+                            <div className="grid gap-4 md:grid-cols-6">
                                 <div className="space-y-2">
-                                    <Label>Batch</Label>
-                                    <Select value={filters.batch_id?.toString() || 'all'} onValueChange={(value) => handleFilter('batch_id', value)}>
+                                    <Label>Company</Label>
+                                    <Select value={filters.company_id?.toString() || 'all'} onValueChange={(value) => handleFilter('company_id', value)}>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="All Batches" />
+                                            <SelectValue placeholder="All Companies" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All Batches</SelectItem>
-                                            {batches.map((batch) => (
-                                                <SelectItem key={batch.id} value={batch.id.toString()}>
-                                                    {batch.filename}
+                                            <SelectItem value="all">All Companies</SelectItem>
+                                            {companies.map((company) => (
+                                                <SelectItem key={company.id} value={company.id.toString()}>
+                                                    {company.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -439,9 +478,26 @@ export default function Processed({ batches, processed, filters, employees, stat
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Employees</SelectItem>
-                                            {employees.map((emp) => (
+                                            {filteredEmployees.map((emp) => (
                                                 <SelectItem key={emp.id} value={emp.id.toString()}>
                                                     {emp.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Batch</Label>
+                                    <Select value={filters.batch_id?.toString() || 'all'} onValueChange={(value) => handleFilter('batch_id', value)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="All Batches" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Batches</SelectItem>
+                                            {batches.map((batch) => (
+                                                <SelectItem key={batch.id} value={batch.id.toString()}>
+                                                    {batch.filename}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -492,6 +548,7 @@ export default function Processed({ batches, processed, filters, employees, stat
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Employee</TableHead>
+                                                <TableHead>Company</TableHead>
                                                 <TableHead>Date</TableHead>
                                                 <TableHead>Clock In</TableHead>
                                                 <TableHead>Clock Out</TableHead>
@@ -512,6 +569,9 @@ export default function Processed({ batches, processed, filters, employees, stat
                                                                 <p className="text-xs text-gray-500">{record.employee.id_number}</p>
                                                             )}
                                                         </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-sm">{record.employee.company || 'N/A'}</span>
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
@@ -551,8 +611,8 @@ export default function Processed({ batches, processed, filters, employees, stat
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        {record.total_hours !== null ? (
-                                                            <span className="font-medium">{Number(record.total_hours).toFixed(2)} hrs</span>
+                                                        {record.total_hours !== null && record.total_minutes !== null ? (
+                                                            <span className="font-medium">{record.total_hours}h {record.total_minutes}m</span>
                                                         ) : (
                                                             <span className="text-gray-400">-</span>
                                                         )}

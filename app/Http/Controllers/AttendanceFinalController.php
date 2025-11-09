@@ -33,20 +33,38 @@ class AttendanceFinalController extends Controller
      */
     public function index(Request $request)
     {
+        // Get companies for filter
+        $companies = Company::select(['company_id as id', 'name'])->get();
+        
+        // Get employees filtered by company if selected
+        $employees = Employee::query()
+            ->select(['employee_id as id', 'first_name', 'last_name', 'id_number', 'company_id'])
+            ->when($request->company_id, fn($q) => $q->where('company_id', $request->company_id))
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($emp) => [
+                'id' => $emp->id,
+                'name' => "{$emp->first_name} {$emp->last_name} ({$emp->id_number})",
+                'company_id' => $emp->company_id
+            ]);
+        
         $query = Attendance::with(['employee.department', 'employee.company', 'shift', 'createdBy', 'approvedBy'])
+            ->when($request->company_id, function ($q) use ($request) {
+                $q->whereHas('employee', fn ($q) => $q->where('company_id', $request->company_id));
+            })
+            ->when($request->employee_id, function ($q) use ($request) {
+                $q->where('employee_id', $request->employee_id);
+            })
             ->when($request->search, function ($query, $search) {
                 $query->whereHas('employee', function ($q) use ($search) {
-                    $q->where('employee_number', 'like', "%{$search}%")
+                    $q->where('id_number', 'like', "%{$search}%")
                       ->orWhere('first_name', 'like', "%{$search}%")
                       ->orWhere('last_name', 'like', "%{$search}%");
                 });
             })
             ->when($request->date_from, fn ($q) => $q->where('date', '>=', $request->date_from))
             ->when($request->date_to, fn ($q) => $q->where('date', '<=', $request->date_to))
-            ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->company_id, function ($q) use ($request) {
-                $q->whereHas('employee', fn ($q) => $q->where('company_id', $request->company_id));
-            });
+            ->when($request->status, fn ($q) => $q->where('status', $request->status));
 
         // Handle export data request
         if ($request->wantsJson()) {
@@ -59,45 +77,42 @@ class AttendanceFinalController extends Controller
             ->paginate($request->per_page ?? 15)
             ->through(function ($attendance) {
                 return [
-                    'id' => $attendance->id,
+                    'id' => $attendance->attendance_id,
                     'employee' => [
-                        'id' => $attendance->employee->id,
-                        'name' => $attendance->employee->full_name,
+                        'id' => $attendance->employee->employee_id,
+                        'name' => "{$attendance->employee->first_name} {$attendance->employee->last_name}",
+                        'id_number' => $attendance->employee->id_number,
                         'company' => $attendance->employee->company->name ?? null,
-                        'department' => $attendance->employee->department->name,
-                        'position' => $attendance->employee->position->name ?? null
+                        'department' => $attendance->employee->department->name ?? null,
                     ],
-                    'date' => $attendance->date,
+                    'date' => $attendance->date->format('Y-m-d'),
                     'shift' => $attendance->shift ? [
                         'name' => $attendance->shift->name,
-                        'start' => $attendance->shift->start_time,
-                        'end' => $attendance->shift->end_time
+                        'time_in' => $attendance->shift->getAttributes()['time_in'],
+                        'time_out' => $attendance->shift->getAttributes()['time_out'],
                     ] : null,
-                    'times' => [
-                        'clock_in' => $attendance->clock_in?->format('H:i:s'),
-                        'break_out' => $attendance->break_out?->format('H:i:s'),
-                        'break_in' => $attendance->break_in?->format('H:i:s'),
-                        'clock_out' => $attendance->clock_out?->format('H:i:s')
-                    ],
-                    'computations' => [
-                        'total_hours' => number_format((float) $attendance->total_hours ?? 0, 2),
-                        'overtime_hours' => number_format((float) $attendance->overtime_hours ?? 0, 2),
-                        'undertime_minutes' => $attendance->undertime_minutes,
-                        'break_minutes' => $attendance->break_minutes
-                    ],
+                    'clock_in' => $attendance->clock_in?->format('H:i:s'),
+                    'clock_out' => $attendance->clock_out?->format('H:i:s'),
+                    'break_in' => $attendance->break_in?->format('H:i:s'),
+                    'break_out' => $attendance->break_out?->format('H:i:s'),
+                    'total_hours' => number_format((float) $attendance->total_hours ?? 0, 2),
+                    'late_minutes' => $attendance->late_minutes,
+                    'overtime_hours' => number_format((float) $attendance->overtime_hours ?? 0, 2),
+                    'undertime_hours' => number_format((float) $attendance->undertime_hours ?? 0, 2),
                     'status' => $attendance->status,
                     'remarks' => $attendance->remarks,
                     'approved_by' => $attendance->approvedBy?->name,
                     'approved_at' => $attendance->approved_at?->format('Y-m-d H:i:s'),
-                    'can_edit' => !$attendance->approved_by && Auth::user()->can('edit attendances'),
-                    'can_approve' => !$attendance->approved_by && Auth::user()->can('approve attendances')
+                    'can_edit' => !$attendance->approved_by,
+                    'can_approve' => !$attendance->approved_by && $attendance->requires_approval
                 ];
             });
 
         return Inertia::render('Attendance/FinalIndex', [
             'attendances' => $attendances,
-            'filters' => $request->only(['search', 'date_from', 'date_to', 'status', 'company_id']),
-            'companies' => Company::select(['company_id as id', 'name'])->get(),
+            'filters' => $request->only(['search', 'date_from', 'date_to', 'status', 'company_id', 'employee_id']),
+            'companies' => $companies,
+            'employees' => $employees,
             'statuses' => [
                 ['value' => 'present', 'label' => 'Present'],
                 ['value' => 'absent', 'label' => 'Absent'],

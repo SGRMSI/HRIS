@@ -225,7 +225,22 @@ class AttendanceRawController extends Controller
             }
 
             // Explicitly delete related records (SQLite may not enforce cascade)
-            // Delete processed records first
+            
+            // First, get all processed records to find dates and employees
+            $processedRecords = DB::table('attendance_processed')
+                ->where('batch_id', $batch->batch_id)
+                ->select('employee_id', 'date')
+                ->get();
+            
+            // Delete final attendance records that match these employee_id and date combinations
+            foreach ($processedRecords as $record) {
+                DB::table('attendances')
+                    ->where('employee_id', $record->employee_id)
+                    ->where('date', $record->date)
+                    ->delete();
+            }
+            
+            // Delete processed records
             DB::table('attendance_processed')
                 ->where('batch_id', $batch->batch_id)
                 ->delete();

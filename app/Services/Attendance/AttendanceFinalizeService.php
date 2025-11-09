@@ -32,12 +32,14 @@ class AttendanceFinalizeService
     protected function resolveAttendanceDetails(AttendanceProcessed $processed): object
     {
         // Get employee's schedule for the date
-        $schedule = $this->scheduleResolver->getScheduleForDate(
+        $scheduleData = $this->scheduleResolver->getScheduleForDate(
             $processed->employee_id,
             Carbon::parse($processed->date)
         );
 
-        $shift = $schedule?->shift;
+        // Extract the actual EmployeeSchedule model and Shift model
+        $schedule = $scheduleData?->schedule; // This is the EmployeeSchedule model
+        $shift = $scheduleData?->shift; // This is the Shift model
 
         // Use the workingStatus method from ScheduleResolver for comprehensive check
         $workingStatus = $this->scheduleResolver->getWorkingStatus(
@@ -53,12 +55,12 @@ class AttendanceFinalizeService
         // Determine if it's a working day
         $isWorkingDay = !$isHoliday && !$isOnLeave;
 
-        // Determine status
-        $status = $this->determineStatus($processed, $schedule, $isHoliday, $isOnLeave);
+        // Determine status - pass the schedule data object, not the model
+        $status = $this->determineStatus($processed, $scheduleData, $isHoliday, $isOnLeave);
 
         return (object) [
-            'schedule' => $schedule,
-            'shift' => $shift,
+            'schedule' => $schedule, // EmployeeSchedule model
+            'shift' => $shift, // Shift model
             'isHoliday' => $isHoliday,
             'isOnLeave' => $isOnLeave,
             'isWorkingDay' => $isWorkingDay,
@@ -124,7 +126,6 @@ class AttendanceFinalizeService
                         'break_in' => $processed->break_in,
                         'clock_out' => $processed->clock_out,
                         'total_hours' => $processed->total_hours,
-                        'break_minutes' => $processed->break_minutes,
                         'late_minutes' => $lateMinutes,
                         'overtime_hours' => $overtimeHours,
                         'undertime_hours' => $undertimeHours,
@@ -178,17 +179,43 @@ class AttendanceFinalizeService
             return [0, 0, 0];
         }
 
-        $attendanceDate = Carbon::parse($attendance->date);
-        $clockIn = Carbon::parse($attendance->clock_in);
-        $clockOut = Carbon::parse($attendance->clock_out);
-
-        // Get shift times as time strings to avoid date influence
-        $shiftStart = Carbon::parse($shift->time_in->format('H:i:s'));
-        $shiftEnd = Carbon::parse($shift->time_out->format('H:i:s'));
+        // Get the date only (Y-m-d format) - extract from string to avoid Carbon object issues
+        if ($attendance->date instanceof \Carbon\Carbon) {
+            $dateOnly = $attendance->date->format('Y-m-d');
+        } else {
+            // If it's a string, extract just the date part
+            $dateOnly = substr($attendance->date, 0, 10);
+        }
         
-        // Align all times to the attendance date for comparison
-        $shiftStart->setDateFrom($attendanceDate);
-        $shiftEnd->setDateFrom($attendanceDate);
+        \Log::info('Finalize Debug', [
+            'raw_date' => $attendance->date,
+            'date_only' => $dateOnly,
+            'shift_time_in_raw' => $shift->getAttributes()['time_in'],
+        ]);
+        
+        // Clock in/out are already Carbon datetime objects - just use them directly
+        $clockIn = $attendance->clock_in instanceof \Carbon\Carbon 
+            ? $attendance->clock_in 
+            : Carbon::parse($attendance->clock_in);
+            
+        $clockOut = $attendance->clock_out instanceof \Carbon\Carbon 
+            ? $attendance->clock_out 
+            : Carbon::parse($attendance->clock_out);
+
+        // Get raw shift time strings from database attributes (bypass the datetime cast)
+        // These are stored as "08:00", "17:00" format
+        $shiftTimeIn = $shift->getAttributes()['time_in'] . ':00';
+        $shiftTimeOut = $shift->getAttributes()['time_out'] . ':00';
+        
+        \Log::info('Parsing shift times', [
+            'date_only' => $dateOnly,
+            'shift_time_in' => $shiftTimeIn,
+            'concatenated' => $dateOnly . ' ' . $shiftTimeIn,
+        ]);
+        
+        // Create shift start/end times on the attendance date
+        $shiftStart = Carbon::parse($dateOnly . ' ' . $shiftTimeIn);
+        $shiftEnd = Carbon::parse($dateOnly . ' ' . $shiftTimeOut);
         
         // For overnight shifts, adjust end times forward a day
         if ($shift->isOvernight()) {
@@ -200,6 +227,7 @@ class AttendanceFinalizeService
             }
             
             // Special case: clock out next morning but still tied to prev day's shift
+            $attendanceDate = Carbon::parse($dateOnly);
             if (!$clockOut->isSameDay($attendanceDate) && $clockOut->format('H:i:s') <= $shiftEnd->format('H:i:s')) {
                 $clockOut->subDay(); // Align to attendance date
             }
@@ -263,13 +291,24 @@ class AttendanceFinalizeService
 
         // Handle overnight shifts and lateness
         $shift = $schedule->shift;
-        $scheduledClockIn = Carbon::parse($attendance->date . ' ' . $shift->time_in->format('H:i:s'));
+        
+        // Get just the date portion (Y-m-d) to avoid double time specification
+        $dateOnly = $attendance->date instanceof \Carbon\Carbon 
+            ? $attendance->date->format('Y-m-d')
+            : substr($attendance->date, 0, 10);
+            
+        // Get shift time from raw attributes
+        $shiftTimeIn = $shift->getAttributes()['time_in'] . ':00';
+        
+        $scheduledClockIn = Carbon::parse($dateOnly . ' ' . $shiftTimeIn);
         
         if ($shift->isOvernight()) {
             $scheduledClockIn->subDay();
         }
 
-        $actualClockIn = Carbon::parse($attendance->clock_in);
+        $actualClockIn = $attendance->clock_in instanceof \Carbon\Carbon
+            ? $attendance->clock_in
+            : Carbon::parse($attendance->clock_in);
         
         // Use shift's grace period
         $graceEnd = $scheduledClockIn->copy()->addMinutes($shift->grace_period ?? 0);

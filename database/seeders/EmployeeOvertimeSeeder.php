@@ -15,8 +15,26 @@ class EmployeeOvertimeSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get all employees and users
-        $employees = Employee::all();
+        // Exclude these specific employees from overtime seeding
+        $excludedNames = [
+            ['first' => 'Neil Vincent', 'last' => 'Romero'],
+            ['first' => 'Maverick', 'last' => 'Yap'],
+            ['first' => 'Junnel', 'last' => 'Baynosa'],
+            ['first' => 'Rochelle Mae', 'last' => 'Pogoy'],
+            ['first' => 'Akira', 'last' => 'Mallari'],
+        ];
+
+        // Get employees excluding the specified ones
+        $employees = Employee::where(function ($query) use ($excludedNames) {
+                foreach ($excludedNames as $name) {
+                    $query->where(function ($q) use ($name) {
+                        $q->where('first_name', '!=', $name['first'])
+                          ->orWhere('last_name', '!=', $name['last']);
+                    });
+                }
+            })
+            ->get();
+            
         $users = User::all();
 
         if ($employees->isEmpty() || $users->isEmpty()) {
@@ -114,5 +132,6 @@ class EmployeeOvertimeSeeder extends Seeder
         }
 
         $this->command->info("Created {$recordsCreated} overtime records.");
+        $this->command->info("Excluded 5 specific employees from overtime seeding for testing purposes.");
     }
 }

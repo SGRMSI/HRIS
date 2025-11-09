@@ -301,8 +301,8 @@ class AttendanceProcessService
                             ];
                             $totalMinutes = null;
                         } else {
-                            // Calculate minutes worked (always positive)
-                            $totalMinutes = abs($clockInTime->diffInMinutes($clockOutTime, false)) - $breakMinutes;
+                            // Calculate minutes worked (clock_out - clock_in, without subtracting break)
+                            $totalMinutes = abs($clockInTime->diffInMinutes($clockOutTime, false));
 
                             if ($totalMinutes < 0) {
                                 Log::warning("Negative total minutes calculated", [
@@ -310,7 +310,6 @@ class AttendanceProcessService
                                     'date' => $attendanceDate,
                                     'clock_in' => $clockInTime->format('Y-m-d H:i:s'),
                                     'clock_out' => $clockOutTime->format('Y-m-d H:i:s'),
-                                    'break_minutes' => $breakMinutes
                                 ]);
                                 $totalMinutes = 0;
                             }
@@ -363,7 +362,8 @@ class AttendanceProcessService
                             'break_out' => $breakPairs[0]['start'] ?? null,
                             'break_in' => $breakPairs[0]['end'] ?? null,
                             'clock_out' => $clockOutTime?->format('Y-m-d H:i:s'),
-                            'total_hours' => $totalMinutes ? round($totalMinutes / 60, 2) : null,
+                            'total_hours' => $totalMinutes ? (int) floor($totalMinutes / 60) : null,
+                            'total_minutes' => $totalMinutes ? ($totalMinutes % 60) : null,
                             'break_minutes' => $breakMinutes,
                             'status' => $status,
                             'status_message' => $statusMessage,
