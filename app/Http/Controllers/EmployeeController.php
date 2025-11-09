@@ -62,7 +62,7 @@ class EmployeeController extends Controller
                 return [
                     'company_id' => $company->company_id,
                     'name' => $company->name,
-                    'hasAccount' => $company->accounts_count > 0, // Only counts active accounts
+                    'hasAccount' => $company->accounts_count > 0,
                 ];
             });
 
@@ -100,32 +100,24 @@ class EmployeeController extends Controller
             'hdmf_number' => 'nullable|string|max:20',
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
-            'date_regularized' => 'nullable|date|after_or_equal:date_hired', // Changed from 'after' to 'after_or_equal'
+            'date_regularized' => 'nullable|date|after_or_equal:date_hired',
             'employment_status' => 'required|in:Probationary,Regular,Contractual,Terminated',
             'remarks' => 'nullable|string',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        // Convert empty string to null for account_id
         if (empty($validated['account_id'])) {
             $validated['account_id'] = null;
         }
 
-        // Force account_id = null if not TechHub
         if ($techubCompany && $validated['company_id'] != $techubCompany->company_id) {
             $validated['account_id'] = null;
         }
 
         try {
-            // Generate employee ID based on company
             $company = Company::findOrFail($validated['company_id']);
-            \Log::info('Company found:', ['name' => $company->name]);
-            
             $companyPrefix = $this->employeeService->generateCompanyPrefix($company->name);
-            \Log::info('Generated prefix:', ['prefix' => $companyPrefix]);
-            
             $validated['id_number'] = $this->employeeService->generateEmployeeId($companyPrefix);
-            \Log::info('Generated employee ID:', ['id_number' => $validated['id_number']]);
 
             $employeeData = $this->employeeService->prepareEmployeeData($validated);
 
@@ -139,7 +131,6 @@ class EmployeeController extends Controller
 
             $employee = Employee::create($employeeData);
 
-            // Add activity log for employee creation
             activity()
                 ->performedOn($employee)
                 ->causedBy(auth()->user())
@@ -163,7 +154,6 @@ class EmployeeController extends Controller
                 ->with('success', "Employee '{$fullName}' has been created successfully!");
 
         } catch (\Exception $e) {
-            // Add logging to see what the actual error is
             \Log::error('Employee creation failed: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
             
@@ -175,7 +165,6 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee)
     {
-        // Load current schedule with shift details and company
         $employee->load(['currentSchedule.shift', 'company', 'department', 'position']);
         
         $currentSchedule = $employee->currentSchedule;
@@ -194,7 +183,7 @@ class EmployeeController extends Controller
             'employment_status' => $employee->employment_status,
             'date_hired' => $employee->date_hired ? date('Y-m-d', strtotime($employee->date_hired)) : null,
             'date_regularized' => $employee->date_regularized ? date('Y-m-d', strtotime($employee->date_regularized)) : null,
-            'work_shift' => $employee->work_shift, // Keep for backward compatibility
+            'work_shift' => $employee->work_shift,
             'current_shift' => $currentSchedule && $currentSchedule->shift ? [
                 'schedule_id' => $currentSchedule->schedule_id,
                 'name' => $currentSchedule->shift->name,
@@ -218,7 +207,6 @@ class EmployeeController extends Controller
             'emergency_contact_number' => $employee->emergency_contact_number,
         ];
         
-        // Get employee documents with uploader information
         $documents = $employee->documents()
             ->with('uploader')
             ->orderBy('created_at', 'desc')
@@ -235,7 +223,6 @@ class EmployeeController extends Controller
                 ];
             });
             
-        // Count infractions documents
         $infractionCount = $documents->where('category', 'Infractions')->count();
 
         return Inertia::render('employee/show', [
@@ -246,7 +233,6 @@ class EmployeeController extends Controller
 
     public function edit(Employee $employee)
     {
-        // Get all companies with their related data
         $companies = Company::all()->map(function ($company) {
             return [
                 'company_id' => $company->company_id,
@@ -278,12 +264,10 @@ class EmployeeController extends Controller
             ];
         });
 
-        // Load current schedule with shift details
         $employee->load(['currentSchedule.shift']);
         
         $currentSchedule = $employee->currentSchedule;
 
-        // Prepare employee data for editing
         $employeeData = [
             'employee_id' => $employee->employee_id,
             'id_number' => $employee->id_number,
@@ -301,7 +285,7 @@ class EmployeeController extends Controller
             'employment_status' => $employee->employment_status,
             'date_hired' => $employee->date_hired ? $employee->date_hired->format('Y-m-d') : '',
             'date_regularized' => $employee->date_regularized ? $employee->date_regularized->format('Y-m-d') : null,
-            'work_shift' => $employee->work_shift, // Keep for backward compatibility
+            'work_shift' => $employee->work_shift,
             'current_shift' => $currentSchedule && $currentSchedule->shift ? [
                 'schedule_id' => $currentSchedule->schedule_id,
                 'shift_id' => $currentSchedule->shift->shift_id,
@@ -328,7 +312,6 @@ class EmployeeController extends Controller
             'remarks' => $employee->remarks,
         ];
 
-        // Get employee documents
         $documents = $employee->documents()
             ->with('uploader')
             ->orderBy('created_at', 'desc')
@@ -345,7 +328,6 @@ class EmployeeController extends Controller
                 ];
             });
             
-        // Count infractions documents
         $infractionCount = $documents->where('category', 'Infractions')->count();
 
         return Inertia::render('employee/edit', [
@@ -360,7 +342,6 @@ class EmployeeController extends Controller
 
     public function update(Request $request, Employee $employee)
     {
-        // Validate the input
         $validated = $request->validate([
             'id_number' => 'required|string|max:255|unique:employees,id_number,' . $employee->employee_id . ',employee_id',
             'first_name' => 'required|string|max:255',
@@ -386,7 +367,6 @@ class EmployeeController extends Controller
         ]);
 
         try {
-            // Store original data for comparison
             $originalData = [
                 'id_number' => $employee->id_number,
                 'first_name' => $employee->first_name,
@@ -399,12 +379,10 @@ class EmployeeController extends Controller
                 'date_hired' => $employee->date_hired?->toDateString(),
             ];
 
-            // Calculate age from birth date
             $birthDate = new \DateTime($validated['birth_date']);
             $today = new \DateTime('today');
             $age = $birthDate->diff($today)->y;
 
-            // Update the employee
             $employee->update([
                 'id_number' => $validated['id_number'],
                 'first_name' => $validated['first_name'],
@@ -436,7 +414,6 @@ class EmployeeController extends Controller
                 $validated['last_name']
             );
 
-            // Track what changed
             $changes = [];
             if ($originalData['id_number'] !== $validated['id_number']) {
                 $changes['id_number'] = [
@@ -472,7 +449,6 @@ class EmployeeController extends Controller
                 ];
             }
 
-            // Log activity with changes
             activity()
                 ->performedOn($employee)
                 ->causedBy(auth()->user())
@@ -502,19 +478,12 @@ class EmployeeController extends Controller
     public function destroy(Employee $employee)
     {
         try {
-            \Log::info('=== DESTROY EMPLOYEE START ===', [
-                'employee_id' => $employee->employee_id,
-                'id_number' => $employee->id_number,
-                'name' => "{$employee->first_name} {$employee->middle_name} {$employee->last_name}",
-            ]);
-
             $employeeName = $this->employeeService->generateFullName(
                 $employee->first_name,
                 $employee->middle_name,
                 $employee->last_name
             );
 
-            // Store employee data before deletion for activity log
             $employeeData = [
                 'employee_id' => $employee->employee_id,
                 'id_number' => $employee->id_number,
@@ -524,10 +493,8 @@ class EmployeeController extends Controller
                 'last_name' => $employee->last_name,
             ];
 
-            // Check all foreign key relationships using raw queries for reliability
             $constraints = [];
             
-            // Check attendances (all types)
             $attendanceRawCount = DB::table('attendance_raws')
                 ->where('employee_id', $employee->employee_id)
                 ->count();
@@ -548,7 +515,6 @@ class EmployeeController extends Controller
                 $constraints[] = "Final Attendance Records: $attendanceCount";
             }
             
-            // Check schedules
             $scheduleCount = DB::table('employee_schedules')
                 ->where('employee_id', $employee->employee_id)
                 ->count();
@@ -556,7 +522,6 @@ class EmployeeController extends Controller
                 $constraints[] = "Schedules: $scheduleCount";
             }
             
-            // Check leaves
             $leaveCount = DB::table('employee_leaves')
                 ->where('employee_id', $employee->employee_id)
                 ->count();
@@ -564,7 +529,6 @@ class EmployeeController extends Controller
                 $constraints[] = "Leave Records: $leaveCount";
             }
             
-            // Check documents
             $documentCount = DB::table('employee_documents')
                 ->where('employee_id', $employee->employee_id)
                 ->count();
@@ -572,7 +536,6 @@ class EmployeeController extends Controller
                 $constraints[] = "Documents: $documentCount";
             }
             
-            // Check user account
             $userAccount = DB::table('users')
                 ->where('employee_id', $employee->employee_id)
                 ->first();
@@ -580,23 +543,13 @@ class EmployeeController extends Controller
                 $constraints[] = "User Account: {$userAccount->email}";
             }
 
-            // If any constraints exist, prevent deletion and return detailed error
             if (!empty($constraints)) {
                 $constraintList = implode(", ", $constraints);
-                \Log::warning('Cannot delete employee - has related records', [
-                    'employee_id' => $employee->employee_id,
-                    'constraints' => $constraintList
-                ]);
-                
                 return back()->with('error', 
                     "Cannot delete {$employeeName}. Employee has: {$constraintList}. Please remove these records first or mark employee as inactive."
                 );
             }
 
-            // If no constraints, proceed with deletion
-            \Log::info('No constraints found, proceeding with deletion');
-            
-            // Delete profile picture if exists
             if ($employee->profile_picture) {
                 try {
                     $this->employeeService->deleteProfilePicture($employee->profile_picture);
@@ -608,31 +561,17 @@ class EmployeeController extends Controller
                 }
             }
 
-            // **KEY FIX: Log activity BEFORE deletion and BEFORE redirect**
-            // This ensures the activity is saved before the response is sent
+            // **FIX: Log activity BEFORE deletion and BEFORE redirect**
             activity()
                 ->performedOn($employee)
                 ->causedBy(auth()->user())
                 ->withProperties($employeeData)
                 ->log('Employee deleted');
 
-            // Perform deletion
-            $deleted = $employee->delete();
-            
-            if ($deleted) {
-                \Log::info('Employee deleted successfully', [
-                    'employee_id' => $employeeData['employee_id']
-                ]);
-                
-                return redirect()->route('employee.index')
-                    ->with('success', "Employee '{$employeeName}' has been deleted successfully!");
-            } else {
-                \Log::error('Employee deletion returned false', [
-                    'employee_id' => $employeeData['employee_id']
-                ]);
-                
-                return back()->with('error', 'Failed to delete employee. Database operation returned false.');
-            }
+            $employee->delete();
+
+            return redirect()->route('employee.index')
+                ->with('success', "Employee '{$employeeName}' has been deleted successfully!");
 
         } catch (\Illuminate\Database\QueryException $e) {
             \Log::error('Database constraint error during employee deletion', [
@@ -641,7 +580,6 @@ class EmployeeController extends Controller
                 'error_message' => $e->getMessage(),
             ]);
             
-            // Parse error message to identify specific constraint
             $errorMessage = $e->getMessage();
             $tableName = 'related records';
             
@@ -688,27 +626,17 @@ class EmployeeController extends Controller
         $file = $request->file('csv_file');
         $path = $file->getRealPath();
         
-        // Read file content
         $content = file_get_contents($path);
-        
-        // Detect delimiter (tab or comma)
         $firstLine = strtok($content, "\n");
         $delimiter = (strpos($firstLine, "\t") !== false) ? "\t" : ",";
-        
         $rows = explode("\n", $content);
-        
-        // Process header row (first line)
         $headers = str_getcsv(array_shift($rows), $delimiter);
         
-        // Normalize header keys - convert from "ID NUMBER" to "id_number"
         $normalizedHeaders = array_map(function($header) {
-            // Remove BOM character if present
             $header = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $header);
-            // Convert to lowercase and replace spaces with underscores
             return strtolower(str_replace(' ', '_', trim($header)));
         }, $headers);
         
-        // Updated field map to use names instead of IDs
         $fieldMap = [
             'last_name' => 'last_name',
             'first_name' => 'first_name',
@@ -731,14 +659,12 @@ class EmployeeController extends Controller
             'employment_status' => 'employment_status',
         ];
          
-        // Cache company, department, position, and account data
         $companies = Company::pluck('company_id', 'name')->toArray();
         $companiesById = Company::pluck('name', 'company_id')->toArray();
         $departments = Department::pluck('department_id', 'name')->toArray();
         $positions = Position::pluck('position_id', 'title')->toArray();
         $accounts = Account::pluck('account_id', 'name')->toArray();
          
-        // Variables to track import results
         $importedCount = 0;
         $skippedCount = 0;
         $importedEmployees = [];
@@ -751,14 +677,12 @@ class EmployeeController extends Controller
                 $rowData = str_getcsv($row, $delimiter);
                 
                 if (count($rowData) < count($normalizedHeaders)) {
-                    \Log::warning("Row $index has fewer columns than headers");
                     $skippedCount++;
                     continue;
                 }
                 
                 $rowDataAssoc = array_combine($normalizedHeaders, $rowData);
                 
-                // Create employee data array
                 $employeeData = [];
                 foreach ($fieldMap as $csvField => $dataField) {
                     if (isset($rowDataAssoc[$csvField])) {
@@ -766,14 +690,11 @@ class EmployeeController extends Controller
                     }
                 }
                 
-                // Validate required fields
                 if (empty($employeeData['last_name']) || empty($employeeData['first_name'])) {
-                    \Log::warning("Row $index missing required fields");
                     $skippedCount++;
                     continue;
                 }
 
-                // Format dates if they exist
                 if (!empty($employeeData['birth_date'])) {
                     $date = \DateTime::createFromFormat('m/d/Y', $employeeData['birth_date']);
                     if ($date) {
@@ -788,7 +709,6 @@ class EmployeeController extends Controller
                     }
                 }
                 
-                // Convert names to IDs (case-insensitive lookup)
                 $companyId = null;
                 $departmentId = null;
                 $positionId = null;
@@ -834,7 +754,6 @@ class EmployeeController extends Controller
                     }
                 }
                 
-                // Auto-generate employee id_number
                 $generatedId = null;
                 try {
                     $prefix = 'EMP';
@@ -849,7 +768,6 @@ class EmployeeController extends Controller
                     continue;
                 }
 
-                // Create employee
                 $employee = Employee::create([
                     'id_number' => $generatedId,
                     'last_name' => $employeeData['last_name'],
@@ -875,7 +793,6 @@ class EmployeeController extends Controller
                     'employment_status' => $employeeData['employment_status'] ?? 'Probationary',
                 ]);
 
-                // Track imported employee for activity log
                 $importedEmployees[] = [
                     'id_number' => $employee->id_number,
                     'name' => $this->employeeService->generateFullName(
@@ -888,12 +805,9 @@ class EmployeeController extends Controller
                 $importedCount++;
             }
             
-            // **KEY FIX: Commit transaction BEFORE logging activity**
-            // This ensures all employee records are saved before activity log
+
             DB::commit();
 
-            // **Log activity AFTER successful commit and BEFORE redirect**
-            // This ensures activity is logged outside transaction with committed data
             if ($importedCount > 0) {
                 activity()
                     ->causedBy(auth()->user())
@@ -912,9 +826,7 @@ class EmployeeController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('CSV Import failed: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
 
-            // **Log failed import AFTER rollback and BEFORE redirect**
             activity()
                 ->causedBy(auth()->user())
                 ->withProperties([

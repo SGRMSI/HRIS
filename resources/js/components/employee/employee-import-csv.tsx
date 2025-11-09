@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useForm } from '@inertiajs/react';
 import { Download, FileUp, Upload } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 export function EmployeeImportCsv() {
     const [open, setOpen] = useState(false);
@@ -24,25 +23,19 @@ export function EmployeeImportCsv() {
         e.preventDefault();
 
         post(route('employee.import'), {
-            forceFormData: true, // Important for file uploads
+            forceFormData: true,
             onSuccess: () => {
-                toast.success('CSV imported successfully');
                 setOpen(false);
                 reset();
                 setFileName('');
             },
-            onError: (errors: Record<string, string>) => {
-                if (errors.csv_file) {
-                    toast.error(errors.csv_file);
-                } else {
-                    toast.error('Error importing CSV');
-                }
+            onError: () => {
+                // Error flash message will be handled by page-level useFlashToast hook
             },
         });
     };
 
     const downloadTemplate = () => {
-        // Use the existing template from public folder
         window.location.href = '/Employee_Import_Template.csv';
     };
 
@@ -90,7 +83,7 @@ export function EmployeeImportCsv() {
                             Cancel
                         </Button>
                         <Button type="submit" disabled={processing || !data.csv_file}>
-                            Import
+                            {processing ? 'Importing...' : 'Import'}
                         </Button>
                     </div>
                 </form>

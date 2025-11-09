@@ -3,8 +3,7 @@ import { columns, type Employee } from '@/components/employee/employeecolumns';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { type PageProps } from '@inertiajs/core';
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { Users, Warehouse } from 'lucide-react';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -18,9 +17,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface Props {
     employees: Employee[];
-}
-
-interface GlobalPageProps extends PageProps {
     flash?: {
         success?: string;
         error?: string;
@@ -29,25 +25,32 @@ interface GlobalPageProps extends PageProps {
     };
 }
 
-export default function Employee({ employees }: Props) {
-    const { props } = usePage<GlobalPageProps>();
+
+
+export default function Employee({ employees, flash }: Props) {
 
     const uniqueCompanies = [...new Set(employees.map((emp) => emp.company).filter(Boolean))];
 
+    
     useEffect(() => {
-        if (props.flash?.success) {
-            toast.success(props.flash.success);
+        if (flash?.success) {
+            toast.success(flash.success);
         }
-        if (props.flash?.error) {
-            toast.error(props.flash.error);
+        if (flash?.error) {
+            toast.error(flash.error);
         }
-        if (props.flash?.warning) {
-            toast.warning(props.flash.warning);
+        if (flash?.warning) {
+            toast.warning(flash.warning);
         }
-        if (props.flash?.info) {
-            toast.info(props.flash.info);
+        if (flash?.info) {
+            toast.info(flash.info);
         }
-    }, [props.flash]);
+    }, [
+        flash?.success,
+        flash?.error,
+        flash?.warning,
+        flash?.info,
+    ]);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -58,7 +61,7 @@ export default function Employee({ employees }: Props) {
                     <Card className="transition-shadow hover:shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
-                            <div className="rounded-full bg-blue-100 dark:bg-blue-900/30 p-2">
+                            <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/30">
                                 <Warehouse className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </div>
                         </CardHeader>
@@ -70,7 +73,7 @@ export default function Employee({ employees }: Props) {
                     <Card className="transition-shadow hover:shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-                            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-2">
+                            <div className="rounded-full bg-green-100 p-2 dark:bg-green-900/30">
                                 <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
                             </div>
                         </CardHeader>
@@ -80,7 +83,7 @@ export default function Employee({ employees }: Props) {
                         </div>
                     </Card>
                 </div>
-                
+
                 {/* Employee Data Table */}
                 <EmployeeDataTable columns={columns} data={employees} />
             </div>
