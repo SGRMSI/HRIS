@@ -41,6 +41,7 @@ interface Employee {
     hdmf_number?: string;
     tin_number?: string;
     current_shift?: {
+        schedule_id: number;
         name: string;
         time_in: string;
         time_out: string;
@@ -249,7 +250,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                                 {/* Action Buttons */}
                                                 <div className="flex gap-2 pt-2">
                                                     <Link 
-                                                        href={`/attendance/schedules/create?employee_id=${employee.employee_id}&company_id=${employee.company_id || ''}`}
+                                                        href={`/attendance/schedules/${employee.current_shift.schedule_id}/edit`}
                                                         className="flex-1"
                                                     >
                                                         <Button 

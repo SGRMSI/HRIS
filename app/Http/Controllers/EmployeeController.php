@@ -196,6 +196,7 @@ class EmployeeController extends Controller
             'date_regularized' => $employee->date_regularized ? date('Y-m-d', strtotime($employee->date_regularized)) : null,
             'work_shift' => $employee->work_shift, // Keep for backward compatibility
             'current_shift' => $currentSchedule && $currentSchedule->shift ? [
+                'schedule_id' => $currentSchedule->schedule_id,
                 'name' => $currentSchedule->shift->name,
                 'time_in' => $currentSchedule->shift->time_in,
                 'time_out' => $currentSchedule->shift->time_out,
@@ -302,6 +303,7 @@ class EmployeeController extends Controller
             'date_regularized' => $employee->date_regularized ? $employee->date_regularized->format('Y-m-d') : null,
             'work_shift' => $employee->work_shift, // Keep for backward compatibility
             'current_shift' => $currentSchedule && $currentSchedule->shift ? [
+                'schedule_id' => $currentSchedule->schedule_id,
                 'shift_id' => $currentSchedule->shift->shift_id,
                 'name' => $currentSchedule->shift->name,
                 'time_in' => $currentSchedule->shift->time_in,
