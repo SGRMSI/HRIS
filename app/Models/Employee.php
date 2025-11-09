@@ -107,5 +107,10 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeeLeave::class, 'employee_id', 'employee_id');
     }
+
+    public function overtimes()
+    {
+        return $this->hasMany(EmployeeOvertime::class, 'employee_id', 'employee_id');
+    }
 }
 

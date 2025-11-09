@@ -132,6 +132,25 @@ export default function LeavesShow({ leave }: Props) {
         });
     };
 
+    const getStatusBadge = (status: Leave['status']) => {
+        const variants = {
+            pending: { variant: 'default' as const, icon: Clock, className: 'bg-yellow-600 hover:bg-yellow-700' },
+            approved: { variant: 'default' as const, icon: CheckCircle2, className: 'bg-green-600 hover:bg-green-700' },
+            rejected: { variant: 'destructive' as const, icon: XCircle, className: '' },
+            cancelled: { variant: 'secondary' as const, icon: Ban, className: '' },
+        };
+
+        const config = variants[status];
+        const Icon = config.icon;
+
+        return (
+            <Badge variant={config.variant} className={config.className}>
+                <Icon className="h-3 w-3 mr-1" />
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Badge>
+        );
+    };
+
     const getStatusBadgeVariant = (status: string) => {
         switch (status) {
             case 'approved':
@@ -351,22 +370,38 @@ export default function LeavesShow({ leave }: Props) {
 
                     {/* Sidebar */}
                     <div className="space-y-6">
+                        {/* Status Card */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base">Status</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {getStatusBadge(leave.status)}
+                            </CardContent>
+                        </Card>
+
                         {/* Approval Info */}
                         {leave.approved_by && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="text-base">Approval Information</CardTitle>
+                                    <CardTitle className="text-base">
+                                        {leave.status === 'approved' ? 'Approval' : 
+                                         leave.status === 'rejected' ? 'Rejection' : 
+                                         'Cancellation'} Information
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <div>
-                                        <div className="text-sm text-muted-foreground">Approved By</div>
+                                        <div className="text-sm text-muted-foreground">
+                                            {leave.status === 'approved' ? 'Approved By' : 
+                                             leave.status === 'rejected' ? 'Rejected By' : 
+                                             'Cancelled By'}
+                                        </div>
                                         <div className="font-medium">{leave.approved_by.name}</div>
                                     </div>
                                     <div>
-                                        <div className="text-sm text-muted-foreground">Status</div>
-                                        <Badge variant={getStatusBadgeVariant(leave.status)}>
-                                            {leave.status.toUpperCase()}
-                                        </Badge>
+                                        <div className="text-sm text-muted-foreground">Date</div>
+                                        <div className="font-medium">{new Date(leave.updated_at).toLocaleString()}</div>
                                     </div>
                                 </CardContent>
                             </Card>

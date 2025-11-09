@@ -69,6 +69,7 @@ class EmployeeLeaveController extends Controller
                     'duration_days' => $leave->days_count,
                     'status' => $leave->status,
                     'remarks' => $leave->remarks,
+                    'has_document' => !is_null($leave->document_path),
                     'approved_by' => $leave->approver?->name,
                     'approved_at' => $leave->updated_at->format('Y-m-d H:i:s'),
                     'can_approve' => $leave->status === 'pending',

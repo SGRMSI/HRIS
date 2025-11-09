@@ -8,6 +8,7 @@ use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\EmployeeScheduleController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\EmployeeLeaveController;
+use App\Http\Controllers\EmployeeOvertimeController;
 use Illuminate\Support\Facades\Route;
 
 // Attendance Management Routes
@@ -81,5 +82,21 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::delete('{leave}', [EmployeeLeaveController::class, 'destroy'])->name('destroy');
         Route::post('approve', [EmployeeLeaveController::class, 'approve'])->name('approve');
         Route::post('cancel', [EmployeeLeaveController::class, 'cancel'])->name('cancel');
+    });
+
+    // Overtime Management
+    Route::prefix('overtimes')->name('overtimes.')->group(function () {
+        Route::get('/', [EmployeeOvertimeController::class, 'index'])->name('index');
+        Route::get('create', [EmployeeOvertimeController::class, 'create'])->name('create');
+        Route::post('/', [EmployeeOvertimeController::class, 'store'])->name('store');
+        Route::get('employees/{company}', [EmployeeOvertimeController::class, 'getEmployeesByCompany'])->name('employees');
+        Route::get('{overtime}', [EmployeeOvertimeController::class, 'show'])->name('show');
+        Route::get('{overtime}/download', [EmployeeOvertimeController::class, 'downloadDocument'])->name('download');
+        Route::get('{overtime}/edit', [EmployeeOvertimeController::class, 'edit'])->name('edit');
+        Route::put('{overtime}', [EmployeeOvertimeController::class, 'update'])->name('update');
+        Route::delete('{overtime}', [EmployeeOvertimeController::class, 'destroy'])->name('destroy');
+        Route::post('{overtime}/approve', [EmployeeOvertimeController::class, 'approve'])->name('approve');
+        Route::post('{overtime}/reject', [EmployeeOvertimeController::class, 'reject'])->name('reject');
+        Route::post('{overtime}/cancel', [EmployeeOvertimeController::class, 'cancel'])->name('cancel');
     });
 });

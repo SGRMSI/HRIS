@@ -38,7 +38,9 @@ import {
     XCircle,
     Calendar,
     Ban,
-    Trash2
+    Trash2,
+    FileText,
+    Clock
 } from 'lucide-react';
 
 interface Leave {
@@ -56,6 +58,7 @@ interface Leave {
     duration_days: number;
     status: 'pending' | 'approved' | 'rejected' | 'cancelled';
     remarks: string | null;
+    has_document: boolean;
     approved_by: string | null;
     approved_at: string;
     can_approve: boolean;
@@ -188,6 +191,25 @@ export default function LeavesIndex({
                 setSelectedLeave(null);
             }
         });
+    };
+
+    const getStatusBadge = (status: Leave['status']) => {
+        const variants = {
+            pending: { variant: 'default' as const, icon: Clock, className: 'bg-yellow-600 hover:bg-yellow-700' },
+            approved: { variant: 'default' as const, icon: CheckCircle2, className: 'bg-green-600 hover:bg-green-700' },
+            rejected: { variant: 'destructive' as const, icon: XCircle, className: '' },
+            cancelled: { variant: 'secondary' as const, icon: Ban, className: '' },
+        };
+
+        const config = variants[status];
+        const Icon = config.icon;
+
+        return (
+            <Badge variant={config.variant} className={config.className}>
+                <Icon className="h-3 w-3 mr-1" />
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Badge>
+        );
     };
 
     const getStatusBadgeVariant = (status: string) => {
@@ -373,7 +395,7 @@ export default function LeavesIndex({
                                     <TableHead>Period</TableHead>
                                     <TableHead>Duration</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Approved By</TableHead>
+                                    <TableHead>Document</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -413,12 +435,14 @@ export default function LeavesIndex({
                                                 <span className="font-medium">{leave.duration_days}</span> day{leave.duration_days !== 1 ? 's' : ''}
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant={getStatusBadgeVariant(leave.status)}>
-                                                    {leave.status}
-                                                </Badge>
+                                                {getStatusBadge(leave.status)}
                                             </TableCell>
                                             <TableCell>
-                                                {leave.approved_by || '-'}
+                                                {leave.has_document ? (
+                                                    <FileText className="h-4 w-4 text-blue-600" />
+                                                ) : (
+                                                    <span className="text-muted-foreground text-sm">—</span>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">
