@@ -47,13 +47,13 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
     const getEventColor = (type: string) => {
         switch (type) {
             case 'holiday':
-                return 'bg-blue-100 text-blue-700 hover:bg-blue-200';
+                return 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50';
             case 'birthday':
-                return 'bg-pink-100 text-pink-700 hover:bg-pink-200';
+                return 'bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:hover:bg-pink-900/50';
             case 'anniversary':
-                return 'bg-purple-100 text-purple-700 hover:bg-purple-200';
+                return 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50';
             default:
-                return 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+                return 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700';
         }
     };
 
@@ -166,12 +166,16 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
                                 <PopoverTrigger asChild>
                                     <div
                                         className={`min-h-[80px] cursor-pointer rounded-md border p-1 transition-colors ${
-                                            !isCurrentMonth ? 'bg-gray-50 text-muted-foreground' : 'bg-white'
-                                        } ${isTodayDate ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} ${
-                                            hasEvents ? 'hover:border-gray-400 hover:shadow-sm' : ''
-                                        }`}
+                                            !isCurrentMonth ? 'bg-muted/50 text-muted-foreground dark:bg-gray-900/50' : 'bg-card dark:bg-gray-950'
+                                        } ${
+                                            isTodayDate
+                                                ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/50'
+                                                : 'border-border dark:border-gray-800'
+                                        } ${hasEvents ? 'hover:border-gray-400 hover:shadow-sm dark:hover:border-gray-600' : ''}`}
                                     >
-                                        <div className={`mb-1 text-xs font-medium ${isTodayDate ? 'text-blue-600' : ''}`}>{format(day, 'd')}</div>
+                                        <div className={`mb-1 text-xs font-medium ${isTodayDate ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                                            {format(day, 'd')}
+                                        </div>
                                         <div className="space-y-1">
                                             {dayEvents.slice(0, 2).map((event) => {
                                                 const Icon = getEventIcon(event.type);
@@ -194,7 +198,7 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
                                 {hasEvents && (
                                     <PopoverContent className="w-80" align="start" side="top">
                                         <div className="space-y-3">
-                                            <div className="border-b pb-2">
+                                            <div className="border-b pb-2 dark:border-gray-800">
                                                 <h4 className="font-semibold">{format(day, 'EEEE, MMMM d, yyyy')}</h4>
                                                 <p className="text-xs text-muted-foreground">{dayEvents.length} event(s)</p>
                                             </div>
@@ -204,7 +208,7 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
                                                     return (
                                                         <div
                                                             key={`${event.type}-${event.id}`}
-                                                            className="flex items-start gap-3 rounded-lg border p-2"
+                                                            className="flex items-start gap-3 rounded-lg border p-2 dark:border-gray-800"
                                                         >
                                                             <div className={`rounded-full p-2 ${getEventColor(event.type)}`}>
                                                                 <Icon className="h-4 w-4" />
@@ -245,23 +249,23 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
                 </div>
 
                 {/* Event Legend */}
-                <div className="mt-4 flex flex-wrap gap-3 border-t pt-4">
+                <div className="mt-4 flex flex-wrap gap-3 border-t pt-4 dark:border-gray-800">
                     <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         <span className="text-xs text-muted-foreground">Holiday</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Cake className="h-4 w-4 text-pink-600" />
+                        <Cake className="h-4 w-4 text-pink-600 dark:text-pink-400" />
                         <span className="text-xs text-muted-foreground">Birthday</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Award className="h-4 w-4 text-purple-600" />
+                        <Award className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                         <span className="text-xs text-muted-foreground">Anniversary</span>
                     </div>
                 </div>
 
                 {/* Upcoming Events List (Next 5 events) */}
-                <div className="mt-4 border-t pt-4">
+                <div className="mt-4 border-t pt-4 dark:border-gray-800">
                     <h4 className="mb-3 text-sm font-semibold">Next Events</h4>
                     <ScrollArea className="h-[200px]">
                         {events.length === 0 ? (
@@ -273,7 +277,7 @@ export function UpcomingEvents({ events }: UpcomingEventsProps) {
                                     return (
                                         <div
                                             key={`${event.type}-${event.id}`}
-                                            className="flex items-center gap-3 rounded-lg border p-2 hover:bg-gray-50"
+                                            className="flex items-center gap-3 rounded-lg border p-2 transition-colors hover:bg-accent dark:border-gray-800 dark:hover:bg-gray-900/50"
                                         >
                                             <div className={`rounded-full p-2 ${getEventColor(event.type)}`}>
                                                 <Icon className="h-4 w-4" />

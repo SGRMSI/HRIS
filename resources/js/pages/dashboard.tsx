@@ -60,7 +60,7 @@ interface LeaveRequest {
     document_path?: string;
 }
 
-interface LeaveSummary {
+interface LeaveSummaryData {
     pending_leaves: LeaveRequest[];
     total_pending: number;
     approved_today: number;
@@ -95,7 +95,7 @@ interface UpcomingEvent {
 interface DashboardProps {
     employeeStats: EmployeeStats;
     attendanceSummary: AttendanceSummary;
-    leaveSummary: LeaveSummary;
+    leaveSummary: LeaveSummaryData;
     recentActivities: Activity[];
     upcomingEvents: UpcomingEvent[];
 }
@@ -164,19 +164,18 @@ export default function Dashboard({ employeeStats, attendanceSummary, leaveSumma
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     {/* Attendance Summary */}
                     <AttendanceSummaryWidget summary={attendanceSummary} />
+                    {/* Recent Activity */}
+                    <RecentActivity activities={recentActivities} />
+                </div>
 
+                {/* Bottom Section */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     {/* Leave Requests */}
                     <LeaveSummary
                         pending_leaves={leaveSummary.pending_leaves}
                         total_pending={leaveSummary.total_pending}
                         approved_today={leaveSummary.approved_today}
                     />
-                </div>
-
-                {/* Bottom Section */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {/* Recent Activity */}
-                    <RecentActivity activities={recentActivities} />
 
                     {/* Upcoming Events */}
                     <UpcomingEvents events={upcomingEvents} />

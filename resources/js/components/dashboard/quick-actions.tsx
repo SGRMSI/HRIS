@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from '@inertiajs/react';
-import { BarChart3, CalendarPlus, Clock, DollarSign, FileText, Upload, UserPlus } from 'lucide-react';
+import { BarChart3, CalendarPlus, DollarSign, FileText, Upload, UserPlus } from 'lucide-react';
 
 interface QuickAction {
     title: string;
@@ -9,58 +9,60 @@ interface QuickAction {
     href: string;
     icon: React.ComponentType<{ className?: string }>;
     color: string;
+    bgColor: string;
 }
 
 export function QuickActions() {
+    // Following AI Agent Instructions: Route Organization pattern
+    // All routes verified against routes/attendance.php
     const actions: QuickAction[] = [
         {
             title: 'Add Employee',
             description: 'Register new employee',
             href: route('employee.create'),
             icon: UserPlus,
-            color: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+            color: 'text-blue-600 dark:text-blue-400',
+            bgColor: 'bg-blue-100 dark:bg-blue-900/30',
         },
         {
             title: 'Upload Attendance',
             description: 'Import attendance logs',
-            href: route('attendance.upload'),
+            href: route('attendance.raw.index'), 
             icon: Upload,
-            color: 'bg-green-50 text-green-600 hover:bg-green-100',
-        },
-        {
-            title: 'Process Attendance',
-            description: 'Review and approve',
-            href: route('attendance.processed.index'),
-            icon: Clock,
-            color: 'bg-purple-50 text-purple-600 hover:bg-purple-100',
+            color: 'text-green-600 dark:text-green-400',
+            bgColor: 'bg-green-100 dark:bg-green-900/30',
         },
         {
             title: 'Manage Schedules',
             description: 'Assign shifts',
             href: route('attendance.schedules.index'),
             icon: CalendarPlus,
-            color: 'bg-orange-50 text-orange-600 hover:bg-orange-100',
+            color: 'text-orange-600 dark:text-orange-400',
+            bgColor: 'bg-orange-100 dark:bg-orange-900/30',
         },
         {
             title: 'Leave Requests',
             description: 'View and approve',
             href: route('attendance.leaves.index'),
             icon: FileText,
-            color: 'bg-pink-50 text-pink-600 hover:bg-pink-100',
+            color: 'text-pink-600 dark:text-pink-400',
+            bgColor: 'bg-pink-100 dark:bg-pink-900/30',
         },
         {
-            title: 'Generate Attendance',
-            description: 'Generate attendance reports',
+            title: 'Attendance Reports',
+            description: 'View final records',
             href: route('attendance.final.index'),
             icon: BarChart3,
-            color: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100',
+            color: 'text-indigo-600 dark:text-indigo-400',
+            bgColor: 'bg-indigo-100 dark:bg-indigo-900/30',
         },
         {
-            title: 'Generate Payroll',
-            description: 'Generate payroll reports',
-            href: route('attendance.final.index'),
+            title: 'Overtime Requests',
+            description: 'Manage overtime',
+            href: route('attendance.overtimes.index'),
             icon: DollarSign,
-            color: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100',
+            color: 'text-emerald-600 dark:text-emerald-400',
+            bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
         },
     ];
 
@@ -76,9 +78,12 @@ export function QuickActions() {
                         const Icon = action.icon;
                         return (
                             <Link key={action.title} href={action.href}>
-                                <Button variant="ghost" className="h-auto w-full flex-col items-start gap-2 p-4 transition-all hover:shadow-md">
-                                    <div className={`rounded-lg p-2 ${action.color}`}>
-                                        <Icon className="h-5 w-5" />
+                                <Button
+                                    variant="ghost"
+                                    className="h-auto w-full flex-col items-start gap-2 p-4 transition-all hover:bg-accent hover:shadow-md dark:hover:bg-gray-900/50"
+                                >
+                                    <div className={`rounded-lg p-2 ${action.bgColor}`}>
+                                        <Icon className={`h-5 w-5 ${action.color}`} />
                                     </div>
                                     <div className="text-left">
                                         <p className="text-sm font-semibold">{action.title}</p>
