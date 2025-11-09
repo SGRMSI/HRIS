@@ -91,7 +91,6 @@ class AttendanceProcessedController extends Controller
                             : 'Unmatched',
                         'id_number' => $record->employee->id_number ?? null,
                     ],
-                    'ac_no' => $record->ac_no,
                     'date' => $record->date,
                     'clock_in' => $record->clock_in,
                     'clock_out' => $record->clock_out,
