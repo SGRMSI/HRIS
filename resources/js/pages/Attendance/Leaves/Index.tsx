@@ -243,6 +243,12 @@ export default function LeavesIndex({
                 return 'default';
             case 'emergency':
                 return 'secondary';
+            case 'parental':
+                return 'default';
+            case 'personal':
+                return 'outline';
+            case 'paid':
+                return 'default';
             default:
                 return 'outline';
         }

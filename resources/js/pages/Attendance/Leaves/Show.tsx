@@ -172,6 +172,9 @@ export default function LeavesShow({ leave }: Props) {
             vacation: 'Vacation Leave',
             emergency: 'Emergency Leave',
             unpaid: 'Unpaid Leave',
+            parental: 'Parental Leave',
+            personal: 'Personal Leave',
+            paid: 'Paid Leave',
             other: 'Other'
         };
         return types[type] || type;

@@ -107,6 +107,9 @@ class EmployeeLeaveController extends Controller
                 ['value' => 'vacation', 'label' => 'Vacation Leave'],
                 ['value' => 'emergency', 'label' => 'Emergency Leave'],
                 ['value' => 'unpaid', 'label' => 'Unpaid Leave'],
+                ['value' => 'parental', 'label' => 'Parental Leave'],
+                ['value' => 'personal', 'label' => 'Personal Leave'],
+                ['value' => 'paid', 'label' => 'Paid Leave'],
                 ['value' => 'other', 'label' => 'Other']
             ],
             'departmentGroups' => $departmentGroups
@@ -129,6 +132,9 @@ class EmployeeLeaveController extends Controller
                 ['value' => 'vacation', 'label' => 'Vacation Leave'],
                 ['value' => 'emergency', 'label' => 'Emergency Leave'],
                 ['value' => 'unpaid', 'label' => 'Unpaid Leave'],
+                ['value' => 'parental', 'label' => 'Parental Leave'],
+                ['value' => 'personal', 'label' => 'Personal Leave'],
+                ['value' => 'paid', 'label' => 'Paid Leave'],
                 ['value' => 'other', 'label' => 'Other']
             ]
         ]);
@@ -331,6 +337,9 @@ class EmployeeLeaveController extends Controller
                 ['value' => 'vacation', 'label' => 'Vacation Leave'],
                 ['value' => 'emergency', 'label' => 'Emergency Leave'],
                 ['value' => 'unpaid', 'label' => 'Unpaid Leave'],
+                ['value' => 'parental', 'label' => 'Parental Leave'],
+                ['value' => 'personal', 'label' => 'Personal Leave'],
+                ['value' => 'paid', 'label' => 'Paid Leave'],
                 ['value' => 'other', 'label' => 'Other']
             ]
         ]);

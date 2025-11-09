@@ -31,7 +31,7 @@ class EmployeeLeaveSeeder extends Seeder
         }
 
         $approver = $users->first();
-        $leaveTypes = ['sick', 'vacation', 'emergency', 'maternity', 'paternity', 'bereavement'];
+        $leaveTypes = ['sick', 'vacation', 'emergency', 'maternity', 'paternity', 'bereavement', 'parental', 'personal', 'paid'];
         $statuses = ['pending', 'approved', 'rejected', 'cancelled'];
 
         // Create sample leaves for each employee
