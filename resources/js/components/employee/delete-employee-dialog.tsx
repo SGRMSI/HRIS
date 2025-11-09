@@ -9,6 +9,7 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { router } from '@inertiajs/react';
+import { toast } from 'sonner';
 
 interface DeleteEmployeeDialogProps {
     employee: {
@@ -19,15 +20,42 @@ interface DeleteEmployeeDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
+interface FlashMessages {
+    success?: string;
+    error?: string;
+}
+
+interface PageProps {
+    flash?: FlashMessages;
+    errors?: Record<string, string>;
+}
+
 export function DeleteEmployeeDialog({ employee, open, onOpenChange }: DeleteEmployeeDialogProps) {
     const handleDelete = () => {
-        router.delete(`/employee/${employee.id}`, {
-            onSuccess: () => {
-                console.log('Employee deleted successfully');
+        router.delete(route('employee.destroy', employee.id), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                const props = page.props as PageProps;
+
+                // Check for error in flash messages (validation errors that didn't throw)
+                if (props.flash?.error) {
+                    toast.error(props.flash.error, {
+                        duration: 5000,
+                    });
+                } else if (props.flash?.success) {
+                    toast.success(props.flash.success);
+                }
+
                 handleClose();
             },
             onError: (errors) => {
-                console.error('Failed to delete employee:', errors);
+                // Handle validation errors
+                const errorMessage = errors.message || errors.error || Object.values(errors)[0] || 'Failed to delete employee';
+
+                toast.error(errorMessage, {
+                    duration: 5000,
+                });
+
                 handleClose();
             },
         });
@@ -35,9 +63,8 @@ export function DeleteEmployeeDialog({ employee, open, onOpenChange }: DeleteEmp
 
     const handleClose = () => {
         onOpenChange(false);
-        // Fix pointer events after dialog closes
         setTimeout(() => {
-            document.body.style.pointerEvents = "";
+            document.body.style.pointerEvents = '';
         }, 500);
     };
 
@@ -51,13 +78,13 @@ export function DeleteEmployeeDialog({ employee, open, onOpenChange }: DeleteEmp
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete <br /> <strong>{employee.name}</strong> <span></span>  
-                        and remove their data from our servers.
+                        This action cannot be undone. This will permanently delete <strong>{employee.name}</strong> and remove their data from our
+                        servers.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-primary text-primary-foreground shadow-xs hover:bg-primary/90">
+                    <AlertDialogAction onClick={handleDelete} className="">
                         Delete Employee
                     </AlertDialogAction>
                 </AlertDialogFooter>

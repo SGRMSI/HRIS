@@ -420,23 +420,173 @@ class EmployeeController extends Controller
     public function destroy(Employee $employee)
     {
         try {
+            \Log::info('=== DESTROY EMPLOYEE START ===', [
+                'employee_id' => $employee->employee_id,
+                'id_number' => $employee->id_number,
+                'name' => "{$employee->first_name} {$employee->middle_name} {$employee->last_name}",
+            ]);
+
             $employeeName = $this->employeeService->generateFullName(
                 $employee->first_name,
                 $employee->middle_name,
                 $employee->last_name
             );
 
+            // Check all foreign key relationships using raw queries for reliability
+            $constraints = [];
+            
+            // Check attendances (all types)
+            $attendanceRawCount = DB::table('attendance_raws')
+                ->where('employee_id', $employee->employee_id)
+                ->count();
+            $attendanceProcessedCount = DB::table('attendance_processed')
+                ->where('employee_id', $employee->employee_id)
+                ->count();
+            $attendanceCount = DB::table('attendances')
+                ->where('employee_id', $employee->employee_id)
+                ->count();
+            
+            if ($attendanceRawCount > 0) {
+                $constraints[] = "Raw Attendance Records: $attendanceRawCount";
+            }
+            if ($attendanceProcessedCount > 0) {
+                $constraints[] = "Processed Attendance Records: $attendanceProcessedCount";
+            }
+            if ($attendanceCount > 0) {
+                $constraints[] = "Final Attendance Records: $attendanceCount";
+            }
+            
+            // Check schedules
+            $scheduleCount = DB::table('employee_schedules')
+                ->where('employee_id', $employee->employee_id)
+                ->count();
+            if ($scheduleCount > 0) {
+                $constraints[] = "Schedules: $scheduleCount";
+            }
+            
+            // Check leaves
+            $leaveCount = DB::table('employee_leaves')
+                ->where('employee_id', $employee->employee_id)
+                ->count();
+            if ($leaveCount > 0) {
+                $constraints[] = "Leave Records: $leaveCount";
+            }
+            
+            // Check documents
+            $documentCount = DB::table('employee_documents')
+                ->where('employee_id', $employee->employee_id)
+                ->count();
+            if ($documentCount > 0) {
+                $constraints[] = "Documents: $documentCount";
+            }
+            
+            // Check user account
+            $userAccount = DB::table('users')
+                ->where('employee_id', $employee->employee_id)
+                ->first();
+            if ($userAccount) {
+                $constraints[] = "User Account: {$userAccount->email}";
+            }
+
+            // If any constraints exist, prevent deletion and return detailed error
+            if (!empty($constraints)) {
+                $constraintList = implode(", ", $constraints);
+                \Log::warning('Cannot delete employee - has related records', [
+                    'employee_id' => $employee->employee_id,
+                    'constraints' => $constraintList
+                ]);
+                
+                return back()->with('error', 
+                    "Cannot delete {$employeeName}. Employee has: {$constraintList}. Please remove these records first or mark employee as inactive."
+                );
+            }
+
+            // If no constraints, proceed with deletion
+            \Log::info('No constraints found, proceeding with deletion');
+            
             // Delete profile picture if exists
-            $this->employeeService->deleteProfilePicture($employee->profile_picture);
+            if ($employee->profile_picture) {
+                try {
+                    $this->employeeService->deleteProfilePicture($employee->profile_picture);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to delete profile picture', [
+                        'employee_id' => $employee->employee_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
 
-            $employee->delete();
+            // Perform deletion
+            $deleted = $employee->delete();
+            
+            if ($deleted) {
+                \Log::info('Employee deleted successfully', [
+                    'employee_id' => $employee->employee_id
+                ]);
+                
+                // Log activity for audit trail (per Copilot instructions)
+                activity()
+                    ->performedOn($employee)
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'employee_id' => $employee->employee_id,
+                        'id_number' => $employee->id_number,
+                        'name' => $employeeName,
+                    ])
+                    ->log('Employee deleted');
+                
+                return redirect()->route('employee.index')
+                    ->with('success', "Employee '{$employeeName}' has been deleted successfully!");
+            } else {
+                \Log::error('Employee deletion returned false', [
+                    'employee_id' => $employee->employee_id
+                ]);
+                
+                return back()->with('error', 'Failed to delete employee. Database operation returned false.');
+            }
 
-            return redirect()->route('employee.index')
-                ->with('success', "Employee '{$employeeName}' has been deleted successfully!");
-
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database constraint error during employee deletion', [
+                'employee_id' => $employee->employee_id ?? null,
+                'error_code' => $e->getCode(),
+                'error_message' => $e->getMessage(),
+            ]);
+            
+            // Parse error message to identify specific constraint
+            $errorMessage = $e->getMessage();
+            $tableName = 'related records';
+            
+            if (str_contains($errorMessage, 'attendance_raws')) {
+                $tableName = 'Raw Attendance Records';
+            } elseif (str_contains($errorMessage, 'attendance_processed')) {
+                $tableName = 'Processed Attendance Records';
+            } elseif (str_contains($errorMessage, 'attendances')) {
+                $tableName = 'Final Attendance Records';
+            } elseif (str_contains($errorMessage, 'employee_schedules')) {
+                $tableName = 'Employee Schedules';
+            } elseif (str_contains($errorMessage, 'employee_leaves')) {
+                $tableName = 'Leave Records';
+            } elseif (str_contains($errorMessage, 'employee_documents')) {
+                $tableName = 'Employee Documents';
+            } elseif (str_contains($errorMessage, 'users')) {
+                $tableName = 'User Account';
+            }
+            
+            return back()->with('error', 
+                "Cannot delete employee due to related {$tableName}. Please remove these records first."
+            );
+            
         } catch (\Exception $e) {
-            return redirect()->route('employee.index')
-                ->with('error', 'Failed to delete employee. Please try again.');
+            \Log::error('Exception during employee deletion', [
+                'employee_id' => $employee->employee_id ?? null,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            return back()->with('error', 
+                'An unexpected error occurred while deleting the employee. Please try again or contact support.'
+            );
         }
     }
 
