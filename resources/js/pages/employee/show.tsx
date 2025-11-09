@@ -150,7 +150,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Employee - ${employee.full_name}`} />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
                 {/* Header */}
                 <div className="mb-6 flex items-center gap-4">
                     <Link href="/employee">
@@ -165,7 +165,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
                     {/* Left Column - Profile */}
                     <div className="space-y-4">
                         {/* Profile Card */}
-                        <Card className="border shadow-sm">
+                        <Card className="transition-shadow hover:shadow-lg">
                             <CardContent className="p-6 text-center">
                                 {/* Profile Picture with Initials Fallback */}
                                 <div className="mx-auto mb-4 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 text-3xl font-bold text-white shadow-lg">
@@ -188,8 +188,8 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         {/* Status and Work Schedule Row */}
                         <div className="flex flex-col gap-4">
                             {/* Status Card */}
-                            <Card className="border shadow-sm">
-                                <CardContent className="p-1">
+                            <Card className="transition-shadow hover:shadow-lg">
+                                <CardContent className="p-6">
                                     <div className="flex flex-col items-center justify-center gap-3">
                                         <div
                                             className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
@@ -202,7 +202,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
                             </Card>
 
                             {/* Work Schedule Card */}
-                            <Card className="border shadow-sm overflow-hidden relative">
+                            <Card className="transition-shadow hover:shadow-lg overflow-hidden relative">
                                 {employee.current_shift ? (
                                     <>
                                         {/* Status Badge on Top Corner */}
@@ -328,13 +328,13 @@ export default function EmployeeShow({ employee, documents }: Props) {
 
                         {/* Stats */}
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="border shadow-sm">
+                            <Card className="transition-shadow hover:shadow-lg">
                                 <CardContent className="p-4 text-center">
                                     <div className="text-3xl font-bold text-foreground">{employee.absents || 2}</div>
                                     <div className="text-sm text-muted-foreground">Absents</div>
                                 </CardContent>
                             </Card>
-                            <Card className="border shadow-sm">
+                            <Card className="transition-shadow hover:shadow-lg">
                                 <CardContent className="p-4 text-center">
                                     <div className="text-3xl font-bold text-foreground">{employee.infractions || 0}</div>
                                     <div className="text-sm text-muted-foreground">Infractions</div>
@@ -348,7 +348,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                 onClick={handleEditEmployee}
                                 variant="outline" 
                                 size="sm" 
-                                className="flex-1 flex items-center gap-2 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600"
+                                className="flex-1 flex items-center gap-2"
                             >
                                 <Edit className="h-4 w-4" />
                                 Edit
@@ -357,7 +357,7 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                 onClick={handleDeleteEmployee}
                                 variant="outline" 
                                 size="sm" 
-                                className="flex-1 flex items-center gap-2 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                                className="flex-1 flex items-center gap-2"
                             >
                                 <Trash2 className="h-4 w-4" />
                                 Delete
@@ -370,11 +370,11 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         {/* First Row - Personal Details and Employment Details */}
                         <div className="flex gap-6 flex-col xl:flex-row">
                             {/* Personal Details */}
-                            <Card className="overflow-hidden border shadow-sm py-0 gap-2 flex-1">
-                                <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white">
+                            <Card className="overflow-hidden transition-shadow hover:shadow-lg p-0 flex-1">
+                                <CardHeader className="bg-slate-800 dark:bg-slate-700 py-4 text-white">
                                     <CardTitle className="text-lg font-medium">Personal Details</CardTitle>
                                 </CardHeader>
-                                <CardContent className="p-6 pt-2">
+                                <CardContent className="p-6">
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div>
                                             <label className="mb-2 block text-sm font-medium text-muted-foreground">Name</label>
@@ -409,11 +409,11 @@ export default function EmployeeShow({ employee, documents }: Props) {
                             </Card>
 
                             {/* Employment Details */}
-                            <Card className="overflow-hidden border shadow-sm py-0 gap-2 flex-1">
-                                <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white">
+                            <Card className="overflow-hidden transition-shadow hover:shadow-lg p-0 flex-1">
+                                <CardHeader className="bg-slate-800 dark:bg-slate-700 py-4 text-white">
                                     <CardTitle className="text-lg font-medium">Employment Details</CardTitle>
                                 </CardHeader>
-                                <CardContent className="p-6 pt-2">
+                                <CardContent className="p-6">
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                         <div>
                                             <label className="mb-2 block text-sm font-medium text-muted-foreground">Employee ID</label>
@@ -453,11 +453,11 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         </div>
 
                         {/* Second Row - Government Details */}
-                        <Card className="overflow-hidden border shadow-sm py-0 gap-2">
-                            <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white">
+                        <Card className="overflow-hidden transition-shadow hover:shadow-lg p-0">
+                            <CardHeader className="bg-slate-800 dark:bg-slate-700 py-4 text-white">
                                 <CardTitle className="text-lg font-medium">Government Details</CardTitle>
                             </CardHeader>
-                            <CardContent className="p-6 pt-2">
+                            <CardContent className="p-6">
                                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                                     <div>
                                         <label className="mb-2 block text-sm font-medium text-muted-foreground">SSS Number</label>
@@ -480,8 +480,8 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         </Card>
                         
                         {/* Employee Documents */}
-                        <Card className="overflow-hidden border shadow-sm py-0 gap-2 mt-6">
-                            <CardHeader className="bg-slate-800 dark:bg-slate-700 py-2 text-white flex flex-row justify-between items-center">
+                        <Card className="overflow-hidden transition-shadow hover:shadow-lg p-0 mt-6">
+                            <CardHeader className="bg-slate-800 dark:bg-slate-700 py-4 text-white flex flex-row justify-between items-center">
                                 <CardTitle className="text-lg font-medium">Employee Documents</CardTitle>
                                 <Button 
                                     variant="outline" 

@@ -22,4 +22,5 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-ATTENDANCE_AUDIT.md
+# Exclude all markdown documentation files
+*.md

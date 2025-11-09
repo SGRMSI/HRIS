@@ -215,7 +215,7 @@ export default function EditEmployee({ employee, companies, departments, positio
                         <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Personal Information */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="pb-6">
                             <CardTitle>Personal Information</CardTitle>
                             <CardDescription>
                                 Update the employee's personal details below.
@@ -346,7 +346,7 @@ export default function EditEmployee({ employee, companies, departments, positio
 
                     {/* Employment Information */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="pb-6">
                             <CardTitle>Employment Information</CardTitle>
                             <CardDescription>
                                 Update the employee's work-related information.
@@ -519,7 +519,7 @@ export default function EditEmployee({ employee, companies, departments, positio
 
                     {/* Government Information */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="pb-6">
                             <CardTitle>Government Information</CardTitle>
                             <CardDescription>
                                 Update government-related identification numbers.
@@ -589,7 +589,7 @@ export default function EditEmployee({ employee, companies, departments, positio
                     
                     <TabsContent value="documents">
                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
+                            <CardHeader className="flex flex-row items-center justify-between pb-6">
                                 <div>
                                     <CardTitle>Employee Documents</CardTitle>
                                     <CardDescription>Manage employee documents and files</CardDescription>
