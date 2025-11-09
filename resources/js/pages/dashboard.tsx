@@ -1,4 +1,9 @@
+import { AttendanceSummaryWidget } from '@/components/dashboard/attendance-summary';
 import { StatsCard } from '@/components/dashboard/employee-stat-card';
+import { LeaveSummary } from '@/components/dashboard/leave-summary';
+import { QuickActions } from '@/components/dashboard/quick-actions';
+import { RecentActivity } from '@/components/dashboard/recent-activity';
+import { UpcomingEvents } from '@/components/dashboard/upcoming-events';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
@@ -18,11 +23,84 @@ interface EmployeeStats {
     contractual: number;
 }
 
-interface DashboardProps {
-    employeeStats: EmployeeStats;
+interface AttendanceSummary {
+    today: {
+        present: number;
+        late: number;
+        absent: number;
+        on_leave: number;
+        total_expected: number;
+    };
+    this_month: {
+        total_days: number;
+        worked_days: number;
+        leave_days: number;
+        absent_days: number;
+        average_attendance_rate: number;
+    };
+    pending_approvals: number;
 }
 
-export default function Dashboard({ employeeStats }: DashboardProps) {
+interface LeaveRequest {
+    id: number;
+    employee: {
+        id: number;
+        name: string;
+        avatar?: string;
+        id_number: string;
+        department?: { name: string } | null;
+    };
+    leave_type: string;
+    date_start: string | null;
+    date_end: string | null;
+    days_count: number;
+    reason: string;
+    status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+    created_at: string;
+    document_path?: string;
+}
+
+interface LeaveSummary {
+    pending_leaves: LeaveRequest[];
+    total_pending: number;
+    approved_today: number;
+}
+
+interface Activity {
+    id: number;
+    description: string;
+    subject_type: string;
+    subject_id: number;
+    causer: { name: string; avatar?: string } | null;
+    properties: Record<string, unknown>;
+    created_at: string;
+}
+
+interface UpcomingEvent {
+    id: number;
+    type: 'holiday' | 'birthday' | 'anniversary';
+    title: string;
+    date: string;
+    description?: string;
+    employee?: {
+        id: number;
+        name: string;
+        avatar?: string;
+    };
+    company?: {
+        name: string;
+    };
+}
+
+interface DashboardProps {
+    employeeStats: EmployeeStats;
+    attendanceSummary: AttendanceSummary;
+    leaveSummary: LeaveSummary;
+    recentActivities: Activity[];
+    upcomingEvents: UpcomingEvent[];
+}
+
+export default function Dashboard({ employeeStats, attendanceSummary, leaveSummary, recentActivities, upcomingEvents }: DashboardProps) {
     const stats = [
         {
             title: 'Total Employees',
@@ -62,7 +140,7 @@ export default function Dashboard({ employeeStats }: DashboardProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
-
+                {/* Employee Stats Cards */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                     {stats.map((stat) => (
                         <StatsCard
@@ -77,6 +155,31 @@ export default function Dashboard({ employeeStats }: DashboardProps) {
                             totalValue={employeeStats.total}
                         />
                     ))}
+                </div>
+
+                {/* Quick Actions */}
+                <QuickActions />
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {/* Attendance Summary */}
+                    <AttendanceSummaryWidget summary={attendanceSummary} />
+
+                    {/* Leave Requests */}
+                    <LeaveSummary
+                        pending_leaves={leaveSummary.pending_leaves}
+                        total_pending={leaveSummary.total_pending}
+                        approved_today={leaveSummary.approved_today}
+                    />
+                </div>
+
+                {/* Bottom Section */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {/* Recent Activity */}
+                    <RecentActivity activities={recentActivities} />
+
+                    {/* Upcoming Events */}
+                    <UpcomingEvents events={upcomingEvents} />
                 </div>
             </div>
         </AppLayout>

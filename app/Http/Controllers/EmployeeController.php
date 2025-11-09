@@ -139,6 +139,20 @@ class EmployeeController extends Controller
 
             $employee = Employee::create($employeeData);
 
+            // Add activity log for employee creation
+            activity()
+                ->performedOn($employee)
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'employee_id' => $employee->employee_id,
+                    'id_number' => $employee->id_number,
+                    'name' => "{$employee->first_name} " . ($employee->middle_name ? "{$employee->middle_name} " : "") . "{$employee->last_name}",
+                    'first_name' => $employee->first_name,
+                    'middle_name' => $employee->middle_name,
+                    'last_name' => $employee->last_name,
+                ])
+                ->log('Employee created');
+
             $fullName = $this->employeeService->generateFullName(
                 $employee->first_name,
                 $employee->middle_name,
@@ -370,6 +384,19 @@ class EmployeeController extends Controller
         ]);
 
         try {
+            // Store original data for comparison
+            $originalData = [
+                'id_number' => $employee->id_number,
+                'first_name' => $employee->first_name,
+                'middle_name' => $employee->middle_name,
+                'last_name' => $employee->last_name,
+                'company_id' => $employee->company_id,
+                'department_id' => $employee->department_id,
+                'position_id' => $employee->position_id,
+                'employment_status' => $employee->employment_status,
+                'date_hired' => $employee->date_hired?->toDateString(),
+            ];
+
             // Calculate age from birth date
             $birthDate = new \DateTime($validated['birth_date']);
             $today = new \DateTime('today');
@@ -407,10 +434,63 @@ class EmployeeController extends Controller
                 $validated['last_name']
             );
 
+            // Track what changed
+            $changes = [];
+            if ($originalData['id_number'] !== $validated['id_number']) {
+                $changes['id_number'] = [
+                    'old' => $originalData['id_number'],
+                    'new' => $validated['id_number']
+                ];
+            }
+            if ($originalData['first_name'] !== $validated['first_name'] ||
+                $originalData['middle_name'] !== $validated['middle_name'] ||
+                $originalData['last_name'] !== $validated['last_name']) {
+                $oldName = $this->employeeService->generateFullName(
+                    $originalData['first_name'],
+                    $originalData['middle_name'],
+                    $originalData['last_name']
+                );
+                $changes['name'] = [
+                    'old' => $oldName,
+                    'new' => $employeeName
+                ];
+            }
+            if ($originalData['employment_status'] !== $validated['employment_status']) {
+                $changes['employment_status'] = [
+                    'old' => $originalData['employment_status'],
+                    'new' => $validated['employment_status']
+                ];
+            }
+            if ($originalData['company_id'] !== $validated['company_id']) {
+                $oldCompany = Company::find($originalData['company_id'])?->name ?? 'Unknown';
+                $newCompany = Company::find($validated['company_id'])?->name ?? 'Unknown';
+                $changes['company'] = [
+                    'old' => $oldCompany,
+                    'new' => $newCompany
+                ];
+            }
+
+            // Log activity with changes
+            activity()
+                ->performedOn($employee)
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'employee_id' => $employee->employee_id,
+                    'id_number' => $employee->id_number,
+                    'name' => $employeeName,
+                    'first_name' => $employee->first_name,
+                    'middle_name' => $employee->middle_name,
+                    'last_name' => $employee->last_name,
+                    'changes' => $changes,
+                ])
+                ->log('Employee updated');
+
             return redirect()->route('employee.show', $employee->employee_id)
                 ->with('success', "Employee '{$employeeName}' has been updated successfully!");
 
         } catch (\Exception $e) {
+            \Log::error('Employee update failed: ' . $e->getMessage());
+            
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to update employee. Please try again.'])
                 ->withInput();
@@ -431,6 +511,16 @@ class EmployeeController extends Controller
                 $employee->middle_name,
                 $employee->last_name
             );
+
+            // Store employee data before deletion for activity log
+            $employeeData = [
+                'employee_id' => $employee->employee_id,
+                'id_number' => $employee->id_number,
+                'name' => $employeeName,
+                'first_name' => $employee->first_name,
+                'middle_name' => $employee->middle_name,
+                'last_name' => $employee->last_name,
+            ];
 
             // Check all foreign key relationships using raw queries for reliability
             $constraints = [];
@@ -516,30 +606,27 @@ class EmployeeController extends Controller
                 }
             }
 
+            // **KEY FIX: Log activity BEFORE deletion and BEFORE redirect**
+            // This ensures the activity is saved before the response is sent
+            activity()
+                ->performedOn($employee)
+                ->causedBy(auth()->user())
+                ->withProperties($employeeData)
+                ->log('Employee deleted');
+
             // Perform deletion
             $deleted = $employee->delete();
             
             if ($deleted) {
                 \Log::info('Employee deleted successfully', [
-                    'employee_id' => $employee->employee_id
+                    'employee_id' => $employeeData['employee_id']
                 ]);
-                
-                // Log activity for audit trail (per Copilot instructions)
-                activity()
-                    ->performedOn($employee)
-                    ->causedBy(auth()->user())
-                    ->withProperties([
-                        'employee_id' => $employee->employee_id,
-                        'id_number' => $employee->id_number,
-                        'name' => $employeeName,
-                    ])
-                    ->log('Employee deleted');
                 
                 return redirect()->route('employee.index')
                     ->with('success', "Employee '{$employeeName}' has been deleted successfully!");
             } else {
                 \Log::error('Employee deletion returned false', [
-                    'employee_id' => $employee->employee_id
+                    'employee_id' => $employeeData['employee_id']
                 ]);
                 
                 return back()->with('error', 'Failed to delete employee. Database operation returned false.');
@@ -611,9 +698,6 @@ class EmployeeController extends Controller
         // Process header row (first line)
         $headers = str_getcsv(array_shift($rows), $delimiter);
         
-        // Debug original headers
-        \Log::info('Original Headers:', $headers);
-        
         // Normalize header keys - convert from "ID NUMBER" to "id_number"
         $normalizedHeaders = array_map(function($header) {
             // Remove BOM character if present
@@ -622,66 +706,57 @@ class EmployeeController extends Controller
             return strtolower(str_replace(' ', '_', trim($header)));
         }, $headers);
         
-        \Log::info('Normalized Headers:', $normalizedHeaders);
-        
         // Updated field map to use names instead of IDs
         $fieldMap = [
-            // note: id_number will be auto-generated during import; remove from required CSV
-             'last_name' => 'last_name',
-             'first_name' => 'first_name',
-             'middle_name' => 'middle_name',
-             'gender' => 'gender',
-             'birth_date' => 'birth_date',
-             'age' => 'age',
-             'civil_status' => 'civil_status',
-             'address' => 'address',
-             'contact_number' => 'contact_number',
-             'company' => 'company',       // Changed from company_id to company
-             'department' => 'department', // Changed from department_id to department
-             'position' => 'position',     // Changed from position_id to position
-             'account' => 'account',       // Changed from account_id to account
-             'sss_number' => 'sss_number',
-             'phic_number' => 'phic_number',
-             'hdmf_number' => 'hdmf_number',
-             'tin_number' => 'tin_number',
-             'date_hired' => 'date_hired',
-             'employment_status' => 'employment_status',
-         ];
+            'last_name' => 'last_name',
+            'first_name' => 'first_name',
+            'middle_name' => 'middle_name',
+            'gender' => 'gender',
+            'birth_date' => 'birth_date',
+            'age' => 'age',
+            'civil_status' => 'civil_status',
+            'address' => 'address',
+            'contact_number' => 'contact_number',
+            'company' => 'company',
+            'department' => 'department',
+            'position' => 'position',
+            'account' => 'account',
+            'sss_number' => 'sss_number',
+            'phic_number' => 'phic_number',
+            'hdmf_number' => 'hdmf_number',
+            'tin_number' => 'tin_number',
+            'date_hired' => 'date_hired',
+            'employment_status' => 'employment_status',
+        ];
          
-        // Cache company, department, position, and account data to avoid multiple DB queries
-        // $companies: name => id  (used for case-insensitive lookup)
+        // Cache company, department, position, and account data
         $companies = Company::pluck('company_id', 'name')->toArray();
-        // Reverse map id => name for ID generation
         $companiesById = Company::pluck('name', 'company_id')->toArray();
-         $departments = Department::pluck('department_id', 'name')->toArray();
-         $positions = Position::pluck('position_id', 'title')->toArray();
-         $accounts = Account::pluck('account_id', 'name')->toArray();
+        $departments = Department::pluck('department_id', 'name')->toArray();
+        $positions = Position::pluck('position_id', 'title')->toArray();
+        $accounts = Account::pluck('account_id', 'name')->toArray();
          
+        // Variables to track import results
+        $importedCount = 0;
+        $skippedCount = 0;
+        $importedEmployees = [];
+    
         DB::beginTransaction();
         try {
-            $importedCount = 0;
-            $skippedCount = 0;
-            
             foreach ($rows as $index => $row) {
-                if (empty(trim($row))) continue; // Skip empty rows
+                if (empty(trim($row))) continue;
                 
-                // Parse the row with detected delimiter
                 $rowData = str_getcsv($row, $delimiter);
                 
-                // Ensure we have the right number of columns
                 if (count($rowData) < count($normalizedHeaders)) {
-                    \Log::warning("Row $index has fewer columns than headers", [
-                        'headers_count' => count($normalizedHeaders),
-                        'columns_count' => count($rowData)
-                    ]);
+                    \Log::warning("Row $index has fewer columns than headers");
                     $skippedCount++;
                     continue;
                 }
                 
-                // Combine normalized headers with row data
                 $rowDataAssoc = array_combine($normalizedHeaders, $rowData);
                 
-                // Create employee data array using our field map
+                // Create employee data array
                 $employeeData = [];
                 foreach ($fieldMap as $csvField => $dataField) {
                     if (isset($rowDataAssoc[$csvField])) {
@@ -689,20 +764,15 @@ class EmployeeController extends Controller
                     }
                 }
                 
-                // Log the data we're processing
-                \Log::info("Processing row $index", $employeeData);
-                
                 // Validate required fields
-                // id_number will be auto-generated; require only names
                 if (empty($employeeData['last_name']) || empty($employeeData['first_name'])) {
                     \Log::warning("Row $index missing required fields");
                     $skippedCount++;
                     continue;
                 }
- 
+
                 // Format dates if they exist
                 if (!empty($employeeData['birth_date'])) {
-                    // Try to parse date in common formats
                     $date = \DateTime::createFromFormat('m/d/Y', $employeeData['birth_date']);
                     if ($date) {
                         $employeeData['birth_date'] = $date->format('Y-m-d');
@@ -716,83 +786,53 @@ class EmployeeController extends Controller
                     }
                 }
                 
-                // Convert names to IDs for foreign keys (case-insensitive)
+                // Convert names to IDs (case-insensitive lookup)
                 $companyId = null;
                 $departmentId = null;
                 $positionId = null;
                 $accountId = null;
 
-                // Case-insensitive lookup for company ID
                 if (!empty($employeeData['company'])) {
-                    $companyName = trim($employeeData['company']);
-                    $companyLower = strtolower($companyName);
-                    
-                    // Find company by case-insensitive comparison
+                    $companyLower = strtolower(trim($employeeData['company']));
                     foreach ($companies as $dbName => $id) {
                         if (strtolower($dbName) === $companyLower) {
                             $companyId = $id;
                             break;
                         }
                     }
-                    
-                    if ($companyId === null) {
-                        \Log::warning("Row $index: Company '{$companyName}' not found in database");
-                    }
                 }
 
-                // Case-insensitive lookup for department ID
                 if (!empty($employeeData['department'])) {
-                    $departmentName = trim($employeeData['department']);
-                    $departmentLower = strtolower($departmentName);
-                    
+                    $departmentLower = strtolower(trim($employeeData['department']));
                     foreach ($departments as $dbName => $id) {
                         if (strtolower($dbName) === $departmentLower) {
                             $departmentId = $id;
                             break;
                         }
                     }
-                    
-                    if ($departmentId === null) {
-                        \Log::warning("Row $index: Department '{$departmentName}' not found in database");
-                    }
                 }
 
-                // Case-insensitive lookup for position ID
                 if (!empty($employeeData['position'])) {
-                    $positionName = trim($employeeData['position']);
-                    $positionLower = strtolower($positionName);
-                    
+                    $positionLower = strtolower(trim($employeeData['position']));
                     foreach ($positions as $dbName => $id) {
                         if (strtolower($dbName) === $positionLower) {
                             $positionId = $id;
                             break;
                         }
                     }
-                    
-                    if ($positionId === null) {
-                        \Log::warning("Row $index: Position '{$positionName}' not found in database");
-                    }
                 }
 
-                // Case-insensitive lookup for account ID
                 if (!empty($employeeData['account'])) {
-                    $accountName = trim($employeeData['account']);
-                    $accountLower = strtolower($accountName);
-                    
+                    $accountLower = strtolower(trim($employeeData['account']));
                     foreach ($accounts as $dbName => $id) {
                         if (strtolower($dbName) === $accountLower) {
                             $accountId = $id;
                             break;
                         }
                     }
-                    
-                    if ($accountId === null) {
-                        \Log::warning("Row $index: Account '{$accountName}' not found in database");
-                    }
                 }
                 
-                // Auto-generate employee id_number using company prefix if available.
-                // If company not provided, fall back to generic 'EMP' prefix.
+                // Auto-generate employee id_number
                 $generatedId = null;
                 try {
                     $prefix = 'EMP';
@@ -803,41 +843,66 @@ class EmployeeController extends Controller
                     $generatedId = $this->employeeService->generateEmployeeId($prefix);
                 } catch (\Exception $e) {
                     \Log::error("Row $index: Failed to generate employee id - " . $e->getMessage());
-                    // If generation fails, skip the row to avoid duplicate/null ids
                     $skippedCount++;
                     continue;
                 }
-                
 
-                 // Create employee with resolved IDs (null if not found)
-                 Employee::create([
+                // Create employee
+                $employee = Employee::create([
                     'id_number' => $generatedId,
-                     'last_name' => $employeeData['last_name'],
-                     'first_name' => $employeeData['first_name'],
-                     'middle_name' => $employeeData['middle_name'] ?? null,
-                     'gender' => $employeeData['gender'] ?? 'Other',
-                     'birth_date' => $employeeData['birth_date'] ?? now(),
-                     'age' => $employeeData['age'] ?? 0,
-                     'civil_status' => $employeeData['civil_status'] ?? 'Single',
-                     'address' => $employeeData['address'] ?? '',
-                     'contact_number' => !empty($employeeData['contact_number']) 
-                     ? $this->employeeService->formatContactNumber($employeeData['contact_number']) 
-                     : null,
-                     'company_id' => $companyId,  
-                     'department_id' => $departmentId,  
-                     'position_id' => $positionId,  
-                     'account_id' => $accountId,  
-                     'sss_number' => $employeeData['sss_number'] ?? null,
-                     'phic_number' => $employeeData['phic_number'] ?? null,
-                     'hdmf_number' => $employeeData['hdmf_number'] ?? null,
-                     'tin_number' => $employeeData['tin_number'] ?? null,
-                     'date_hired' => $employeeData['date_hired'] ?? now(),
-                     'employment_status' => $employeeData['employment_status'] ?? 'Probationary',
-                 ]);
-                 $importedCount++;
+                    'last_name' => $employeeData['last_name'],
+                    'first_name' => $employeeData['first_name'],
+                    'middle_name' => $employeeData['middle_name'] ?? null,
+                    'gender' => $employeeData['gender'] ?? 'Other',
+                    'birth_date' => $employeeData['birth_date'] ?? now(),
+                    'age' => $employeeData['age'] ?? 0,
+                    'civil_status' => $employeeData['civil_status'] ?? 'Single',
+                    'address' => $employeeData['address'] ?? '',
+                    'contact_number' => !empty($employeeData['contact_number']) 
+                        ? $this->employeeService->formatContactNumber($employeeData['contact_number']) 
+                        : null,
+                    'company_id' => $companyId,  
+                    'department_id' => $departmentId,  
+                    'position_id' => $positionId,  
+                    'account_id' => $accountId,  
+                    'sss_number' => $employeeData['sss_number'] ?? null,
+                    'phic_number' => $employeeData['phic_number'] ?? null,
+                    'hdmf_number' => $employeeData['hdmf_number'] ?? null,
+                    'tin_number' => $employeeData['tin_number'] ?? null,
+                    'date_hired' => $employeeData['date_hired'] ?? now(),
+                    'employment_status' => $employeeData['employment_status'] ?? 'Probationary',
+                ]);
+
+                // Track imported employee for activity log
+                $importedEmployees[] = [
+                    'id_number' => $employee->id_number,
+                    'name' => $this->employeeService->generateFullName(
+                        $employee->first_name,
+                        $employee->middle_name,
+                        $employee->last_name
+                    ),
+                ];
+
+                $importedCount++;
             }
             
+            // **KEY FIX: Commit transaction BEFORE logging activity**
+            // This ensures all employee records are saved before activity log
             DB::commit();
+
+            // **Log activity AFTER successful commit and BEFORE redirect**
+            // This ensures activity is logged outside transaction with committed data
+            if ($importedCount > 0) {
+                activity()
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'total_imported' => $importedCount,
+                        'total_skipped' => $skippedCount,
+                        'filename' => $file->getClientOriginalName(),
+                        'employees' => $importedEmployees,
+                    ])
+                    ->log("Bulk employee import: {$importedCount} employee(s) imported");
+            }
             
             return redirect()->route('employee.index')
                 ->with('success', "Successfully imported $importedCount employee(s). Skipped $skippedCount row(s).");
@@ -846,7 +911,16 @@ class EmployeeController extends Controller
             DB::rollBack();
             \Log::error('CSV Import failed: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
+
+            // **Log failed import AFTER rollback and BEFORE redirect**
+            activity()
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'filename' => $file->getClientOriginalName(),
+                    'error' => $e->getMessage(),
+                ])
+                ->log('Bulk employee import failed');
+        
             return redirect()->route('employee.index')
                 ->with('error', 'Failed to import CSV file. Error: ' . $e->getMessage());
         }
