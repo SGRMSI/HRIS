@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { 
     CheckCircle2, 
     XCircle, 
@@ -21,7 +30,10 @@ import {
     Eye,
     CheckSquare,
     AlertCircle,
-    Building2
+    Building2,
+    Edit,
+    Square,
+    CheckCheck
 } from 'lucide-react';
 
 interface Employee {
@@ -91,6 +103,8 @@ interface Props {
             active: boolean;
         }>;
     };
+    pendingCount: number;
+    filteredPendingCount: number;
     filters: {
         search?: string;
         date_from?: string;
@@ -123,15 +137,33 @@ function getStatusBadge(status: string, approved: boolean) {
     }
 }
 
-export default function FinalIndex({ attendances, filters = {}, companies = [], employees = [], statuses = [] }: Props) {
+export default function FinalIndex({ attendances, pendingCount, filteredPendingCount, filters = {}, companies = [], employees = [], statuses = [] }: Props) {
     const { flash } = usePage().props as any;
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [bulkProcessing, setBulkProcessing] = useState(false);
+    const [showApproveModal, setShowApproveModal] = useState(false);
+    const [approvalType, setApprovalType] = useState<'bulk' | 'single'>('bulk');
+    const [singleApprovalId, setSingleApprovalId] = useState<number | null>(null);
+
+    // Show toast notifications
+    useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+    }, [flash]);
 
     // Filter employees based on selected company
     const filteredEmployees = filters.company_id 
         ? employees.filter(emp => emp.company_id === filters.company_id)
         : employees;
+
+    // Determine which count to show (use filtered if filters are active, otherwise use total)
+    const hasActiveFilters = !!(filters.search || filters.date_from || filters.date_to || 
+                                 filters.status || filters.company_id || filters.employee_id);
+    const displayPendingCount = hasActiveFilters ? filteredPendingCount : pendingCount;
 
     const handleFilter = (key: string, value: string) => {
         const filterValue = value === 'all' ? undefined : value;
@@ -142,15 +174,35 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
         );
     };
 
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            const selectableIds = attendances.data
-                .filter(a => !a.approved_by && a.can_approve)
-                .map(a => a.id);
-            setSelectedIds(selectableIds);
-        } else {
-            setSelectedIds([]);
-        }
+    const handleSelectAllPending = () => {
+        const pendingIds = attendances.data
+            .filter(a => !a.approved_by && a.can_approve)
+            .map(a => a.id);
+        setSelectedIds(pendingIds);
+    };
+
+    const handleSelectAllPendingAcrossPages = () => {
+        // Fetch all pending IDs across all pages
+        router.get(
+            route('attendance.final.index'),
+            { 
+                ...filters, 
+                get_all_pending_ids: true 
+            },
+            {
+                preserveState: true,
+                only: ['pendingIds'],
+                onSuccess: (page: any) => {
+                    if (page.props.pendingIds) {
+                        setSelectedIds(page.props.pendingIds);
+                    }
+                }
+            }
+        );
+    };
+
+    const handleDeselectAll = () => {
+        setSelectedIds([]);
     };
 
     const handleSelectOne = (id: number, checked: boolean) => {
@@ -167,33 +219,33 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
             return;
         }
 
-        if (!confirm(`Are you sure you want to approve ${selectedIds.length} attendance record(s)?`)) {
-            return;
-        }
-
-        setBulkProcessing(true);
-        router.post(
-            route('attendance.final.bulk-approve'),
-            { ids: selectedIds },
-            {
-                onFinish: () => {
-                    setBulkProcessing(false);
-                    setSelectedIds([]);
-                },
-            }
-        );
+        setApprovalType('bulk');
+        setShowApproveModal(true);
     };
 
     const handleApprove = (id: number) => {
-        if (!confirm('Are you sure you want to approve this attendance record?')) {
-            return;
-        }
+        setSingleApprovalId(id);
+        setApprovalType('single');
+        setShowApproveModal(true);
+    };
 
+    const handleApproveConfirm = () => {
+        const idsToApprove = approvalType === 'bulk' ? selectedIds : [singleApprovalId!];
+        
+        setBulkProcessing(true);
         router.post(
             route('attendance.final.bulk-approve'),
-            { ids: [id] },
+            { ids: idsToApprove },
             {
-                preserveScroll: true,
+                preserveScroll: false,
+                onFinish: () => {
+                    setBulkProcessing(false);
+                    setShowApproveModal(false);
+                    if (approvalType === 'bulk') {
+                        setSelectedIds([]);
+                    }
+                    setSingleApprovalId(null);
+                },
             }
         );
     };
@@ -225,14 +277,6 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
             return date;
         }
     };
-
-    const allSelectableSelected = attendances?.data
-        ? attendances.data
-            .filter(a => !a.approved_by && a.can_approve)
-            .every(a => selectedIds.includes(a.id))
-        : false;
-
-    const someSelected = selectedIds.length > 0 && !allSelectableSelected;
 
     return (
         <AppLayout
@@ -385,28 +429,81 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                     </CardContent>
                 </Card>
 
-                {/* Bulk Actions */}
-                {selectedIds.length > 0 && (
-                    <Card className="border-blue-200 bg-blue-50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <CheckSquare className="h-5 w-5 text-blue-600" />
-                                    <span className="text-sm font-medium text-blue-900">
-                                        {selectedIds.length} record(s) selected
+                {/* Bulk Actions Bar */}
+                {selectedIds.length > 0 ? (
+                    <div className="border border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-blue-200">
+                                    <CheckSquare className="h-4 w-4 text-blue-600" />
+                                    <span className="text-sm font-semibold text-blue-900">
+                                        {selectedIds.length} record{selectedIds.length !== 1 ? 's' : ''} selected
                                     </span>
                                 </div>
                                 <Button
-                                    onClick={handleBulkApprove}
-                                    disabled={bulkProcessing}
-                                    className="bg-blue-600 hover:bg-blue-700"
+                                    onClick={handleDeselectAll}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-gray-600 hover:text-gray-900 h-8"
                                 >
-                                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                                    {bulkProcessing ? 'Approving...' : 'Approve Selected'}
+                                    <Square className="h-4 w-4 mr-1" />
+                                    Deselect All
                                 </Button>
                             </div>
-                        </CardContent>
-                    </Card>
+                            <Button
+                                onClick={handleBulkApprove}
+                                disabled={bulkProcessing}
+                                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg h-9"
+                            >
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                {bulkProcessing ? 'Approving...' : `Approve ${selectedIds.length} Record${selectedIds.length !== 1 ? 's' : ''}`}
+                            </Button>
+                        </div>
+                    </div>
+                ) : displayPendingCount > 0 && (
+                    <div className="border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <AlertCircle className="h-4 w-4 text-orange-600" />
+                                <div>
+                                    <p className="text-sm font-medium text-orange-900">
+                                        {displayPendingCount} record{displayPendingCount !== 1 ? 's' : ''} pending approval
+                                        {hasActiveFilters && pendingCount !== filteredPendingCount && (
+                                            <span className="text-xs ml-2 text-orange-700">
+                                                ({pendingCount} total in system)
+                                            </span>
+                                        )}
+                                    </p>
+                                    <p className="text-xs text-orange-700 mt-0.5">
+                                        {hasActiveFilters 
+                                            ? 'Showing pending records matching current filters'
+                                            : 'Select records to approve or use quick selection'
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={handleSelectAllPending}
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-orange-300 text-orange-700 hover:bg-orange-100 hover:text-orange-900 h-8"
+                                >
+                                    <CheckCheck className="h-4 w-4 mr-1" />
+                                    This Page
+                                </Button>
+                                <Button
+                                    onClick={handleSelectAllPendingAcrossPages}
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-orange-600 hover:bg-orange-700 text-white h-8"
+                                >
+                                    <CheckSquare className="h-4 w-4 mr-1" />
+                                    All {displayPendingCount} Records
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Attendance Table */}
@@ -431,12 +528,7 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-12">
-                                                <Checkbox
-                                                    checked={allSelectableSelected}
-                                                    onCheckedChange={handleSelectAll}
-                                                />
-                                            </TableHead>
+                                            <TableHead className="w-12">Select</TableHead>
                                             <TableHead>Employee</TableHead>
                                             <TableHead>Date</TableHead>
                                             <TableHead>Shift</TableHead>
@@ -561,21 +653,34 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex gap-2 justify-end">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => router.visit(route('attendance.final.show', record.id))}
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        {!record.approved_by && (
+                                                        {!record.approved_by ? (
+                                                            <>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => router.visit(route('attendance.final.show', record.id))}
+                                                                >
+                                                                    <Edit className="h-4 w-4 mr-1" />
+                                                                    Edit
+                                                                </Button>
+                                                                <Button
+                                                                    variant="default"
+                                                                    size="sm"
+                                                                    onClick={() => handleApprove(record.id)}
+                                                                    className="bg-green-600 hover:bg-green-700"
+                                                                >
+                                                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                                                    Approve
+                                                                </Button>
+                                                            </>
+                                                        ) : (
                                                             <Button
-                                                                variant="default"
+                                                                variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => handleApprove(record.id)}
+                                                                onClick={() => router.visit(route('attendance.final.show', record.id))}
                                                             >
-                                                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                                                Approve
+                                                                <Eye className="h-4 w-4 mr-1" />
+                                                                View
                                                             </Button>
                                                         )}
                                                     </div>
@@ -611,6 +716,81 @@ export default function FinalIndex({ attendances, filters = {}, companies = [], 
                         </div>
                     </div>
                 )}
+
+                {/* Approval Modal */}
+                <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>
+                                {approvalType === 'bulk' ? 'Approve Multiple Records' : 'Approve Attendance Record'}
+                            </DialogTitle>
+                            <DialogDescription>
+                                {approvalType === 'bulk' 
+                                    ? `Are you sure you want to approve ${selectedIds.length} attendance record(s)? This action cannot be undone.`
+                                    : 'Are you sure you want to approve this attendance record? This action cannot be undone.'
+                                }
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            {approvalType === 'bulk' ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                        <span className="font-medium">{selectedIds.length} records selected for approval</span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        All selected attendance records will be marked as approved and locked from further editing.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {singleApprovalId && (() => {
+                                        const record = attendances.data.find(a => a.id === singleApprovalId);
+                                        return record ? (
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Employee:</span>
+                                                    <span className="font-medium">{record.employee.name}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Date:</span>
+                                                    <span className="font-medium">{formatDate(record.date)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Total Hours:</span>
+                                                    <span className="font-medium">
+                                                        {record.total_hours}h {record.total_minutes}m
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Status:</span>
+                                                    <span>{getStatusBadge(record.status, false)}</span>
+                                                </div>
+                                            </div>
+                                        ) : null;
+                                    })()}
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowApproveModal(false)}
+                                disabled={bulkProcessing}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleApproveConfirm}
+                                disabled={bulkProcessing}
+                                className="bg-green-600 hover:bg-green-700"
+                            >
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                {bulkProcessing ? 'Approving...' : 'Approve'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );

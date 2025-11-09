@@ -242,17 +242,20 @@ class AttendanceFinalizeService
             $lateMinutes = $clockIn->diffInMinutes($shiftStart);
         }
 
-        // Calculate overtime/undertime (based on actual worked time vs shift duration)
-        $workedMinutes = $clockOut->diffInMinutes($clockIn);
-        $expectedMinutes = $shift->getDurationMinutes();
+        // Calculate overtime/undertime based on ACTUAL work hours (excluding breaks) vs expected work hours
+        // Use total_hours and total_minutes from processed record (which already excludes breaks)
+        $actualWorkedMinutes = ($attendance->total_hours * 60) + $attendance->total_minutes;
+        
+        // Expected work time = shift duration minus break duration
+        $expectedWorkMinutes = $shift->getDurationMinutes() - $shift->getBreakDurationMinutes();
         
         $overtimeHours = 0;
         $undertimeHours = 0;
         
-        if ($workedMinutes > $expectedMinutes) {
-            $overtimeHours = round(($workedMinutes - $expectedMinutes) / 60, 2);
-        } else {
-            $undertimeHours = round(($expectedMinutes - $workedMinutes) / 60, 2);
+        if ($actualWorkedMinutes > $expectedWorkMinutes) {
+            $overtimeHours = round(($actualWorkedMinutes - $expectedWorkMinutes) / 60, 2);
+        } elseif ($actualWorkedMinutes < $expectedWorkMinutes) {
+            $undertimeHours = round(($expectedWorkMinutes - $actualWorkedMinutes) / 60, 2);
         }
 
         return [$lateMinutes, $overtimeHours, $undertimeHours];

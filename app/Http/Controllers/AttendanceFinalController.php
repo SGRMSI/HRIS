@@ -66,6 +66,18 @@ class AttendanceFinalController extends Controller
             ->when($request->date_to, fn ($q) => $q->where('date', '<=', $request->date_to))
             ->when($request->status, fn ($q) => $q->where('status', $request->status));
 
+        // Handle request for all pending IDs (for bulk selection across pages)
+        if ($request->get_all_pending_ids) {
+            $pendingIds = (clone $query)
+                ->whereNull('approved_by')
+                ->pluck('attendance_id')
+                ->toArray();
+            
+            return Inertia::render('Attendance/FinalIndex', [
+                'pendingIds' => $pendingIds,
+            ]);
+        }
+
         // Handle export data request
         if ($request->wantsJson()) {
             return Inertia::render('Attendance/FinalIndex', [
@@ -107,12 +119,22 @@ class AttendanceFinalController extends Controller
                     'approved_by' => $attendance->approvedBy?->name,
                     'approved_at' => $attendance->approved_at?->format('Y-m-d H:i:s'),
                     'can_edit' => !$attendance->approved_by,
-                    'can_approve' => !$attendance->approved_by && $attendance->requires_approval
+                    'can_approve' => !$attendance->approved_by
                 ];
             });
 
+        // Count total pending approvals - all unapproved records
+        $totalPendingCount = Attendance::whereNull('approved_by')->count();
+
+        // Also count filtered pending (respects current filters)
+        $filteredPendingCount = (clone $query)
+            ->whereNull('approved_by')
+            ->count();
+
         return Inertia::render('Attendance/FinalIndex', [
             'attendances' => $attendances,
+            'pendingCount' => $totalPendingCount, // Total pending in entire system
+            'filteredPendingCount' => $filteredPendingCount, // Pending with current filters
             'filters' => $request->only(['search', 'date_from', 'date_to', 'status', 'company_id', 'employee_id']),
             'companies' => $companies,
             'employees' => $employees,
@@ -138,7 +160,7 @@ class AttendanceFinalController extends Controller
      */
     public function show(Attendance $attendance)
     {
-        $attendance->load(['employee.department', 'shift', 'createdBy', 'approvedBy', 'revisionHistory']);
+        $attendance->load(['employee.department', 'employee.company', 'employee.position', 'shift', 'createdBy', 'approvedBy']);
         
         // Get schedule information for the date
         $schedule = $this->scheduleResolver->getScheduleForDate(
@@ -148,20 +170,23 @@ class AttendanceFinalController extends Controller
 
         return Inertia::render('Attendance/FinalShow', [
             'attendance' => [
-                'id' => $attendance->id,
+                'id' => $attendance->attendance_id,
                 'employee' => [
-                    'id' => $attendance->employee->id,
-                    'name' => $attendance->employee->full_name,
-                    'department' => $attendance->employee->department->name,
-                    'position' => $attendance->employee->position->name ?? null
+                    'id' => $attendance->employee->employee_id,
+                    'name' => $attendance->employee->first_name . ' ' . $attendance->employee->last_name,
+                    'department' => $attendance->employee->department->name ?? 'N/A',
+                    'company' => $attendance->employee->company->name ?? 'N/A',
+                    'position' => $attendance->employee->position->name ?? 'N/A'
                 ],
-                'date' => $attendance->date,
+                'date' => $attendance->date instanceof \Carbon\Carbon 
+                    ? $attendance->date->format('Y-m-d') 
+                    : $attendance->date,
                 'shift' => $attendance->shift ? [
                     'name' => $attendance->shift->name,
-                    'start' => $attendance->shift->start_time,
-                    'end' => $attendance->shift->end_time,
-                    'break_start' => $attendance->shift->break_start,
-                    'break_end' => $attendance->shift->break_end,
+                    'time_in' => $attendance->shift->getAttributes()['time_in'],
+                    'time_out' => $attendance->shift->getAttributes()['time_out'],
+                    'break_start' => $attendance->shift->getAttributes()['break_start'] ?? null,
+                    'break_end' => $attendance->shift->getAttributes()['break_end'] ?? null,
                 ] : null,
                 'schedule' => $schedule,
                 'times' => [
@@ -171,30 +196,23 @@ class AttendanceFinalController extends Controller
                     'clock_out' => $attendance->clock_out?->format('H:i:s')
                 ],
                 'computations' => [
-                    'total_hours' => number_format((float) $attendance->total_hours ?? 0, 2),
-                    'regular_hours' => number_format((float) $attendance->regular_hours ?? 0, 2),
+                    'total_hours' => $attendance->total_hours ?? 0,
+                    'total_minutes' => $attendance->total_minutes ?? 0,
                     'overtime_hours' => number_format((float) $attendance->overtime_hours ?? 0, 2),
-                    'undertime_minutes' => $attendance->undertime_minutes,
-                    'break_minutes' => $attendance->break_minutes,
-                    'late_minutes' => $attendance->late_minutes
+                    'undertime_hours' => number_format((float) $attendance->undertime_hours ?? 0, 2),
+                    'break_minutes' => $attendance->break_minutes ?? 0,
+                    'late_minutes' => $attendance->late_minutes ?? 0
                 ],
                 'status' => $attendance->status,
                 'remarks' => $attendance->remarks,
-                'meta' => $attendance->meta,
                 'approved_by' => $attendance->approvedBy?->name,
                 'approved_at' => $attendance->approved_at?->format('Y-m-d H:i:s'),
                 'created_by' => $attendance->createdBy?->name,
                 'created_at' => $attendance->created_at->format('Y-m-d H:i:s'),
-                'history' => $attendance->revisionHistory->map(fn($revision) => [
-                    'id' => $revision->id,
-                    'user' => $revision->userResponsible()?->name ?? 'System',
-                    'changes' => $revision->oldValue(),
-                    'timestamp' => $revision->created_at->format('Y-m-d H:i:s')
-                ])
             ],
             'can' => [
-                'edit' => !$attendance->approved_by && Auth::user()->can('edit attendances'),
-                'approve' => !$attendance->approved_by && Auth::user()->can('approve attendances')
+                'edit' => !$attendance->approved_by,
+                'approve' => !$attendance->approved_by
             ]
         ]);
     }
@@ -209,17 +227,12 @@ class AttendanceFinalController extends Controller
     public function update(Request $request, Attendance $attendance)
     {
         abort_if($attendance->approved_by, 403, 'Cannot edit approved attendance records.');
-        
-        if (!Auth::user()->can('edit attendances')) {
-            abort(403);
-        }
 
         $validated = $request->validate([
-            'clock_in' => 'required|date_format:Y-m-d H:i:s',
-            'break_out' => 'nullable|date_format:Y-m-d H:i:s|after:clock_in',
-            'break_in' => 'nullable|date_format:Y-m-d H:i:s|after:break_out',
-            'clock_out' => 'required|date_format:Y-m-d H:i:s|after:clock_in',
-            'status' => 'required|string|in:present,absent,leave,holiday',
+            'clock_in' => 'required|date_format:H:i:s',
+            'break_out' => 'nullable|date_format:H:i:s',
+            'break_in' => 'nullable|date_format:H:i:s',
+            'clock_out' => 'required|date_format:H:i:s',
             'remarks' => 'nullable|string|max:500'
         ]);
 
@@ -229,12 +242,23 @@ class AttendanceFinalController extends Controller
             // Record before state for audit
             $oldState = $attendance->getAttributes();
 
-            // Update record
-            $attendance->update(array_merge($validated, [
+            // Get date string
+            $dateStr = $attendance->date instanceof Carbon 
+                ? $attendance->date->format('Y-m-d')
+                : (is_string($attendance->date) ? substr($attendance->date, 0, 10) : $attendance->date);
+            
+            $updateData = [
+                'clock_in' => $validated['clock_in'] ? Carbon::parse($dateStr . ' ' . $validated['clock_in']) : null,
+                'break_out' => $validated['break_out'] ? Carbon::parse($dateStr . ' ' . $validated['break_out']) : null,
+                'break_in' => $validated['break_in'] ? Carbon::parse($dateStr . ' ' . $validated['break_in']) : null,
+                'clock_out' => $validated['clock_out'] ? Carbon::parse($dateStr . ' ' . $validated['clock_out']) : null,
+                'remarks' => $validated['remarks'],
                 'approved_by' => null,
                 'approved_at' => null,
-                'updated_by' => Auth::id()
-            ]));
+            ];
+
+            // Update record
+            $attendance->update($updateData);
 
             // Record the changes in activity log
             activity()
@@ -268,23 +292,18 @@ class AttendanceFinalController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function approve(Request $request)
+    public function bulkApprove(Request $request)
     {
-        if (!Auth::user()->can('approve attendances')) {
-            abort(403);
-        }
-
         $validated = $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'required|exists:attendances,id'
+            'ids.*' => 'required|integer'
         ]);
 
         try {
             DB::beginTransaction();
 
-            $records = Attendance::whereIn('id', $validated['ids'])
+            $records = Attendance::whereIn('attendance_id', $validated['ids'])
                 ->whereNull('approved_by')
-                ->with('employee.user')
                 ->get();
 
             foreach ($records as $attendance) {
@@ -298,24 +317,15 @@ class AttendanceFinalController extends Controller
                     ->performedOn($attendance)
                     ->causedBy(Auth::user())
                     ->log('attendance.approved');
-
-                // Send notification if employee has associated user account
-                if ($attendance->employee->user) {
-                    Mail::send('emails.attendance.approved', [
-                        'attendance' => $attendance
-                    ], function ($message) use ($attendance) {
-                        $message->to($attendance->employee->user->email)
-                            ->subject('Attendance Record Approved');
-                    });
-                }
             }
 
             DB::commit();
 
-            return back()->with('success', [
-                'message' => 'Selected attendance records approved successfully.',
-                'count' => count($records)
-            ]);
+            $count = count($records);
+            
+            return redirect()
+                ->route('attendance.final.index')
+                ->with('success', "$count attendance record(s) approved successfully.");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -324,7 +334,7 @@ class AttendanceFinalController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            return back()->withErrors(['approve' => 'Failed to approve attendance records.']);
+            return back()->with('error', 'Failed to approve attendance records.');
         }
     }
 
