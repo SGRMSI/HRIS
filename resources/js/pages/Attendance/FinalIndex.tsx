@@ -38,14 +38,12 @@ import {
     UserCheck,
     UserX,
     Hourglass,
-    PartyPopper,
-    LayoutGrid,
-    LayoutList
+    PartyPopper
 } from 'lucide-react';
 import { StatsDashboard } from '@/components/attendance/StatsDashboard';
-import { AttendanceCalendar } from '@/components/attendance/AttendanceCalendar';
 import { BulkActionBar } from '@/components/attendance/BulkActionBar';
 import { AbsencesTable } from '@/components/attendance/AbsencesTable';
+import { ExportDialog } from '@/components/attendance/ExportDialog';
 
 interface Employee {
     id: number;
@@ -224,8 +222,8 @@ export default function FinalIndex({
     const [singleApprovalId, setSingleApprovalId] = useState<number | null>(null);
     const [singleAbsenceData, setSingleAbsenceData] = useState<{employee_id: number; date: string; shift_id: number | null} | null>(null);
     const [absenceApprovalType, setAbsenceApprovalType] = useState<'approve' | 'deny'>('approve');
-    const [viewType, setViewType] = useState<'table' | 'calendar'>('table');
     const [activeTab, setActiveTab] = useState<string>('attendance');
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
     // Show toast notifications
     useEffect(() => {
@@ -333,9 +331,7 @@ export default function FinalIndex({
     };
 
     const handleExport = () => {
-        router.get(route('attendance.final.export'), filters, {
-            preserveState: true,
-        });
+        setExportDialogOpen(true);
     };
 
     // Absence approval handlers
@@ -429,22 +425,6 @@ export default function FinalIndex({
             return date;
         }
     };
-
-    // Convert attendance records to calendar events
-    const calendarEvents = (attendances?.data || []).map(record => ({
-        id: record.id,
-        date: record.date,
-        title: `${record.employee.name.split(' ')[0]}: ${record.status}`,
-        variant: (
-            record.approved_by ? 'success' :
-            record.status.toLowerCase() === 'absent' ? 'danger' :
-            record.status.toLowerCase() === 'late' ? 'warning' :
-            record.status.toLowerCase() === 'leave' ? 'info' :
-            'default'
-        ) as 'default' | 'success' | 'warning' | 'danger' | 'info',
-        onClick: () => router.visit(route('attendance.final.show', record.id))
-    }));
-
     // Stats configuration for dashboard
     const dashboardStats = [
         {
@@ -524,26 +504,6 @@ export default function FinalIndex({
                         </p>
                     </div>
                     <div className="flex gap-2">
-                        <div className="flex border rounded-md">
-                            <Button
-                                variant={viewType === 'table' ? 'secondary' : 'ghost'}
-                                size="sm"
-                                onClick={() => setViewType('table')}
-                                className="rounded-r-none"
-                            >
-                                <LayoutList className="h-4 w-4 mr-2" />
-                                Table
-                            </Button>
-                            <Button
-                                variant={viewType === 'calendar' ? 'secondary' : 'ghost'}
-                                size="sm"
-                                onClick={() => setViewType('calendar')}
-                                className="rounded-l-none"
-                            >
-                                <LayoutGrid className="h-4 w-4 mr-2" />
-                                Calendar
-                            </Button>
-                        </div>
                         <Button onClick={handleExport} variant="outline">
                             <Download className="h-4 w-4 mr-2" />
                             Export
@@ -760,21 +720,8 @@ export default function FinalIndex({
                     </div>
                 )}
 
-                {/* Attendance Table or Calendar View */}
-                {viewType === 'calendar' ? (
-                    <AttendanceCalendar 
-                        events={calendarEvents}
-                        onDateClick={(date) => {
-                            router.get(route('attendance.final.index'), {
-                                ...filters,
-                                date_from: date,
-                                date_to: date
-                            });
-                        }}
-                    />
-                ) : (
-                    <>
-                    <Card>
+                {/* Attendance Table */}
+                <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle>Attendance Records</CardTitle>
@@ -998,8 +945,6 @@ export default function FinalIndex({
                         </div>
                     </div>
                 )}
-                </>
-                )}
 
                 {/* Absences Table */}
                 <div className="mt-6">
@@ -1193,6 +1138,15 @@ export default function FinalIndex({
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                <ExportDialog
+                    open={exportDialogOpen}
+                    onOpenChange={setExportDialogOpen}
+                    exportRoute={route('attendance.final.export')}
+                    companies={companies}
+                    employees={employees}
+                    currentFilters={filters}
+                />
             </div>
         </AppLayout>
     );

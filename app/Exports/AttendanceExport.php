@@ -28,6 +28,7 @@ class AttendanceExport implements FromCollection, WithHeadings, WithMapping
             ->when($this->filters['company_id'] ?? null, function ($q) {
                 $q->whereHas('employee', fn($q) => $q->where('company_id', $this->filters['company_id']));
             })
+            ->when($this->filters['employee_id'] ?? null, fn($q) => $q->where('employee_id', $this->filters['employee_id']))
             ->when($this->filters['status'] ?? null, fn($q) => $q->where('status', $this->filters['status']))
             ->orderBy('date')
             ->orderBy('employee_id')

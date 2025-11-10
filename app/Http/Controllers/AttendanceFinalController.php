@@ -592,21 +592,21 @@ class AttendanceFinalController extends Controller
      */
     public function export(Request $request)
     {
-        if (!Auth::user()->can('export attendances')) {
-            abort(403);
-        }
-
         $request->validate([
-            'date_from' => 'required|date',
-            'date_to' => 'required|date|after_or_equal:date_from',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
             'company_id' => 'nullable|exists:companies,company_id',
+            'employee_id' => 'nullable|exists:employees,employee_id',
             'status' => 'nullable|string'
         ]);
 
+        $dateFrom = $request->date_from ? Carbon::parse($request->date_from)->format('Y-m-d') : 'all';
+        $dateTo = $request->date_to ? Carbon::parse($request->date_to)->format('Y-m-d') : 'all';
+
         $filename = sprintf(
             'attendance_%s_to_%s.xlsx',
-            Carbon::parse($request->date_from)->format('Y-m-d'),
-            Carbon::parse($request->date_to)->format('Y-m-d')
+            $dateFrom,
+            $dateTo
         );
 
         try {
@@ -615,6 +615,7 @@ class AttendanceFinalController extends Controller
                     'date_from',
                     'date_to',
                     'company_id',
+                    'employee_id',
                     'status'
                 ])),
                 $filename

@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { Calendar, CheckCircle2, Clock, Download, Eye, FileText, Filter, PlayCircle, RotateCcw, Send, User, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { ExportDialog } from '@/components/attendance/ExportDialog';
 
 interface Batch {
     id: number;
@@ -135,6 +136,7 @@ export default function Processed({ batches, processed, filters, companies, empl
     const [processDialogOpen, setProcessDialogOpen] = useState(false);
     const [selectedBatchId, setSelectedBatchId] = useState<number | null>(null);
     const [dialogAction, setDialogAction] = useState<'process' | 'reprocess' | 'finalize'>('process');
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
     // Filter employees based on selected company
     const filteredEmployees = filters.company_id 
@@ -418,7 +420,7 @@ export default function Processed({ batches, processed, filters, companies, empl
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold">Processed Records</h3>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)}>
                             <Download className="mr-2 h-4 w-4" />
                             Export
                         </Button>
@@ -664,6 +666,15 @@ export default function Processed({ batches, processed, filters, companies, empl
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <ExportDialog
+                open={exportDialogOpen}
+                onOpenChange={setExportDialogOpen}
+                exportRoute={route('attendance.processed.export')}
+                companies={companies}
+                employees={employees}
+                currentFilters={filters}
+            />
         </AppLayout>
     );
 }

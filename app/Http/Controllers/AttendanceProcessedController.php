@@ -318,4 +318,24 @@ class AttendanceProcessedController extends Controller
             ]);
         }
     }
+
+    /**
+     * Export processed attendance records to Excel.
+     */
+    public function export(Request $request)
+    {
+        $filters = $request->only([
+            'company_id',
+            'employee_id',
+            'date_from',
+            'date_to',
+            'status',
+            'batch_id'
+        ]);
+
+        return \Excel::download(
+            new \App\Exports\AttendanceProcessedExport($filters),
+            'processed_attendance_' . now()->format('Y-m-d_His') . '.xlsx'
+        );
+    }
 }

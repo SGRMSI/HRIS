@@ -25,21 +25,22 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::delete('{batch}', [AttendanceRawController::class, 'destroy'])->name('destroy');
     });
     
-        // Processed Attendance
+    // Processed Attendance
     Route::prefix('processed')->name('processed.')->group(function () {
         Route::get('/', [AttendanceProcessedController::class, 'index'])->name('index');
         Route::post('process/{batch:batch_id}', [AttendanceProcessedController::class, 'process'])->name('process');
         Route::post('reprocess', [AttendanceProcessedController::class, 'reprocess'])->name('reprocess');
         Route::post('finalize/{batch:batch_id}', [AttendanceProcessedController::class, 'finalize'])->name('finalize');
+        Route::get('export', [AttendanceProcessedController::class, 'export'])->name('export');
     });
     
     // Final Attendance Records
     Route::prefix('final')->name('final.')->group(function () {
         Route::get('/', [AttendanceFinalController::class, 'index'])->name('index');
+        Route::get('export', [AttendanceFinalController::class, 'export'])->name('export');
         Route::get('{attendance}', [AttendanceFinalController::class, 'show'])->name('show');
         Route::put('{attendance}', [AttendanceFinalController::class, 'update'])->name('update');
         Route::post('bulk-approve', [AttendanceFinalController::class, 'bulkApprove'])->name('bulk-approve');
-        Route::get('export', [AttendanceFinalController::class, 'export'])->name('export');
         
         // Absence approval routes
         Route::post('absences/approve', [AttendanceFinalController::class, 'approveAbsence'])->name('absences.approve');
