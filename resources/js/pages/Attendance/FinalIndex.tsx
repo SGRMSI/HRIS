@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
     Dialog,
@@ -23,7 +24,7 @@ import {
     CheckCircle2, 
     XCircle, 
     Clock, 
-    Calendar,
+    Calendar as CalendarIcon,
     User,
     Filter,
     Download,
@@ -33,8 +34,18 @@ import {
     Building2,
     Edit,
     Square,
-    CheckCheck
+    CheckCheck,
+    UserCheck,
+    UserX,
+    Hourglass,
+    PartyPopper,
+    LayoutGrid,
+    LayoutList
 } from 'lucide-react';
+import { StatsDashboard } from '@/components/attendance/StatsDashboard';
+import { AttendanceCalendar } from '@/components/attendance/AttendanceCalendar';
+import { BulkActionBar } from '@/components/attendance/BulkActionBar';
+import { AbsencesTable } from '@/components/attendance/AbsencesTable';
 
 interface Employee {
     id: number;
@@ -90,8 +101,33 @@ interface Status {
     label: string;
 }
 
+interface AbsenceRecord {
+    employee_id: number;
+    employee: Employee;
+    date: string;
+    shift_id: number | null;
+    shift: Shift | null;
+    status: string;
+    approved_by: string | null;
+    approved_at: string | null;
+    can_approve: boolean;
+}
+
+interface LeaveRecord {
+    id: number;
+    employee: Employee;
+    leave_type: string;
+    date_start: string;
+    date_end: string;
+    period: string;
+    days_count: number;
+    status: string;
+    has_document: boolean;
+    approved_by: string | null;
+}
+
 interface Props {
-    attendances: {
+    attendances?: {
         data: AttendanceRecord[];
         current_page: number;
         last_page: number;
@@ -103,9 +139,34 @@ interface Props {
             active: boolean;
         }>;
     };
-    pendingCount: number;
-    filteredPendingCount: number;
-    filters: {
+    absences?: {
+        data: AbsenceRecord[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
+    leaves?: {
+        data: LeaveRecord[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+    };
+    stats?: {
+        total: number;
+        present: number;
+        late: number;
+        undertime: number;
+        absent: number;
+        on_leave: number;
+        pending_approval: number;
+        pending_absences: number;
+        approved: number;
+    };
+    pendingCount?: number;
+    filteredPendingCount?: number;
+    filters?: {
         search?: string;
         date_from?: string;
         date_to?: string;
@@ -113,9 +174,9 @@ interface Props {
         company_id?: number;
         employee_id?: number;
     };
-    companies: Company[];
-    employees: EmployeeOption[];
-    statuses: Status[];
+    companies?: Company[];
+    employees?: EmployeeOption[];
+    statuses?: Status[];
 }
 
 function getStatusBadge(status: string, approved: boolean) {
@@ -126,6 +187,10 @@ function getStatusBadge(status: string, approved: boolean) {
     switch (status.toLowerCase()) {
         case 'present':
             return <Badge variant="default">Present</Badge>;
+        case 'late':
+            return <Badge variant="default" className="bg-yellow-600">Late</Badge>;
+        case 'undertime':
+            return <Badge variant="default" className="bg-orange-600">Undertime</Badge>;
         case 'absent':
             return <Badge variant="destructive">Absent</Badge>;
         case 'leave':
@@ -137,13 +202,30 @@ function getStatusBadge(status: string, approved: boolean) {
     }
 }
 
-export default function FinalIndex({ attendances, pendingCount, filteredPendingCount, filters = {}, companies = [], employees = [], statuses = [] }: Props) {
+export default function FinalIndex({ 
+    attendances = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0, links: [] }, 
+    absences = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0 }, 
+    leaves = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0 }, 
+    stats = { total: 0, present: 0, late: 0, undertime: 0, absent: 0, on_leave: 0, pending_approval: 0, pending_absences: 0, approved: 0 }, 
+    pendingCount = 0, 
+    filteredPendingCount = 0, 
+    filters = {}, 
+    companies = [], 
+    employees = [], 
+    statuses = [] 
+}: Props) {
     const { flash } = usePage().props as any;
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [selectedAbsences, setSelectedAbsences] = useState<{employee_id: number; date: string; shift_id: number | null}[]>([]);
     const [bulkProcessing, setBulkProcessing] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
+    const [showAbsenceApproveModal, setShowAbsenceApproveModal] = useState(false);
     const [approvalType, setApprovalType] = useState<'bulk' | 'single'>('bulk');
     const [singleApprovalId, setSingleApprovalId] = useState<number | null>(null);
+    const [singleAbsenceData, setSingleAbsenceData] = useState<{employee_id: number; date: string; shift_id: number | null} | null>(null);
+    const [absenceApprovalType, setAbsenceApprovalType] = useState<'approve' | 'deny'>('approve');
+    const [viewType, setViewType] = useState<'table' | 'calendar'>('table');
+    const [activeTab, setActiveTab] = useState<string>('attendance');
 
     // Show toast notifications
     useEffect(() => {
@@ -163,7 +245,7 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
     // Determine which count to show (use filtered if filters are active, otherwise use total)
     const hasActiveFilters = !!(filters.search || filters.date_from || filters.date_to || 
                                  filters.status || filters.company_id || filters.employee_id);
-    const displayPendingCount = hasActiveFilters ? filteredPendingCount : pendingCount;
+    const displayPendingCount = hasActiveFilters ? (filteredPendingCount || 0) : (pendingCount || 0);
 
     const handleFilter = (key: string, value: string) => {
         const filterValue = value === 'all' ? undefined : value;
@@ -175,7 +257,7 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
     };
 
     const handleSelectAllPending = () => {
-        const pendingIds = attendances.data
+        const pendingIds = (attendances?.data || [])
             .filter(a => !a.approved_by && a.can_approve)
             .map(a => a.id);
         setSelectedIds(pendingIds);
@@ -256,6 +338,76 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
         });
     };
 
+    // Absence approval handlers
+    const handleSelectAllAbsences = () => {
+        const allAbsences = absences.data
+            .filter(a => a.can_approve)
+            .map(a => ({ employee_id: a.employee_id, date: a.date, shift_id: a.shift_id }));
+        setSelectedAbsences(allAbsences);
+    };
+
+    const handleBulkApproveAbsences = () => {
+        if (selectedAbsences.length === 0) {
+            toast.error('Please select absences to approve');
+            return;
+        }
+        setAbsenceApprovalType('approve');
+        setShowAbsenceApproveModal(true);
+    };
+
+    const handleApproveAbsence = (employee_id: number, date: string, shift_id: number | null) => {
+        setSingleAbsenceData({ employee_id, date, shift_id });
+        setAbsenceApprovalType('approve');
+        setShowAbsenceApproveModal(true);
+    };
+
+    const handleDenyAbsence = (employee_id: number, date: string) => {
+        router.post(
+            route('attendance.final.absences.deny'),
+            { employee_id, date },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Absence denied successfully');
+                },
+            }
+        );
+    };
+
+    const handleAbsenceApprovalConfirm = () => {
+        setBulkProcessing(true);
+        
+        if (singleAbsenceData) {
+            // Single approval
+            router.post(
+                route('attendance.final.absences.approve'),
+                singleAbsenceData,
+                {
+                    preserveScroll: true,
+                    onFinish: () => {
+                        setBulkProcessing(false);
+                        setShowAbsenceApproveModal(false);
+                        setSingleAbsenceData(null);
+                    },
+                }
+            );
+        } else {
+            // Bulk approval
+            router.post(
+                route('attendance.final.absences.bulk-approve'),
+                { absences: selectedAbsences },
+                {
+                    preserveScroll: true,
+                    onFinish: () => {
+                        setBulkProcessing(false);
+                        setShowAbsenceApproveModal(false);
+                        setSelectedAbsences([]);
+                    },
+                }
+            );
+        }
+    };
+
     const formatTime = (datetime: string | null) => {
         if (!datetime) return '-';
         try {
@@ -278,6 +430,81 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
         }
     };
 
+    // Convert attendance records to calendar events
+    const calendarEvents = (attendances?.data || []).map(record => ({
+        id: record.id,
+        date: record.date,
+        title: `${record.employee.name.split(' ')[0]}: ${record.status}`,
+        variant: (
+            record.approved_by ? 'success' :
+            record.status.toLowerCase() === 'absent' ? 'danger' :
+            record.status.toLowerCase() === 'late' ? 'warning' :
+            record.status.toLowerCase() === 'leave' ? 'info' :
+            'default'
+        ) as 'default' | 'success' | 'warning' | 'danger' | 'info',
+        onClick: () => router.visit(route('attendance.final.show', record.id))
+    }));
+
+    // Stats configuration for dashboard
+    const dashboardStats = [
+        {
+            title: 'Total Records',
+            value: stats?.total || 0,
+            icon: User,
+            description: 'All attendance records',
+            variant: 'default' as const,
+        },
+        {
+            title: 'Present',
+            value: stats?.present || 0,
+            icon: UserCheck,
+            description: `${((stats?.total || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.present || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% attendance rate`,
+            variant: 'success' as const,
+        },
+        {
+            title: 'Late',
+            value: stats?.late || 0,
+            icon: Clock,
+            description: `${((stats?.total || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.late || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% late rate`,
+            variant: 'warning' as const,
+        },
+        {
+            title: 'Undertime',
+            value: stats?.undertime || 0,
+            icon: Hourglass,
+            description: `${((stats?.total || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.undertime || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% undertime`,
+            variant: 'warning' as const,
+        },
+        {
+            title: 'Absent',
+            value: stats?.absent || 0,
+            icon: UserX,
+            description: `${((stats?.present || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.absent || 0) / ((stats?.present || 0) + (stats?.absent || 0))) * 100) : 0}% absent rate`,
+            variant: 'danger' as const,
+        },
+        {
+            title: 'On Leave',
+            value: stats?.on_leave || 0,
+            icon: PartyPopper,
+            description: 'Approved leave',
+            variant: 'info' as const,
+        },
+        {
+            title: 'Pending Approval (Attendance)',
+            value: stats?.pending_approval || 0,
+            icon: AlertCircle,
+            description: 'Attendance records awaiting approval',
+            variant: 'warning' as const,
+        },
+        {
+            title: 'Pending Approval (Absences)',
+            value: stats?.pending_absences || 0,
+            icon: AlertCircle,
+            description: 'Absences awaiting approval',
+            variant: 'warning' as const,
+        },
+    ];
+
     return (
         <AppLayout
             breadcrumbs={[
@@ -296,11 +523,38 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
                             Review, approve, and manage attendance records
                         </p>
                     </div>
-                    <Button onClick={handleExport} variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export
-                    </Button>
+                    <div className="flex gap-2">
+                        <div className="flex border rounded-md">
+                            <Button
+                                variant={viewType === 'table' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setViewType('table')}
+                                className="rounded-r-none"
+                            >
+                                <LayoutList className="h-4 w-4 mr-2" />
+                                Table
+                            </Button>
+                            <Button
+                                variant={viewType === 'calendar' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setViewType('calendar')}
+                                className="rounded-l-none"
+                            >
+                                <LayoutGrid className="h-4 w-4 mr-2" />
+                                Calendar
+                            </Button>
+                        </div>
+                        <Button onClick={handleExport} variant="outline">
+                            <Download className="h-4 w-4 mr-2" />
+                            Export
+                        </Button>
+                    </div>
                 </div>
+
+                {/* Stats Dashboard */}
+                <StatsDashboard stats={dashboardStats} columns={(stats?.total || 0) > 0 ? 5 : 4} />
+
+                {/* Flash Messages */}
                 {flash?.success && (
                     <Alert className="bg-green-50 border-green-200">
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -506,8 +760,21 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
                     </div>
                 )}
 
-                {/* Attendance Table */}
-                <Card>
+                {/* Attendance Table or Calendar View */}
+                {viewType === 'calendar' ? (
+                    <AttendanceCalendar 
+                        events={calendarEvents}
+                        onDateClick={(date) => {
+                            router.get(route('attendance.final.index'), {
+                                ...filters,
+                                date_from: date,
+                                date_to: date
+                            });
+                        }}
+                    />
+                ) : (
+                    <>
+                    <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle>Attendance Records</CardTitle>
@@ -519,7 +786,7 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
                     <CardContent className="p-0">
                         {!attendances?.data || attendances.data.length === 0 ? (
                             <div className="py-12 text-center text-gray-500">
-                                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                 <p>No attendance records found</p>
                                 <p className="text-sm mt-2">Try adjusting your filters</p>
                             </div>
@@ -542,7 +809,7 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {attendances.data.map((record) => (
+                                        {(attendances?.data || []).map((record) => (
                                             <TableRow key={record.id}>
                                                 <TableCell>
                                                     {!record.approved_by && (
@@ -567,7 +834,7 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4 text-gray-400" />
+                                                        <CalendarIcon className="h-4 w-4 text-gray-400" />
                                                         <span className="text-sm">{formatDate(record.date)}</span>
                                                     </div>
                                                 </TableCell>
@@ -694,25 +961,160 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
                     </CardContent>
                 </Card>
 
-                {/* Pagination */}
-                {attendances.last_page > 1 && (
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-gray-600">
+                {/* Attendance Pagination */}
+                {attendances?.last_page > 1 && (
+                    <div className="flex items-center justify-between px-2 py-4">
+                        <p className="text-sm text-muted-foreground">
                             Showing {((attendances.current_page - 1) * attendances.per_page) + 1} to{' '}
                             {Math.min(attendances.current_page * attendances.per_page, attendances.total)} of{' '}
                             {attendances.total} records
                         </p>
                         <div className="flex gap-2">
-                            {attendances.links.map((link, index) => (
-                                <Button
-                                    key={index}
-                                    variant={link.active ? 'default' : 'outline'}
-                                    size="sm"
-                                    disabled={!link.url}
-                                    onClick={() => link.url && router.get(link.url)}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            ))}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={attendances.current_page === 1}
+                                onClick={() => router.get(route('attendance.final.index'), {
+                                    ...filters,
+                                    page: attendances.current_page - 1
+                                })}
+                            >
+                                Previous
+                            </Button>
+                            <span className="flex items-center px-3 text-sm">
+                                Page {attendances.current_page} of {attendances.last_page}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={attendances.current_page === attendances.last_page}
+                                onClick={() => router.get(route('attendance.final.index'), {
+                                    ...filters,
+                                    page: attendances.current_page + 1
+                                })}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                )}
+                </>
+                )}
+
+                {/* Absences Table */}
+                <div className="mt-6">
+                    <AbsencesTable absences={absences} />
+                </div>
+
+                {/* Leaves Table */}
+                {leaves?.data && leaves.data.length > 0 && (
+                    <Card className="mt-6">
+                        <CardHeader>
+                            <CardTitle className="text-xl">On Leave</CardTitle>
+                            <CardDescription>Approved leave requests within the filtered period</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Employee</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Period</TableHead>
+                                            <TableHead>Duration</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-center">Document</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(leaves?.data || []).map((leave) => (
+                                            <TableRow key={leave.id}>
+                                                <TableCell>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <User className="h-4 w-4 text-gray-400" />
+                                                            <span className="font-medium">{leave.employee.name}</span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 mt-1 ml-6">
+                                                            {leave.employee.id_number} • {leave.employee.department}
+                                                        </div>
+                                                        <div className="text-xs text-gray-400 ml-6">
+                                                            <Building2 className="h-3 w-3 inline mr-1" />
+                                                            {leave.employee.company}
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">{leave.leave_type}</Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <CalendarIcon className="h-4 w-4 text-gray-400" />
+                                                        <span className="text-sm">{leave.period}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-sm">{leave.days_count} day{leave.days_count !== 1 ? 's' : ''}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="default" className="bg-green-600">Approved</Badge>
+                                                    {leave.approved_by && (
+                                                        <p className="text-xs text-gray-500 mt-1">by {leave.approved_by}</p>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {leave.has_document ? (
+                                                        <Badge variant="secondary" className="gap-1">
+                                                            <CheckCircle2 className="h-3 w-3" />
+                                                            Attached
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400">No document</span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Leaves Pagination */}
+                {leaves?.data && leaves.data.length > 0 && leaves.last_page > 1 && (
+                    <div className="flex items-center justify-between px-2 py-4">
+                        <div className="text-sm text-muted-foreground">
+                            Showing {((leaves.current_page - 1) * leaves.per_page) + 1} to{' '}
+                            {Math.min(leaves.current_page * leaves.per_page, leaves.total)} of{' '}
+                            {leaves.total} leaves
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.get(route('attendance.final.index'), {
+                                    ...filters,
+                                    leaves_page: leaves.current_page - 1
+                                })}
+                                disabled={leaves.current_page === 1}
+                            >
+                                Previous
+                            </Button>
+                            <div className="text-sm">
+                                Page {leaves.current_page} of {leaves.last_page}
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.get(route('attendance.final.index'), {
+                                    ...filters,
+                                    leaves_page: leaves.current_page + 1
+                                })}
+                                disabled={leaves.current_page === leaves.last_page}
+                            >
+                                Next
+                            </Button>
                         </div>
                     </div>
                 )}
@@ -745,7 +1147,7 @@ export default function FinalIndex({ attendances, pendingCount, filteredPendingC
                             ) : (
                                 <div className="space-y-2">
                                     {singleApprovalId && (() => {
-                                        const record = attendances.data.find(a => a.id === singleApprovalId);
+                                        const record = (attendances?.data || []).find(a => a.id === singleApprovalId);
                                         return record ? (
                                             <div className="space-y-2 text-sm">
                                                 <div className="flex justify-between">

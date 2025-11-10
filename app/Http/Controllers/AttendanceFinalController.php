@@ -6,6 +6,8 @@ use App\Exports\AttendanceExport;
 use App\Models\Attendance;
 use App\Models\Company;
 use App\Models\Employee;
+use App\Models\EmployeeSchedule;
+use App\Models\EmployeeLeave;
 use App\Services\ScheduleResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -33,6 +35,14 @@ class AttendanceFinalController extends Controller
      */
     public function index(Request $request)
     {
+        // Set default date filters if not provided (1st of current month to today)
+        if (!$request->has('date_from') && !$request->has('date_to')) {
+            $request->merge([
+                'date_from' => now()->startOfMonth()->format('Y-m-d'),
+                'date_to' => now()->format('Y-m-d'),
+            ]);
+        }
+        
         // Get companies for filter
         $companies = Company::select(['company_id as id', 'name'])->get();
         
@@ -62,9 +72,11 @@ class AttendanceFinalController extends Controller
                       ->orWhere('last_name', 'like', "%{$search}%");
                 });
             })
-            ->when($request->date_from, fn ($q) => $q->where('date', '>=', $request->date_from))
-            ->when($request->date_to, fn ($q) => $q->where('date', '<=', $request->date_to))
-            ->when($request->status, fn ($q) => $q->where('status', $request->status));
+            ->when($request->date_from, fn ($q) => $q->whereDate('date', '>=', $request->date_from))
+            ->when($request->date_to, fn ($q) => $q->whereDate('date', '<=', $request->date_to))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            // Exclude 'absent' status - those are shown in the Absences table
+            ->where('status', '!=', 'absent');
 
         // Handle request for all pending IDs (for bulk selection across pages)
         if ($request->get_all_pending_ids) {
@@ -75,6 +87,24 @@ class AttendanceFinalController extends Controller
             
             return Inertia::render('Attendance/FinalIndex', [
                 'pendingIds' => $pendingIds,
+            ]);
+        }
+
+        // Handle request for all absence IDs (for bulk selection across pages)
+        if ($request->get_all_absence_ids) {
+            $absencesCollection = $this->calculateAbsences($request);
+            $allAbsenceIds = $absencesCollection
+                ->filter(fn($a) => $a['can_approve'])
+                ->map(fn($a) => [
+                    'employee_id' => $a['employee_id'],
+                    'date' => $a['date'],
+                    'shift_id' => $a['shift_id']
+                ])
+                ->values()
+                ->toArray();
+            
+            return Inertia::render('Attendance/FinalIndex', [
+                'allAbsenceIds' => $allAbsenceIds,
             ]);
         }
 
@@ -131,8 +161,112 @@ class AttendanceFinalController extends Controller
             ->whereNull('approved_by')
             ->count();
 
+        // Calculate statistics for dashboard - using same filters as main query
+        $statsQuery = Attendance::query()
+            ->when($request->company_id, function ($q) use ($request) {
+                $q->whereHas('employee', fn ($q) => $q->where('company_id', $request->company_id));
+            })
+            ->when($request->employee_id, function ($q) use ($request) {
+                $q->where('employee_id', $request->employee_id);
+            })
+            ->when($request->search, function ($query, $search) {
+                $query->whereHas('employee', function ($q) use ($search) {
+                    $q->where('id_number', 'like', "%{$search}%")
+                      ->orWhere('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->date_from, fn($q) => $q->whereDate('date', '>=', $request->date_from))
+            ->when($request->date_to, fn($q) => $q->whereDate('date', '<=', $request->date_to))
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            // Exclude 'absent' status from stats - those are counted separately in absences
+            ->where('status', '!=', 'absent');
+
+        // Calculate absences based on schedules
+        $absencesCollection = $this->calculateAbsences($request);
+        
+        // Manual pagination for absences
+        $absencesPage = $request->get('absences_page', 1);
+        $absencesPerPage = 10;
+        $absencesOffset = ($absencesPage - 1) * $absencesPerPage;
+        
+        $absences = new \Illuminate\Pagination\LengthAwarePaginator(
+            $absencesCollection->slice($absencesOffset, $absencesPerPage)->values(),
+            $absencesCollection->count(),
+            $absencesPerPage,
+            $absencesPage,
+            ['path' => $request->url(), 'query' => $request->query(), 'pageName' => 'absences_page']
+        );
+
+        // Get leaves data
+        $leavesQuery = EmployeeLeave::with(['employee.department', 'employee.company', 'approvedBy'])
+            ->where('status', 'approved')
+            ->when($request->company_id, function ($q) use ($request) {
+                $q->whereHas('employee', fn ($q) => $q->where('company_id', $request->company_id));
+            })
+            ->when($request->employee_id, function ($q) use ($request) {
+                $q->where('employee_id', $request->employee_id);
+            })
+            ->when($request->search, function ($query, $search) {
+                $query->whereHas('employee', function ($q) use ($search) {
+                    $q->where('id_number', 'like', "%{$search}%")
+                      ->orWhere('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->date_from, function ($q) use ($request) {
+                $q->where(function ($query) use ($request) {
+                    $query->whereDate('date_from', '<=', $request->date_to ?? now())
+                          ->whereDate('date_to', '>=', $request->date_from);
+                });
+            })
+            ->when($request->date_to && !$request->date_from, function ($q) use ($request) {
+                $q->where(function ($query) use ($request) {
+                    $query->whereDate('date_from', '<=', $request->date_to)
+                          ->whereDate('date_to', '>=', $request->date_to);
+                });
+            })
+            ->latest('date_from');
+
+        $leaves = $leavesQuery->paginate(10, ['*'], 'leaves_page')
+            ->through(function ($leave) {
+                return [
+                    'id' => $leave->leave_id,
+                    'employee' => [
+                        'id' => $leave->employee->employee_id,
+                        'name' => $leave->employee->first_name . ' ' . $leave->employee->last_name,
+                        'id_number' => $leave->employee->id_number,
+                        'department' => $leave->employee->department->name ?? 'N/A',
+                        'company' => $leave->employee->company->name ?? 'N/A',
+                    ],
+                    'leave_type' => $leave->type,
+                    'date_start' => $leave->date_from->format('Y-m-d'),
+                    'date_end' => $leave->date_to->format('Y-m-d'),
+                    'period' => $leave->date_from->format('M d, Y') . ' - ' . $leave->date_to->format('M d, Y'),
+                    'days_count' => $leave->days_count,
+                    'status' => $leave->status,
+                    'has_document' => !empty($leave->document_path),
+                    'approved_by' => $leave->approvedBy?->name,
+                ];
+            });
+
+        $stats = [
+            'total' => (clone $statsQuery)->count(),
+            'present' => (clone $statsQuery)->where('status', 'present')->count(),
+            'late' => (clone $statsQuery)->where('status', 'late')->count(),
+            'undertime' => (clone $statsQuery)->where('status', 'undertime')->count(),
+            'absent' => $absencesCollection->count(),
+            'on_leave' => $leavesQuery->count(),
+            'pending_approval' => (clone $statsQuery)->whereNull('approved_by')->count(),
+            'pending_absences' => $absencesCollection->where('can_approve', true)->count(),
+            'approved' => (clone $statsQuery)->whereNotNull('approved_by')->count(),
+        ];
+
         return Inertia::render('Attendance/FinalIndex', [
             'attendances' => $attendances,
+            'absences' => $absences,
+            'leaves' => $leaves,
+            'stats' => $stats,
             'pendingCount' => $totalPendingCount, // Total pending in entire system
             'filteredPendingCount' => $filteredPendingCount, // Pending with current filters
             'filters' => $request->only(['search', 'date_from', 'date_to', 'status', 'company_id', 'employee_id']),
@@ -140,9 +274,8 @@ class AttendanceFinalController extends Controller
             'employees' => $employees,
             'statuses' => [
                 ['value' => 'present', 'label' => 'Present'],
-                ['value' => 'absent', 'label' => 'Absent'],
-                ['value' => 'leave', 'label' => 'On Leave'],
-                ['value' => 'holiday', 'label' => 'Holiday']
+                ['value' => 'late', 'label' => 'Late'],
+                ['value' => 'undertime', 'label' => 'Undertime']
             ],
             'can' => [
                 'export' => Auth::user()->can('export attendances'),
@@ -150,6 +283,119 @@ class AttendanceFinalController extends Controller
                 'edit' => Auth::user()->can('edit attendances')
             ]
         ]);
+    }
+
+    /**
+     * Calculate absences based on employee schedules
+     */
+    protected function calculateAbsences(Request $request)
+    {
+        $dateFrom = $request->date_from ?? now()->subDays(30)->format('Y-m-d');
+        $dateTo = $request->date_to ?? now()->format('Y-m-d');
+
+        // Get all employees with schedules in the date range
+        $schedulesQuery = EmployeeSchedule::with(['employee.department', 'employee.company', 'shift'])
+            ->where(function ($q) use ($dateFrom, $dateTo) {
+                $q->where(function ($query) use ($dateFrom, $dateTo) {
+                    // Schedule overlaps with date range
+                    $query->whereDate('date_start', '<=', $dateTo)
+                          ->where(function ($q) use ($dateFrom) {
+                              $q->whereNull('date_end')
+                                ->orWhereDate('date_end', '>=', $dateFrom);
+                          });
+                });
+            })
+            ->when($request->company_id, function ($q) use ($request) {
+                $q->whereHas('employee', fn ($q) => $q->where('company_id', $request->company_id));
+            })
+            ->when($request->employee_id, function ($q) use ($request) {
+                $q->where('employee_id', $request->employee_id);
+            })
+            ->when($request->search, function ($query, $search) {
+                $query->whereHas('employee', function ($q) use ($search) {
+                    $q->where('id_number', 'like', "%{$search}%")
+                      ->orWhere('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%");
+                });
+            })
+            ->get();
+
+        $absences = collect();
+
+        foreach ($schedulesQuery as $schedule) {
+            $start = Carbon::parse(max($schedule->date_start, $dateFrom));
+            $end = $schedule->date_end ? Carbon::parse(min($schedule->date_end, $dateTo)) : Carbon::parse($dateTo);
+
+            // Generate dates for this schedule
+            $currentDate = $start->copy();
+            while ($currentDate->lte($end)) {
+                // Check if there's an attendance record for this date
+                $attendanceRecord = Attendance::with('approvedBy')
+                    ->where('employee_id', $schedule->employee_id)
+                    ->where(DB::raw('DATE(date)'), $currentDate->format('Y-m-d'))
+                    ->first();
+
+                // Check if employee is on leave
+                $onLeave = EmployeeLeave::where('employee_id', $schedule->employee_id)
+                    ->where('status', 'approved')
+                    ->where(DB::raw('DATE(date_from)'), '<=', $currentDate->format('Y-m-d'))
+                    ->where(DB::raw('DATE(date_to)'), '>=', $currentDate->format('Y-m-d'))
+                    ->exists();
+
+                // Include absence if:
+                // 1. No attendance record at all (pending absence)
+                // 2. Has attendance record with status='absent' (approved/denied absence)
+                // Exclude if: has attendance with other status (present, late, etc) or on leave
+                $isAbsence = false;
+                $approvedBy = null;
+                $approvedAt = null;
+
+                if ($onLeave) {
+                    // Skip if on leave
+                    $currentDate->addDay();
+                    continue;
+                }
+
+                if (!$attendanceRecord) {
+                    // No attendance record = pending absence
+                    $isAbsence = true;
+                } elseif ($attendanceRecord->status === 'absent') {
+                    // Has attendance with status='absent' = approved/denied absence
+                    $isAbsence = true;
+                    $approvedBy = $attendanceRecord->approved_by;
+                    $approvedAt = $attendanceRecord->approved_at;
+                }
+
+                if ($isAbsence) {
+                    $absences->push([
+                        'employee_id' => $schedule->employee_id,
+                        'employee' => [
+                            'id' => $schedule->employee->employee_id,
+                            'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
+                            'id_number' => $schedule->employee->id_number,
+                            'department' => $schedule->employee->department->name ?? 'N/A',
+                            'company' => $schedule->employee->company->name ?? 'N/A',
+                        ],
+                        'date' => $currentDate->format('Y-m-d'),
+                        'shift_id' => $schedule->shift_id,
+                        'shift' => $schedule->shift ? [
+                            'id' => $schedule->shift->shift_id,
+                            'name' => $schedule->shift->name,
+                            'time_in' => $schedule->shift->getAttributes()['time_in'],
+                            'time_out' => $schedule->shift->getAttributes()['time_out'],
+                        ] : null,
+                        'status' => 'absent',
+                        'approved_by' => $approvedBy ? ($attendanceRecord->approvedBy->name ?? 'N/A') : null,
+                        'approved_at' => $approvedAt,
+                        'can_approve' => !$approvedBy, // Can only approve if not already approved
+                    ]);
+                }
+
+                $currentDate->addDay();
+            }
+        }
+
+        return $absences;
     }
 
     /**
@@ -380,6 +626,151 @@ class AttendanceFinalController extends Controller
             ]);
 
             throw $e; // Let the exception handler deal with it
+        }
+    }
+
+    /**
+     * Approve an absence - creates an Attendance record with status='absent'
+     */
+    public function approveAbsence(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,employee_id',
+            'date' => 'required|date',
+            'shift_id' => 'nullable|exists:shifts,shift_id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Check if attendance record already exists
+            $existing = Attendance::where('employee_id', $validated['employee_id'])
+                ->where(DB::raw('DATE(date)'), $validated['date'])
+                ->first();
+
+            if ($existing) {
+                DB::rollBack();
+                return back()->with('error', 'Attendance record already exists for this date.');
+            }
+
+            // Create absence attendance record
+            $attendance = Attendance::create([
+                'employee_id' => $validated['employee_id'],
+                'date' => $validated['date'],
+                'shift_id' => $validated['shift_id'],
+                'status' => 'absent',
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
+                'created_by' => Auth::id(),
+            ]);
+
+            activity()
+                ->performedOn($attendance)
+                ->causedBy(Auth::user())
+                ->withProperties(['date' => $validated['date']])
+                ->log('Approved absence');
+
+            DB::commit();
+
+            return back()->with('success', 'Absence approved successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to approve absence', [
+                'data' => $validated,
+                'error' => $e->getMessage()
+            ]);
+            return back()->with('error', 'Failed to approve absence.');
+        }
+    }
+
+    /**
+     * Deny an absence - simply don't create a record (it won't count)
+     */
+    public function denyAbsence(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,employee_id',
+            'date' => 'required|date',
+        ]);
+
+        // Log the denial for audit purposes
+        activity()
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'employee_id' => $validated['employee_id'],
+                'date' => $validated['date'],
+                'action' => 'denied'
+            ])
+            ->log('Denied absence');
+
+        return back()->with('success', 'Absence denied successfully.');
+    }
+
+    /**
+     * Bulk approve absences
+     */
+    public function bulkApproveAbsences(Request $request)
+    {
+        $validated = $request->validate([
+            'absences' => 'required|array',
+            'absences.*.employee_id' => 'required|exists:employees,employee_id',
+            'absences.*.date' => 'required|date',
+            'absences.*.shift_id' => 'nullable|exists:shifts,shift_id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $approved = 0;
+            $skipped = 0;
+
+            foreach ($validated['absences'] as $absence) {
+                // Check if attendance record already exists
+                $existing = Attendance::where('employee_id', $absence['employee_id'])
+                    ->where(DB::raw('DATE(date)'), $absence['date'])
+                    ->exists();
+
+                if ($existing) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Create absence attendance record
+                Attendance::create([
+                    'employee_id' => $absence['employee_id'],
+                    'date' => $absence['date'],
+                    'shift_id' => $absence['shift_id'] ?? null,
+                    'status' => 'absent',
+                    'approved_by' => Auth::id(),
+                    'approved_at' => now(),
+                    'created_by' => Auth::id(),
+                ]);
+
+                $approved++;
+            }
+
+            activity()
+                ->causedBy(Auth::user())
+                ->withProperties([
+                    'approved' => $approved,
+                    'skipped' => $skipped
+                ])
+                ->log('Bulk approved absences');
+
+            DB::commit();
+
+            $message = "Successfully approved {$approved} absence(s).";
+            if ($skipped > 0) {
+                $message .= " {$skipped} record(s) were skipped (already exist).";
+            }
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to bulk approve absences', [
+                'error' => $e->getMessage()
+            ]);
+            return back()->with('error', 'Failed to approve absences.');
         }
     }
 }
