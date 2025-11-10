@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AttendanceProcessedExport;
 
 class AttendanceProcessedController extends Controller
 {
@@ -333,8 +335,8 @@ class AttendanceProcessedController extends Controller
             'batch_id'
         ]);
 
-        return \Excel::download(
-            new \App\Exports\AttendanceProcessedExport($filters),
+        return Excel::download(
+            new AttendanceProcessedExport($filters),
             'processed_attendance_' . now()->format('Y-m-d_His') . '.xlsx'
         );
     }
