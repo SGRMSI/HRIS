@@ -9,8 +9,15 @@ use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithBatchInserts;
 
-class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidation
+class AttendanceRawImport implements 
+    ToCollection, 
+    WithHeadingRow, 
+    WithValidation,
+    WithChunkReading,
+    WithBatchInserts
 {
     private int $batchId;
     private int $rowCount = 0;
@@ -102,6 +109,22 @@ class AttendanceRawImport implements ToCollection, WithHeadingRow, WithValidatio
     public function getRowCount(): int
     {
         return $this->rowCount;
+    }
+
+    /**
+     * Process 1000 rows at a time to avoid timeout
+     */
+    public function chunkSize(): int
+    {
+        return 1000;
+    }
+
+    /**
+     * Batch insert 500 records at once for better performance
+     */
+    public function batchSize(): int
+    {
+        return 500;
     }
 
     private function parseDateTime($value): ?Carbon

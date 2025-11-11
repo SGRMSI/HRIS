@@ -48,6 +48,9 @@ class AttendanceController extends BaseController
      */
     public function import(UploadAttendanceRequest $request)
     {
+        set_time_limit(300); // 5 minutes
+        ini_set('memory_limit', '512M');
+
         try {
             DB::beginTransaction();
 
@@ -76,7 +79,7 @@ class AttendanceController extends BaseController
                 'created_by' => auth()->id(),
             ]);
 
-            // Import the Excel file using Laravel Excel
+            // Import the Excel file using Laravel Excel with chunking
             $import = new \App\Imports\AttendanceRawImport($batch->batch_id);
             \Maatwebsite\Excel\Facades\Excel::import($import, $file);
             
