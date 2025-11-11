@@ -170,7 +170,7 @@ export function QuickActions() {
                                         {dateFrom ? format(dateFrom, 'PPP') : 'Pick a date'}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[350px] p-0" align="start">
+                                <PopoverContent className="w-[300px] p-0" align="start">
                                     <Calendar
                                         mode="single"
                                         selected={dateFrom}
@@ -198,7 +198,7 @@ export function QuickActions() {
                                         {dateTo ? format(dateTo, 'PPP') : 'Pick a date'}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-[350px] p-0" align="start">
+                                <PopoverContent className="w-[300px] p-0" align="start">
                                     <Calendar
                                         mode="single"
                                         selected={dateTo}
