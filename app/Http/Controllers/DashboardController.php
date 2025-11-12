@@ -7,13 +7,14 @@ use App\Models\Employee;
 use App\Models\EmployeeLeave;
 use App\Models\Holiday;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Spatie\Activitylog\Models\Activity;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Get employee counts by employment status
         $employeeStats = [
@@ -23,8 +24,11 @@ class DashboardController extends Controller
             'contractual' => Employee::where('employment_status', 'Contractual')->count(),
         ];
 
-        // Get today's attendance summary
-        $attendanceSummary = $this->getAttendanceSummary();
+        // Get selected month or default to current
+        $selectedMonth = $request->input('month', Carbon::now()->format('Y-m'));
+
+        // Get monthly attendance summary
+        $attendanceSummary = $this->getAttendanceSummary($selectedMonth);
 
         // Get pending leave requests
         $leaveSummary = $this->getLeaveSummary();
@@ -41,55 +45,76 @@ class DashboardController extends Controller
             'leaveSummary' => $leaveSummary,
             'recentActivities' => $recentActivities,
             'upcomingEvents' => $upcomingEvents,
+            'selectedMonth' => $selectedMonth,
         ]);
     }
 
-    private function getAttendanceSummary()
+    private function getAttendanceSummary($selectedMonth)
     {
+        // Parse selected month
+        $date = Carbon::createFromFormat('Y-m', $selectedMonth);
+        $monthStart = $date->copy()->startOfMonth();
+        $monthEnd = $date->copy()->endOfMonth();
         $today = Carbon::today();
-        $totalEmployees = Employee::count();
+        
+        $totalEmployees = Employee::where('employment_status', '!=', 'Resigned')->count();
 
-        // Today's attendance
-        $todayAttendance = Attendance::whereDate('date', $today)
-            ->select('status', DB::raw('count(*) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
+        // Today's present count (only if viewing current month)
+        $presentToday = 0;
+        if ($date->isSameMonth(Carbon::now())) {
+            $presentToday = Attendance::whereDate('date', $today)
+                ->whereIn('status', ['present', 'late'])
+                ->distinct('employee_id')
+                ->count('employee_id');
+        }
 
-        // This month's attendance stats
-        $monthStart = Carbon::now()->startOfMonth();
-        $monthEnd = Carbon::now()->endOfMonth();
-
+        // Selected month's attendance - count distinct employee+date combinations
+        // Following copilot-instructions.md #12: SQLite compatible syntax
         $monthlyAttendance = Attendance::whereBetween('date', [$monthStart, $monthEnd])
-            ->select('status', DB::raw('count(*) as count'))
+            ->select('status', DB::raw('count(DISTINCT employee_id || date) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
 
-        $totalMonthlyRecords = array_sum($monthlyAttendance);
-        $workDays = $this->calculateWorkDays($monthStart, $monthEnd);
-        $expectedRecords = $totalEmployees * $workDays;
+        // Calculate working days (excluding weekends)
+        $workingDays = $this->calculateWorkDays($monthStart, $monthEnd);
+        
+        // Total calendar days in month
+        $totalDays = $monthEnd->day;
+
+        // Get individual status counts
+        $presentDays = $monthlyAttendance['present'] ?? 0;
+        $lateDays = $monthlyAttendance['late'] ?? 0;
+        $absentDays = $monthlyAttendance['absent'] ?? 0;
+        $leaveDays = $monthlyAttendance['on_leave'] ?? 0;
+
+        // Calculate attendance rate: (worked days / expected days) * 100
+        $workedDays = $presentDays + $lateDays;
+        $expectedDays = $totalEmployees * $workingDays;
+        $attendanceRate = $expectedDays > 0 
+            ? round(($workedDays / $expectedDays) * 100, 2) 
+            : 0;
+
+        // Pending approvals (all pending, not month-specific)
+        $pendingApprovals = Attendance::where('requires_approval', true)
+            ->whereNull('approved_at')
+            ->count();
 
         return [
-            'today' => [
-                'present' => ($todayAttendance['present'] ?? 0) + ($todayAttendance['late'] ?? 0),
-                'late' => $todayAttendance['late'] ?? 0,
-                'absent' => $todayAttendance['absent'] ?? 0,
-                'on_leave' => $todayAttendance['on_leave'] ?? 0,
-                'total_expected' => $totalEmployees,
-            ],
+            'month_label' => $date->format('F Y'),
+            'is_current_month' => $date->isSameMonth(Carbon::now()),
             'this_month' => [
-                'total_days' => $workDays,
-                'worked_days' => ($monthlyAttendance['present'] ?? 0) + ($monthlyAttendance['late'] ?? 0),
-                'leave_days' => $monthlyAttendance['on_leave'] ?? 0,
-                'absent_days' => $monthlyAttendance['absent'] ?? 0,
-                'average_attendance_rate' => $expectedRecords > 0
-                    ? (($totalMonthlyRecords - ($monthlyAttendance['absent'] ?? 0)) / $expectedRecords) * 100
-                    : 0,
+                'total_days' => $totalDays,
+                'working_days' => $workingDays,
+                'present_days' => $presentDays,
+                'late_days' => $lateDays,
+                'absent_days' => $absentDays,
+                'leave_days' => $leaveDays,
+                'average_attendance_rate' => $attendanceRate,
+                'total_employees' => $totalEmployees,
+                'present_today' => $presentToday,
             ],
-            'pending_approvals' => Attendance::where('requires_approval', true)
-                ->whereNull('approved_at')
-                ->count(),
+            'pending_approvals' => $pendingApprovals,
         ];
     }
 

@@ -24,19 +24,18 @@ interface EmployeeStats {
 }
 
 interface AttendanceSummary {
-    today: {
-        present: number;
-        late: number;
-        absent: number;
-        on_leave: number;
-        total_expected: number;
-    };
+    month_label: string;
+    is_current_month: boolean;
     this_month: {
         total_days: number;
-        worked_days: number;
-        leave_days: number;
+        working_days: number;
+        present_days: number;
+        late_days: number;
         absent_days: number;
+        leave_days: number;
         average_attendance_rate: number;
+        total_employees: number;
+        present_today: number;
     };
     pending_approvals: number;
 }
@@ -98,9 +97,17 @@ interface DashboardProps {
     leaveSummary: LeaveSummaryData;
     recentActivities: Activity[];
     upcomingEvents: UpcomingEvent[];
+    selectedMonth: string;
 }
 
-export default function Dashboard({ employeeStats, attendanceSummary, leaveSummary, recentActivities, upcomingEvents }: DashboardProps) {
+export default function Dashboard({
+    employeeStats,
+    attendanceSummary,
+    leaveSummary,
+    recentActivities,
+    upcomingEvents,
+    selectedMonth,
+}: DashboardProps) {
     const stats = [
         {
             title: 'Total Employees',
@@ -163,7 +170,7 @@ export default function Dashboard({ employeeStats, attendanceSummary, leaveSumma
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     {/* Attendance Summary */}
-                    <AttendanceSummaryWidget summary={attendanceSummary} />
+                    <AttendanceSummaryWidget summary={attendanceSummary} selectedMonth={selectedMonth} />
                     {/* Recent Activity */}
                     <RecentActivity activities={recentActivities} />
                 </div>

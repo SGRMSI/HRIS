@@ -79,7 +79,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[400px] pr-4">
+                <ScrollArea className="h-auto pr-4">
                     <div className="space-y-4">
                         {activities.length === 0 ? (
                             <p className="py-8 text-center text-sm text-muted-foreground">No recent activity</p>
