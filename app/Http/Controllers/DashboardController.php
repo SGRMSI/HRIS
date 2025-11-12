@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\EmployeeLeave;
+use App\Models\EmployeeSchedule;
 use App\Models\Holiday;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -68,25 +69,37 @@ class DashboardController extends Controller
                 ->count('employee_id');
         }
 
-        // Selected month's attendance - count distinct employee+date combinations
-        // Following copilot-instructions.md #12: SQLite compatible syntax
-        $monthlyAttendance = Attendance::whereBetween('date', [$monthStart, $monthEnd])
-            ->select('status', DB::raw('count(DISTINCT employee_id || date) as count'))
-            ->groupBy('status')
-            ->pluck('count', 'status')
-            ->toArray();
-
-        // Calculate working days (excluding weekends)
+        // Calculate working days (excluding weekends and holidays)
         $workingDays = $this->calculateWorkDays($monthStart, $monthEnd);
         
         // Total calendar days in month
         $totalDays = $monthEnd->day;
 
-        // Get individual status counts
-        $presentDays = $monthlyAttendance['present'] ?? 0;
-        $lateDays = $monthlyAttendance['late'] ?? 0;
-        $absentDays = $monthlyAttendance['absent'] ?? 0;
-        $leaveDays = $monthlyAttendance['on_leave'] ?? 0;
+        // Get individual status counts for the selected month
+        // Count distinct records (not grouped counts)
+        $presentDays = Attendance::whereBetween('date', [$monthStart, $monthEnd])
+            ->where('status', 'present')
+            ->count();
+
+        $lateDays = Attendance::whereBetween('date', [$monthStart, $monthEnd])
+            ->where('status', 'late')
+            ->count();
+
+        $absentDays = Attendance::whereBetween('date', [$monthStart, $monthEnd])
+            ->where('status', 'absent')
+            ->count();
+
+        // Get approved leaves that fall within this month
+        $leaveDays = EmployeeLeave::where('status', 'approved')
+            ->where(function ($query) use ($monthStart, $monthEnd) {
+                $query->whereBetween(DB::raw('DATE(date_from)'), [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                      ->orWhereBetween(DB::raw('DATE(date_to)'), [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+                      ->orWhere(function ($q) use ($monthStart, $monthEnd) {
+                          $q->where(DB::raw('DATE(date_from)'), '<=', $monthStart->format('Y-m-d'))
+                            ->where(DB::raw('DATE(date_to)'), '>=', $monthEnd->format('Y-m-d'));
+                      });
+            })
+            ->sum('days_count');
 
         // Calculate attendance rate: (worked days / expected days) * 100
         $workedDays = $presentDays + $lateDays;
@@ -96,8 +109,7 @@ class DashboardController extends Controller
             : 0;
 
         // Pending approvals (all pending, not month-specific)
-        $pendingApprovals = Attendance::where('requires_approval', true)
-            ->whereNull('approved_at')
+        $pendingApprovals = Attendance::whereNull('approved_by')
             ->count();
 
         return [
@@ -109,7 +121,7 @@ class DashboardController extends Controller
                 'present_days' => $presentDays,
                 'late_days' => $lateDays,
                 'absent_days' => $absentDays,
-                'leave_days' => $leaveDays,
+                'leave_days' => (int) $leaveDays,
                 'average_attendance_rate' => $attendanceRate,
                 'total_employees' => $totalEmployees,
                 'present_today' => $presentToday,
@@ -203,7 +215,7 @@ class DashboardController extends Controller
                         'subject_id' => $activity->subject_id ?? null,
                         'causer' => $activity->causer ? [
                             'name' => $activity->causer->name ?? 'Unknown User',
-                            'avatar' => null, // Add avatar URL if available in your User model
+                            'avatar' => null,
                         ] : null,
                         'properties' => is_array($properties) ? $properties : $properties->toArray(),
                         'created_at' => $activity->created_at ? $activity->created_at->toISOString() : now()->toISOString(),
@@ -214,7 +226,6 @@ class DashboardController extends Controller
                         'error' => $e->getMessage()
                     ]);
                     
-                    // Return safe default
                     return [
                         'id' => $activity->id ?? 0,
                         'description' => 'Activity details unavailable',
@@ -233,7 +244,6 @@ class DashboardController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Return empty array on error
             return [];
         }
     }
@@ -243,7 +253,6 @@ class DashboardController extends Controller
         try {
             $today = Carbon::today();
             $next30Days = Carbon::today()->addDays(30);
-            $events = [];
 
             // Holidays
             $holidays = Holiday::whereBetween('date', [$today, $next30Days])
