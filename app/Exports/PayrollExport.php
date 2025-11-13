@@ -21,9 +21,22 @@ class PayrollExport implements FromCollection, WithHeadings, WithMapping, WithSt
 
     public function collection()
     {
-        return $this->period->payrollRecords()
+        $records = $this->period->payrollRecords()
             ->with(['employee.company', 'employee.department', 'employee.position'])
             ->get();
+
+        // Construct full name for each employee
+        $records->each(function ($record) {
+            if ($record->employee) {
+                $record->employee->full_name = trim(
+                    $record->employee->first_name . ' ' . 
+                    ($record->employee->middle_name ? $record->employee->middle_name . ' ' : '') . 
+                    $record->employee->last_name
+                );
+            }
+        });
+
+        return $records;
     }
 
     public function headings(): array
@@ -36,11 +49,10 @@ class PayrollExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'Position',
             'Daily Rate',
             'Days Worked',
-            'Rate 15th/30th',
+            'Basic Pay',
             'Overtime',
             'Night Differential',
-            'Special Holiday',
-            'Legal Holiday',
+            'Holiday',
             'Clothing Allowance',
             'Rice Allowance',
             'Transportation Allowance',
@@ -67,14 +79,13 @@ class PayrollExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $record->employee->full_name ?? '',
             $record->employee->company->name ?? '',
             $record->employee->department->name ?? '',
-            $record->employee->position->name ?? '',
+            $record->employee->position->title ?? '',
             $record->daily_rate,
             $record->days_worked,
-            $record->rate_15th_30th,
+            $record->basic_pay,
             $record->overtime,
             $record->night_differential,
-            $record->special_holiday,
-            $record->legal_holiday,
+            ($record->special_holiday ?? 0) + ($record->legal_holiday ?? 0),
             $record->clothing_allowance,
             $record->rice_allowance,
             $record->transportation_allowance,

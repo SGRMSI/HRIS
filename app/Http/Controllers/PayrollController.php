@@ -362,9 +362,18 @@ class PayrollController extends Controller
     }
 
     /**
-     * Export all employee payslips as ZIP
+     * Export payroll data as CSV
      */
     public function export(PayrollPeriod $period)
+    {
+        $filename = 'payroll_' . str_replace(' ', '_', $period->period_name) . '_' . now()->format('Y-m-d') . '.csv';
+        return Excel::download(new PayrollExport($period), $filename, \Maatwebsite\Excel\Excel::CSV);
+    }
+
+    /**
+     * Export all employee payslips as ZIP
+     */
+    public function exportPayslips(PayrollPeriod $period)
     {
         // Get all payroll records with employee details
         $records = $period->payrollRecords()

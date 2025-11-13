@@ -27,4 +27,5 @@ Route::middleware(['auth', 'verified'])->prefix('payroll')->name('payroll.')->gr
     Route::post('/{period}/approve', [PayrollController::class, 'approve'])->name('approve');
     Route::post('/{period}/mark-paid', [PayrollController::class, 'markPaid'])->name('mark-paid');
     Route::get('/{period}/export', [PayrollController::class, 'export'])->name('export');
+    Route::get('/{period}/export-payslips', [PayrollController::class, 'exportPayslips'])->name('export-payslips');
 });

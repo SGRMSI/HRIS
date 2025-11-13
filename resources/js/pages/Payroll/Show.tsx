@@ -144,7 +144,7 @@ export default function Show({ period, records }: Props) {
                                 Mark as Paid
                             </Button>
                         )}
-                        <a href={route('payroll.export', period.period_id)}>
+                        <a href={route('payroll.export-payslips', period.period_id)}>
                             <Button>
                                 <Download className="mr-2 h-4 w-4" />
                                 Export Payslips
