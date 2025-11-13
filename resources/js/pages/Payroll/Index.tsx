@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { PageProps, PaginatedData } from '@/types';
+import { BreadcrumbItem, PageProps, PaginatedData } from '@/types';
 import { PayrollFilters, PayrollPeriod } from '@/types/payroll';
 import { Head, Link, router } from '@inertiajs/react';
 import { format } from 'date-fns';
@@ -16,6 +16,13 @@ interface Props extends PageProps {
     periods: PaginatedData<PayrollPeriod>;
     filters: PayrollFilters;
 }
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Payroll',
+        href: '/payroll',
+    },
+];
 
 export default function Index({ periods, filters }: Props) {
     const [search, setSearch] = useState(filters.search || '');
@@ -44,8 +51,6 @@ export default function Index({ periods, filters }: Props) {
             </Badge>
         );
     };
-
-    const breadcrumbs = [{ title: 'Payroll', href: '/payroll' }];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

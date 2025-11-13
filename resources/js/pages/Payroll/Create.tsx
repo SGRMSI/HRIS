@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
-import { Company, Employee, PageProps } from '@/types';
+import { BreadcrumbItem, Company, Employee, PageProps } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Users } from 'lucide-react';
 import { FormEventHandler, useState } from 'react';
@@ -15,6 +15,17 @@ import { FormEventHandler, useState } from 'react';
 interface Props extends PageProps {
     companies: Company[];
 }
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Payroll',
+        href: '/payroll',
+    },
+    {
+        title: 'Create Payroll Period',
+        href: '/payroll/create',
+    },
+];
 
 export default function Create({ companies = [] }: Props) {
     const [employees, setEmployees] = useState<Employee[]>([]);
@@ -82,11 +93,6 @@ export default function Create({ companies = [] }: Props) {
         data.employee_ids = selectedEmployees;
         post(route('payroll.store'));
     };
-
-    const breadcrumbs = [
-        { title: 'Payroll', href: '/payroll' },
-        { title: 'Create Period', href: '/payroll/create' },
-    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

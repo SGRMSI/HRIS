@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { PageProps } from '@/types';
+import { BreadcrumbItem, PageProps } from '@/types';
 import { PayrollPeriod, PayrollRecord } from '@/types/payroll';
 import { Head, Link, router } from '@inertiajs/react';
 import { format } from 'date-fns';
@@ -29,9 +29,15 @@ interface Props extends PageProps {
 }
 
 export default function Show({ period, records }: Props) {
-    const breadcrumbs = [
-        { title: 'Payroll', href: '/payroll' },
-        { title: period.period_name, href: `/payroll/${period.period_id}` },
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Payroll',
+            href: '/payroll',
+        },
+        {
+            title: period.period_name,
+            href: `/payroll/${period.period_id}`,
+        },
     ];
 
     const getStatusBadge = (status: string) => {
@@ -63,7 +69,7 @@ export default function Show({ period, records }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Payroll - ${period.period_name}`} />
-            <div className='p-4'>
+            <div className="p-4">
                 {/* Header */}
                 <div className="mb-6 flex items-center justify-between">
                     <div className="flex items-center gap-4">
