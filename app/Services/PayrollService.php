@@ -106,6 +106,9 @@ class PayrollService
         // Calculate overtime and additional earnings from attendance
         $this->calculateEarnings($record, $employee, $period);
 
+        // Calculate holiday pay from holidays worked
+        $this->calculateHolidayPay($record, $employee, $period);
+
         // Calculate late/undertime deductions from attendance
         $this->calculateLateUndertime($record, $employee, $period);
 
@@ -166,7 +169,37 @@ class PayrollService
     }
 
     /**
+     * Calculate holiday pay for employees who worked on holidays
+     */
+    protected function calculateHolidayPay(PayrollRecord $record, Employee $employee, PayrollPeriod $period): void
+    {
+        // Get holidays within the payroll period for the employee's company
+        $holidays = \App\Models\Holiday::where('company_id', $employee->company_id)
+            ->whereBetween('date', [$period->date_from, $period->date_to])
+            ->get();
+
+        $totalHolidayPay = 0;
+
+        foreach ($holidays as $holiday) {
+            // Check if employee has attendance on this holiday
+            $attendance = Attendance::where('employee_id', $employee->employee_id)
+                ->where('date', $holiday->date)
+                ->whereIn('status', ['present', 'late']) // Only if they actually worked
+                ->first();
+
+            if ($attendance) {
+                // Calculate holiday pay: daily_rate * 1 (or * 2 if double pay)
+                $multiplier = $holiday->is_double_pay ? 2 : 1;
+                $totalHolidayPay += $record->daily_rate * $multiplier;
+            }
+        }
+
+        $record->holiday_pay = round($totalHolidayPay, 2);
+    }
+
+    /**
      * Calculate late and undertime deductions
+     * Formula: (daily_rate / 480 minutes) * total_late_minutes
      */
     protected function calculateLateUndertime(PayrollRecord $record, Employee $employee, PayrollPeriod $period): void
     {
@@ -174,12 +207,13 @@ class PayrollService
             ->whereBetween('date', [$period->date_from, $period->date_to])
             ->get();
 
-        $minuteRate = $record->daily_rate / (8 * 60); // Per minute rate
+        // Calculate per-minute rate based on 8-hour workday (480 minutes)
+        $minuteRate = $record->daily_rate / 480;
 
         $totalLateMinutes = $attendances->sum('late_minutes');
         $totalUndertimeMinutes = $attendances->sum('undertime_hours') * 60;
 
-        $record->late_undertime_minutes = $totalLateMinutes + $totalUndertimeMinutes;
+        $record->late_undertime_minutes = (int) ($totalLateMinutes + $totalUndertimeMinutes);
         $record->late_undertime_amount = round($minuteRate * $record->late_undertime_minutes, 2);
     }
 
@@ -295,6 +329,9 @@ class PayrollService
 
         // Recalculate overtime and earnings from attendance
         $this->calculateEarnings($record, $employee, $period);
+
+        // Recalculate holiday pay from holidays worked
+        $this->calculateHolidayPay($record, $employee, $period);
 
         // Recalculate late/undertime from attendance
         $this->calculateLateUndertime($record, $employee, $period);

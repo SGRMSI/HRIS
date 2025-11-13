@@ -1,15 +1,28 @@
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { useAttendanceExport } from '@/hooks/use-attendance-export';
 import { cn } from '@/lib/utils';
+import { PayrollPeriod } from '@/types/payroll';
 import { Link } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { BarChart3, Calendar as CalendarIcon, CalendarPlus, DollarSign, FileSpreadsheet, FileText, Loader2, Upload, UserPlus } from 'lucide-react';
-import { useState } from 'react';
+import {
+    BarChart3,
+    Calendar as CalendarIcon,
+    CalendarPlus,
+    DollarSign,
+    Download,
+    FileSpreadsheet,
+    FileText,
+    Loader2,
+    Upload,
+    UserPlus,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface QuickAction {
     title: string;
@@ -29,6 +42,14 @@ export function QuickActions() {
     // Date range state for exports
     const [dateFrom, setDateFrom] = useState<Date>();
     const [dateTo, setDateTo] = useState<Date>();
+
+    // Modal states
+    const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+    const [showPayrollModal, setShowPayrollModal] = useState(false);
+
+    // Payroll periods state
+    const [payrollPeriods, setPayrollPeriods] = useState<PayrollPeriod[]>([]);
+    const [loadingPeriods, setLoadingPeriods] = useState(false);
 
     // All routes verified against routes/attendance.php
     const actions: QuickAction[] = [
@@ -74,16 +95,45 @@ export function QuickActions() {
         },
     ];
 
+    // Fetch payroll periods when modal opens
+    useEffect(() => {
+        if (showPayrollModal && payrollPeriods.length === 0) {
+            setLoadingPeriods(true);
+            fetch('/api/payroll-periods')
+                .then((response) => response.json())
+                .then((data) => {
+                    setPayrollPeriods(data.periods || []);
+                })
+                .catch((error) => {
+                    console.error('Failed to fetch payroll periods:', error);
+                    setPayrollPeriods([]);
+                })
+                .finally(() => {
+                    setLoadingPeriods(false);
+                });
+        }
+    }, [showPayrollModal, payrollPeriods.length]);
+
+    const handleExportAttendanceClick = () => {
+        setShowAttendanceModal(true);
+    };
+
     const handleExportAttendance = () => {
         const filters = {
             date_from: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : undefined,
             date_to: dateTo ? format(dateTo, 'yyyy-MM-dd') : undefined,
         };
         exportToExcel(filters);
+        setShowAttendanceModal(false);
     };
 
-    const handleExportPayroll = () => {
-        // TODO: Implement payroll export functionality
+    const handleExportPayrollClick = () => {
+        setShowPayrollModal(true);
+    };
+
+    const handleExportPayroll = (periodId: number) => {
+        window.location.href = route('payroll.export', periodId);
+        setShowPayrollModal(false);
     };
 
     return (
@@ -114,7 +164,6 @@ export function QuickActions() {
                                 </>
                             );
 
-                            // Following AI Agent Instructions: Different rendering for link vs button actions
                             if (action.href) {
                                 return (
                                     <Link key={action.title} href={action.href}>
@@ -151,18 +200,46 @@ export function QuickActions() {
                         <FileSpreadsheet className="h-5 w-5" />
                         Export Data
                     </CardTitle>
-                    <CardDescription>Export attendance and payroll data to Excel</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Date Range Filter */}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <Separator />
+
+                    {/* Export Buttons */}
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {/* Export Attendance */}
+                        <Button onClick={handleExportAttendanceClick} className="flex items-center justify-center gap-2" variant="default">
+                            <FileSpreadsheet className="h-4 w-4" />
+                            Export Attendance
+                        </Button>
+
+                        {/* Export Payroll */}
+                        <Button onClick={handleExportPayrollClick} className="flex items-center justify-center gap-2" variant="outline">
+                            <DollarSign className="h-4 w-4" />
+                            Export Payroll
+                        </Button>
+                    </div>
+
+                    {/* Helper Text */}
+                    <p className="text-xs text-muted-foreground">Click export buttons to export attendance and payroll data</p>
+                </CardContent>
+            </Card>
+
+            {/* Attendance Export Modal */}
+            <Dialog open={showAttendanceModal} onOpenChange={setShowAttendanceModal}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Export Attendance Data</DialogTitle>
+                        <DialogDescription>Select a date range to filter the attendance records you want to export</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
                         {/* Date From */}
                         <div className="space-y-2">
-                            <Label htmlFor="date-from">Date From</Label>
+                            <Label htmlFor="export-date-from">Date From</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
-                                        id="date-from"
+                                        id="export-date-from"
                                         variant="outline"
                                         className={cn('w-full justify-start text-left font-normal', !dateFrom && 'text-muted-foreground')}
                                     >
@@ -175,10 +252,10 @@ export function QuickActions() {
                                         mode="single"
                                         selected={dateFrom}
                                         onSelect={setDateFrom}
-                                        className="w-full"
                                         captionLayout="dropdown"
                                         fromYear={2020}
                                         toYear={2030}
+                                        className="w-full"
                                     />
                                 </PopoverContent>
                             </Popover>
@@ -186,11 +263,11 @@ export function QuickActions() {
 
                         {/* Date To */}
                         <div className="space-y-2">
-                            <Label htmlFor="date-to">Date To</Label>
+                            <Label htmlFor="export-date-to">Date To</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
-                                        id="date-to"
+                                        id="export-date-to"
                                         variant="outline"
                                         className={cn('w-full justify-start text-left font-normal', !dateTo && 'text-muted-foreground')}
                                     >
@@ -203,11 +280,9 @@ export function QuickActions() {
                                         mode="single"
                                         selected={dateTo}
                                         onSelect={setDateTo}
-                                        defaultMonth={dateTo}
                                         captionLayout="dropdown"
                                         fromYear={2020}
                                         toYear={2030}
-                                        initialFocus
                                         className="w-full"
                                     />
                                 </PopoverContent>
@@ -215,46 +290,72 @@ export function QuickActions() {
                         </div>
                     </div>
 
-                    <Separator />
-
-                    {/* Export Buttons */}
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {/* Export Attendance */}
-                        <Button
-                            onClick={handleExportAttendance}
-                            disabled={isExporting}
-                            className="flex items-center justify-center gap-2"
-                            variant="default"
-                        >
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAttendanceModal(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleExportAttendance} disabled={isExporting}>
                             {isExporting ? (
                                 <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Exporting...
                                 </>
                             ) : (
                                 <>
-                                    <FileSpreadsheet className="h-4 w-4" />
-                                    Export Attendance
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export to Excel
                                 </>
                             )}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-                        {/* Export Payroll - Placeholder */}
-                        <Button onClick={handleExportPayroll} disabled className="flex items-center justify-center gap-2" variant="outline">
-                            <DollarSign className="h-4 w-4" />
-                            Export Payroll
-                            <span className="ml-1 text-xs text-muted-foreground">(Coming Soon)</span>
-                        </Button>
+            {/* Payroll Export Modal */}
+            <Dialog open={showPayrollModal} onOpenChange={setShowPayrollModal}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>Export Payroll Data</DialogTitle>
+                        <DialogDescription>Select a payroll period to export as CSV</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="max-h-[400px] overflow-y-auto py-4">
+                        {loadingPeriods ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : payrollPeriods.length === 0 ? (
+                            <p className="py-8 text-center text-muted-foreground">No payroll periods found</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {payrollPeriods.map((period) => (
+                                    <Button
+                                        key={period.period_id}
+                                        variant="outline"
+                                        className="w-full justify-between"
+                                        onClick={() => handleExportPayroll(period.period_id)}
+                                    >
+                                        <div className="text-left">
+                                            <div className="font-semibold">{period.period_name}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {format(new Date(period.date_from), 'MMM d, yyyy')} -{' '}
+                                                {format(new Date(period.date_to), 'MMM d, yyyy')}
+                                            </div>
+                                        </div>
+                                        <Download className="ml-2 h-4 w-4" />
+                                    </Button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Helper Text */}
-                    <p className="text-xs text-muted-foreground">
-                        {dateFrom || dateTo
-                            ? `Exporting data ${dateFrom ? `from ${format(dateFrom, 'MMM d, yyyy')}` : ''} ${dateTo ? `to ${format(dateTo, 'MMM d, yyyy')}` : ''}`
-                            : 'Select a date range to filter export data. Leave blank to export all records.'}
-                    </p>
-                </CardContent>
-            </Card>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPayrollModal(false)}>
+                            Close
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

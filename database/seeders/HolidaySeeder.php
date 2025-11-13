@@ -24,24 +24,24 @@ class HolidaySeeder extends Seeder
 
         // National holidays (for all companies)
         $nationalHolidays = [
-            ['name' => 'New Year\'s Day', 'date' => '2025-01-01', 'type' => 'regular'],
-            ['name' => 'EDSA Revolution Anniversary', 'date' => '2025-02-25', 'type' => 'special'],
-            ['name' => 'Araw ng Kagitingan', 'date' => '2025-04-09', 'type' => 'regular'],
-            ['name' => 'Maundy Thursday', 'date' => '2025-04-17', 'type' => 'regular'],
-            ['name' => 'Good Friday', 'date' => '2025-04-18', 'type' => 'regular'],
-            ['name' => 'Black Saturday', 'date' => '2025-04-19', 'type' => 'special'],
-            ['name' => 'Labor Day', 'date' => '2025-05-01', 'type' => 'regular'],
-            ['name' => 'Independence Day', 'date' => '2025-06-12', 'type' => 'regular'],
-            ['name' => 'Ninoy Aquino Day', 'date' => '2025-08-21', 'type' => 'special'],
-            ['name' => 'National Heroes Day', 'date' => '2025-08-25', 'type' => 'regular'],
-            ['name' => 'All Saints\' Day', 'date' => '2025-11-01', 'type' => 'special'],
-            ['name' => 'All Souls\' Day', 'date' => '2025-11-02', 'type' => 'special'],
-            ['name' => 'Bonifacio Day', 'date' => '2025-11-30', 'type' => 'regular'],
-            ['name' => 'Feast of the Immaculate Conception', 'date' => '2025-12-08', 'type' => 'special'],
-            ['name' => 'Christmas Eve', 'date' => '2025-12-24', 'type' => 'special'],
-            ['name' => 'Christmas Day', 'date' => '2025-12-25', 'type' => 'regular'],
-            ['name' => 'Rizal Day', 'date' => '2025-12-30', 'type' => 'regular'],
-            ['name' => 'New Year\'s Eve', 'date' => '2025-12-31', 'type' => 'special'],
+            ['name' => 'New Year\'s Day', 'date' => '2025-01-01', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'EDSA Revolution Anniversary', 'date' => '2025-02-25', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'Araw ng Kagitingan', 'date' => '2025-04-09', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Maundy Thursday', 'date' => '2025-04-17', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Good Friday', 'date' => '2025-04-18', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Black Saturday', 'date' => '2025-04-19', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'Labor Day', 'date' => '2025-05-01', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Independence Day', 'date' => '2025-06-12', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Ninoy Aquino Day', 'date' => '2025-08-21', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'National Heroes Day', 'date' => '2025-08-25', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'All Saints\' Day', 'date' => '2025-11-01', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'All Souls\' Day', 'date' => '2025-11-02', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'Bonifacio Day', 'date' => '2025-11-30', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Feast of the Immaculate Conception', 'date' => '2025-12-08', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'Christmas Eve', 'date' => '2025-12-24', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'Christmas Day', 'date' => '2025-12-25', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Rizal Day', 'date' => '2025-12-30', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'New Year\'s Eve', 'date' => '2025-12-31', 'type' => 'special', 'is_double_pay' => false],
         ];
 
         // Add national holidays with NULL company_id (applies to all companies)
@@ -51,6 +51,7 @@ class HolidaySeeder extends Seeder
                 'name' => $holiday['name'],
                 'date' => $holiday['date'],
                 'type' => $holiday['type'],
+                'is_double_pay' => $holiday['is_double_pay'],
             ]);
         }
 
@@ -63,6 +64,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'Company Foundation Day',
                 'date' => '2025-03-15',
                 'type' => 'company',
+                'is_double_pay' => true,
             ]);
 
             Holiday::create([
@@ -70,6 +72,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'Annual Company Outing',
                 'date' => '2025-07-15',
                 'type' => 'company',
+                'is_double_pay' => false,
             ]);
 
             Holiday::create([
@@ -77,6 +80,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'Year End Party',
                 'date' => '2025-12-20',
                 'type' => 'company',
+                'is_double_pay' => false,
             ]);
         }
 
@@ -88,6 +92,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'TechHub Anniversary',
                 'date' => '2025-05-20',
                 'type' => 'company',
+                'is_double_pay' => true,
             ]);
 
             Holiday::create([
@@ -95,6 +100,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'Innovation Day',
                 'date' => '2025-09-10',
                 'type' => 'company',
+                'is_double_pay' => false,
             ]);
 
             Holiday::create([
@@ -102,6 +108,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'Company Wellness Day',
                 'date' => '2025-10-15',
                 'type' => 'company',
+                'is_double_pay' => false,
             ]);
         }
 
@@ -113,6 +120,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'SteamTrain Foundation Day',
                 'date' => '2025-06-01',
                 'type' => 'company',
+                'is_double_pay' => true,
             ]);
 
             Holiday::create([
@@ -120,6 +128,7 @@ class HolidaySeeder extends Seeder
                 'name' => 'Mid-Year Team Building',
                 'date' => '2025-08-15',
                 'type' => 'company',
+                'is_double_pay' => false,
             ]);
 
             Holiday::create([
@@ -127,15 +136,16 @@ class HolidaySeeder extends Seeder
                 'name' => 'Holiday Celebration',
                 'date' => '2025-12-23',
                 'type' => 'company',
+                'is_double_pay' => false,
             ]);
         }
 
         // Add holidays for next year too (national holidays with NULL company_id)
         $nextYearHolidays = [
-            ['name' => 'New Year\'s Day', 'date' => '2026-01-01', 'type' => 'regular'],
-            ['name' => 'Chinese New Year', 'date' => '2026-02-17', 'type' => 'special'],
-            ['name' => 'EDSA Revolution Anniversary', 'date' => '2026-02-25', 'type' => 'special'],
-            ['name' => 'Araw ng Kagitingan', 'date' => '2026-04-09', 'type' => 'regular'],
+            ['name' => 'New Year\'s Day', 'date' => '2026-01-01', 'type' => 'regular', 'is_double_pay' => true],
+            ['name' => 'Chinese New Year', 'date' => '2026-02-17', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'EDSA Revolution Anniversary', 'date' => '2026-02-25', 'type' => 'special', 'is_double_pay' => false],
+            ['name' => 'Araw ng Kagitingan', 'date' => '2026-04-09', 'type' => 'regular', 'is_double_pay' => true],
         ];
 
         foreach ($nextYearHolidays as $holiday) {
@@ -144,6 +154,7 @@ class HolidaySeeder extends Seeder
                 'name' => $holiday['name'],
                 'date' => $holiday['date'],
                 'type' => $holiday['type'],
+                'is_double_pay' => $holiday['is_double_pay'],
             ]);
         }
 

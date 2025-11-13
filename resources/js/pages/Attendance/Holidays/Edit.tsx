@@ -1,19 +1,13 @@
-import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Save, X, Calendar } from 'lucide-react';
+import AppLayout from '@/layouts/app-layout';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { AlertCircle, Calendar, Save, X } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 interface Company {
@@ -31,6 +25,7 @@ interface Holiday {
     name: string;
     date: string;
     type: string;
+    is_double_pay: boolean;
     company_id: number | null;
     company: {
         id: number;
@@ -50,6 +45,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
         date: holiday.date,
         type: holiday.type,
         company_id: holiday.company_id?.toString() || '',
+        is_double_pay: holiday.is_double_pay || false,
         description: '',
     });
 
@@ -58,7 +54,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
         put(route('attendance.holidays.update', holiday.id));
     };
 
-    const selectedType = types.find(t => t.value === data.type);
+    const selectedType = types.find((t) => t.value === data.type);
 
     return (
         <AppLayout
@@ -74,7 +70,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">Edit Holiday</h1>
-                        <p className="text-muted-foreground mt-1">Update holiday information</p>
+                        <p className="mt-1 text-muted-foreground">Update holiday information</p>
                     </div>
                     <Link href={route('attendance.holidays.index')}>
                         <Button variant="outline">
@@ -104,9 +100,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                             className={errors.name ? 'border-red-500' : ''}
                                             placeholder="e.g., New Year's Day"
                                         />
-                                        {errors.name && (
-                                            <p className="text-sm text-red-500">{errors.name}</p>
-                                        )}
+                                        {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
                                     </div>
 
                                     {/* Date */}
@@ -119,18 +113,13 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                             onChange={(e) => setData('date', e.target.value)}
                                             className={errors.date ? 'border-red-500' : ''}
                                         />
-                                        {errors.date && (
-                                            <p className="text-sm text-red-500">{errors.date}</p>
-                                        )}
+                                        {errors.date && <p className="text-sm text-red-500">{errors.date}</p>}
                                     </div>
 
                                     {/* Type */}
                                     <div className="space-y-2">
                                         <Label htmlFor="type">Holiday Type *</Label>
-                                        <Select
-                                            value={data.type}
-                                            onValueChange={(value) => setData('type', value)}
-                                        >
+                                        <Select value={data.type} onValueChange={(value) => setData('type', value)}>
                                             <SelectTrigger className={errors.type ? 'border-red-500' : ''}>
                                                 <SelectValue placeholder="Select type" />
                                             </SelectTrigger>
@@ -142,37 +131,48 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        {errors.type && (
-                                            <p className="text-sm text-red-500">{errors.type}</p>
-                                        )}
+                                        {errors.type && <p className="text-sm text-red-500">{errors.type}</p>}
                                     </div>
 
                                     {/* Company (required if type is company) */}
                                     {data.type === 'company' && (
                                         <div className="space-y-2">
                                             <Label htmlFor="company_id">Company *</Label>
-                                            <Select
-                                                value={data.company_id}
-                                                onValueChange={(value) => setData('company_id', value)}
-                                            >
+                                            <Select value={data.company_id} onValueChange={(value) => setData('company_id', value)}>
                                                 <SelectTrigger className={errors.company_id ? 'border-red-500' : ''}>
                                                     <SelectValue placeholder="Select company" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {Array.isArray(companies) && companies
-                                                        .filter(company => company && company.id != null)
-                                                        .map((company) => (
-                                                            <SelectItem key={company.id} value={company.id.toString()}>
-                                                                {company.name}
-                                                            </SelectItem>
-                                                        ))}
+                                                    {Array.isArray(companies) &&
+                                                        companies
+                                                            .filter((company) => company && company.id != null)
+                                                            .map((company) => (
+                                                                <SelectItem key={company.id} value={company.id.toString()}>
+                                                                    {company.name}
+                                                                </SelectItem>
+                                                            ))}
                                                 </SelectContent>
                                             </Select>
-                                            {errors.company_id && (
-                                                <p className="text-sm text-red-500">{errors.company_id}</p>
-                                            )}
+                                            {errors.company_id && <p className="text-sm text-red-500">{errors.company_id}</p>}
                                         </div>
                                     )}
+
+                                    {/* Double Pay Checkbox */}
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id="is_double_pay"
+                                            checked={data.is_double_pay}
+                                            onChange={(e) => setData('is_double_pay', e.target.checked)}
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <Label htmlFor="is_double_pay" className="cursor-pointer">
+                                            Double Pay Holiday
+                                            <span className="ml-2 text-xs text-muted-foreground">
+                                                (Pay will be 2x daily rate if employee works on this day)
+                                            </span>
+                                        </Label>
+                                    </div>
 
                                     {/* Description */}
                                     <div className="space-y-2">
@@ -184,9 +184,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                             placeholder="Additional information about this holiday..."
                                             rows={3}
                                         />
-                                        {errors.description && (
-                                            <p className="text-sm text-red-500">{errors.description}</p>
-                                        )}
+                                        {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
                                     </div>
 
                                     {/* Submit Button */}
@@ -210,7 +208,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                             {data.name && data.date && selectedType && (
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle className="text-base flex items-center gap-2">
+                                        <CardTitle className="flex items-center gap-2 text-base">
                                             <Calendar className="h-4 w-4" />
                                             Holiday Summary
                                         </CardTitle>
@@ -228,7 +226,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                                     weekday: 'long',
                                                     year: 'numeric',
                                                     month: 'long',
-                                                    day: 'numeric'
+                                                    day: 'numeric',
                                                 })}
                                             </div>
                                         </div>
@@ -242,7 +240,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                             <div className="border-t pt-3">
                                                 <div className="text-sm text-muted-foreground">Company</div>
                                                 <div className="font-medium">
-                                                    {companies.find(c => c.id.toString() === data.company_id)?.name || 'N/A'}
+                                                    {companies.find((c) => c.id.toString() === data.company_id)?.name || 'N/A'}
                                                 </div>
                                             </div>
                                         )}
@@ -254,7 +252,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertDescription>
                                     <strong>Note</strong>
-                                    <ul className="mt-2 list-disc list-inside text-sm space-y-1">
+                                    <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
                                         <li>Changes affect all future attendance calculations</li>
                                         <li>Duplicate holidays will be rejected</li>
                                         <li>Company-specific holidays require company selection</li>

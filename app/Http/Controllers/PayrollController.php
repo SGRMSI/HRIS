@@ -492,4 +492,22 @@ class PayrollController extends Controller
             return back()->with('error', 'Failed to delete payroll: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Get payroll periods as JSON (for API/AJAX requests)
+     */
+    public function getPeriods(Request $request)
+    {
+        $periods = PayrollPeriod::query()
+            ->select(['period_id', 'period_name', 'date_from', 'date_to', 'payment_date', 'status'])
+            ->when($request->status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->orderBy('date_from', 'desc')
+            ->get();
+
+        return response()->json([
+            'periods' => $periods,
+        ]);
+    }
 }

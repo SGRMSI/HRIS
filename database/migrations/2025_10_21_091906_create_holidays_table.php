@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->date('date');
             $table->string('type')->comment('"Regular", "Special"');
+            $table->boolean('is_double_pay')->default(false)->comment('If true, pay is daily_rate * 2');
             $table->foreignId('company_id')->nullable()->constrained('companies', 'company_id');
             $table->timestamps();
         });

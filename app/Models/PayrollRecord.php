@@ -23,6 +23,7 @@ class PayrollRecord extends Model
         'night_differential',
         'special_holiday',
         'legal_holiday',
+        'holiday_pay',
         'clothing_allowance',
         'rice_allowance',
         'transportation_allowance',
@@ -51,6 +52,7 @@ class PayrollRecord extends Model
         'night_differential' => 'decimal:2',
         'special_holiday' => 'decimal:2',
         'legal_holiday' => 'decimal:2',
+        'holiday_pay' => 'decimal:2',
         'clothing_allowance' => 'decimal:2',
         'rice_allowance' => 'decimal:2',
         'transportation_allowance' => 'decimal:2',
@@ -61,6 +63,7 @@ class PayrollRecord extends Model
         'sss_contribution' => 'decimal:2',
         'phic_contribution' => 'decimal:2',
         'hdmf_contribution' => 'decimal:2',
+        'late_undertime_minutes' => 'integer',
         'late_undertime_amount' => 'decimal:2',
         'cash_advance' => 'decimal:2',
         'total_deductions' => 'decimal:2',
@@ -97,6 +100,7 @@ class PayrollRecord extends Model
             $this->night_differential +
             $this->special_holiday +
             $this->legal_holiday +
+            $this->holiday_pay +
             $this->clothing_allowance +
             $this->rice_allowance +
             $this->transportation_allowance +

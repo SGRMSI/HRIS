@@ -158,6 +158,12 @@
                 <td class="amount">PHP {{ number_format($record->legal_holiday, 2) }}</td>
             </tr>
             @endif
+            @if($record->holiday_pay > 0)
+            <tr>
+                <td>Holiday Pay:</td>
+                <td class="amount">PHP {{ number_format($record->holiday_pay, 2) }}</td>
+            </tr>
+            @endif
             @if($record->clothing_allowance > 0)
             <tr>
                 <td>Clothing Allowance:</td>

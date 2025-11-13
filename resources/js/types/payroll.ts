@@ -41,6 +41,7 @@ export interface PayrollRecord {
     night_differential: string;
     special_holiday: string;
     legal_holiday: string;
+    holiday_pay: string | number;
     clothing_allowance: string | number;
     rice_allowance: string | number;
     transportation_allowance: string | number;

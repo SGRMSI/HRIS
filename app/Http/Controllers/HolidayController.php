@@ -47,6 +47,7 @@ class HolidayController extends Controller
                     'formatted_date' => $holiday->date->format('F d, Y'),
                     'day_of_week' => $holiday->date->format('l'),
                     'type' => $holiday->type,
+                    'is_double_pay' => $holiday->is_double_pay,
                     'company' => $holiday->company ? [
                         'id' => $holiday->company->company_id,
                         'name' => $holiday->company->name
@@ -112,6 +113,7 @@ class HolidayController extends Controller
             'date' => ['required', 'date'],
             'type' => ['required', 'string', 'in:regular,special,company'],
             'company_id' => ['nullable', 'exists:companies,company_id'],
+            'is_double_pay' => ['nullable', 'boolean'],
             'description' => ['nullable', 'string', 'max:500']
         ]);
 
@@ -147,7 +149,8 @@ class HolidayController extends Controller
                 'name' => $validated['name'],
                 'date' => $validated['date'],
                 'type' => $validated['type'],
-                'company_id' => $validated['company_id'] ?? null
+                'company_id' => $validated['company_id'] ?? null,
+                'is_double_pay' => $validated['is_double_pay'] ?? false
             ]);
 
             // Log the creation
@@ -189,6 +192,7 @@ class HolidayController extends Controller
                 'name' => $holiday->name,
                 'date' => $holiday->date->format('Y-m-d'),
                 'type' => $holiday->type,
+                'is_double_pay' => $holiday->is_double_pay,
                 'company_id' => $holiday->company_id,
                 'company' => $holiday->company ? [
                     'id' => $holiday->company->company_id,
@@ -217,7 +221,8 @@ class HolidayController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'date' => ['required', 'date'],
             'type' => ['required', 'string', 'in:regular,special,company'],
-            'company_id' => ['nullable', 'exists:companies,company_id']
+            'company_id' => ['nullable', 'exists:companies,company_id'],
+            'is_double_pay' => ['nullable', 'boolean']
         ]);
 
         // Additional validation
@@ -255,7 +260,8 @@ class HolidayController extends Controller
                 'name' => $validated['name'],
                 'date' => $validated['date'],
                 'type' => $validated['type'],
-                'company_id' => $validated['company_id'] ?? null
+                'company_id' => $validated['company_id'] ?? null,
+                'is_double_pay' => $validated['is_double_pay'] ?? false
             ]);
 
             // Log the update with changes

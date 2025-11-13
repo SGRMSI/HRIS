@@ -74,15 +74,11 @@ export default function Show({ period, records }: Props) {
     };
 
     const handleApprove = () => {
-        if (confirm('Are you sure you want to approve this payroll? This action will lock all records.')) {
-            router.post(route('payroll.approve', period.period_id));
-        }
+        router.post(route('payroll.approve', period.period_id));
     };
 
     const handleMarkPaid = () => {
-        if (confirm('Are you sure you want to mark this payroll as paid?')) {
-            router.post(route('payroll.mark-paid', period.period_id));
-        }
+        router.post(route('payroll.mark-paid', period.period_id));
     };
 
     const handleDelete = () => {
@@ -106,10 +102,34 @@ export default function Show({ period, records }: Props) {
                     <div className="flex items-center gap-2">
                         {period.status === 'draft' && (
                             <>
-                                <Button variant="outline" onClick={handleApprove}>
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    Approve Payroll
-                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="outline">
+                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                            Approve Payroll
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Approve Payroll Period</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Are you sure you want to approve this payroll period?
+                                                <br />
+                                                <br />
+                                                <strong>This action will:</strong>
+                                                <ul className="mt-2 list-inside list-disc space-y-1">
+                                                    <li>Lock all {period.total_employees} employee records</li>
+                                                    <li>Prevent further edits to payroll data</li>
+                                                    <li>Mark the payroll as ready for payment</li>
+                                                </ul>
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleApprove}>Approve Payroll</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button variant="outline">
@@ -139,10 +159,38 @@ export default function Show({ period, records }: Props) {
                             </>
                         )}
                         {period.status === 'approved' && (
-                            <Button variant="outline" onClick={handleMarkPaid}>
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                                Mark as Paid
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline">
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Mark as Paid
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Mark Payroll as Paid</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Are you sure you want to mark this payroll as paid?
+                                            <br />
+                                            <br />
+                                            <strong>This action will:</strong>
+                                            <ul className="mt-2 list-inside list-disc space-y-1">
+                                                <li>Archive the payroll period</li>
+                                                <li>Permanently lock all records</li>
+                                                <li>Prevent any future modifications</li>
+                                            </ul>
+                                            <br />
+                                            <span className="text-sm">
+                                                Please ensure all payments have been disbursed to employees before confirming.
+                                            </span>
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleMarkPaid}>Mark as Paid</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         )}
                         <a href={route('payroll.export-payslips', period.period_id)}>
                             <Button>

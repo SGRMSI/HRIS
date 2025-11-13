@@ -26,6 +26,7 @@ return new class extends Migration
             $table->decimal('night_differential', 10, 2)->default(0);
             $table->decimal('special_holiday', 10, 2)->default(0);
             $table->decimal('legal_holiday', 10, 2)->default(0);
+            $table->decimal('holiday_pay', 10, 2)->default(0)->comment('Daily rate * 1 or * 2 if double pay');
             
             // Allowances
             $table->decimal('clothing_allowance', 10, 2)->default(0);
@@ -47,8 +48,8 @@ return new class extends Migration
             $table->decimal('hdmf_contribution', 10, 2)->default(0);
             
             // Other Deductions
-            $table->integer('late_undertime_minutes')->default(0);
-            $table->decimal('late_undertime_amount', 10, 2)->default(0);
+            $table->integer('late_undertime_minutes')->default(0)->comment('Total late minutes from attendance');
+            $table->decimal('late_undertime_amount', 10, 2)->default(0)->comment('Calculated: (daily_rate / 480) * late_minutes');
             $table->decimal('cash_advance', 10, 2)->default(0);
             
             // Total Deductions = SSS + PHIC + HDMF + Late/Undertime + Cash Advance

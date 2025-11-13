@@ -49,6 +49,7 @@ export default function Edit({ period, record }: Props) {
         daily_rate: Number(record.daily_rate) || 0,
         basic_pay: Number(record.basic_pay) || 0,
         overtime: Number(record.overtime) || 0,
+        holiday_pay: Number(record.holiday_pay) || 0,
         clothing_allowance: Number(record.clothing_allowance) || 0,
         rice_allowance: Number(record.rice_allowance) || 0,
         transportation_allowance: Number(record.transportation_allowance) || 0,
@@ -58,6 +59,8 @@ export default function Edit({ period, record }: Props) {
         sss_contribution: Number(record.sss_contribution) || 0,
         phic_contribution: Number(record.phic_contribution) || 0,
         hdmf_contribution: Number(record.hdmf_contribution) || 0,
+        late_undertime_minutes: Number(record.late_undertime_minutes) || 0,
+        late_undertime_amount: Number(record.late_undertime_amount) || 0,
         remarks: (record.remarks || '') as string,
     });
 
@@ -90,6 +93,7 @@ export default function Edit({ period, record }: Props) {
     // Calculate totals
     const basicPay = Number(data.basic_pay);
     const overtime = Number(data.overtime);
+    const holidayPay = Number(data.holiday_pay);
     const totalAllowances =
         Number(data.clothing_allowance) +
         Number(data.rice_allowance) +
@@ -97,8 +101,9 @@ export default function Edit({ period, record }: Props) {
         Number(data.program_allowance) +
         Number(data.attendance_incentive);
 
-    const grossPay = basicPay + overtime + totalAllowances + Number(data.adjustments);
-    const totalDeductions = Number(data.sss_contribution) + Number(data.phic_contribution) + Number(data.hdmf_contribution);
+    const grossPay = basicPay + overtime + holidayPay + totalAllowances + Number(data.adjustments);
+    const totalDeductions =
+        Number(data.sss_contribution) + Number(data.phic_contribution) + Number(data.hdmf_contribution) + Number(data.late_undertime_amount);
     const netPay = grossPay - totalDeductions;
 
     return (
@@ -203,6 +208,45 @@ export default function Edit({ period, record }: Props) {
                             </CardContent>
                         </Card>
 
+                        {/* Additional Earnings */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Additional Earnings</CardTitle>
+                                <CardDescription>Overtime and holiday pay from attendance</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="overtime">Overtime Pay</Label>
+                                        <Input
+                                            id="overtime"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={data.overtime}
+                                            onChange={(e) => setData('overtime', parseFloat(e.target.value) || 0)}
+                                            disabled={period.status !== 'draft'}
+                                        />
+                                        <p className="text-xs text-muted-foreground">From attendance records (editable)</p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="holiday_pay">Holiday Pay</Label>
+                                        <Input
+                                            id="holiday_pay"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={data.holiday_pay}
+                                            onChange={(e) => setData('holiday_pay', parseFloat(e.target.value) || 0)}
+                                            disabled={period.status !== 'draft'}
+                                        />
+                                        <p className="text-xs text-muted-foreground">For holidays worked (editable)</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         {/* Allowances */}
                         <Card>
                             <CardHeader>
@@ -297,44 +341,76 @@ export default function Edit({ period, record }: Props) {
                                 <CardTitle>Deductions</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="sss_contribution">SSS Contribution</Label>
-                                        <Input
-                                            id="sss_contribution"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.sss_contribution}
-                                            onChange={(e) => setData('sss_contribution', parseFloat(e.target.value) || 0)}
-                                            disabled={period.status !== 'draft'}
-                                        />
+                                <div className="space-y-4">
+                                    <div>
+                                        <h4 className="mb-3 text-sm font-medium">Government Contributions</h4>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="sss_contribution">SSS Contribution</Label>
+                                                <Input
+                                                    id="sss_contribution"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={data.sss_contribution}
+                                                    onChange={(e) => setData('sss_contribution', parseFloat(e.target.value) || 0)}
+                                                    disabled={period.status !== 'draft'}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="phic_contribution">PhilHealth</Label>
+                                                <Input
+                                                    id="phic_contribution"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={data.phic_contribution}
+                                                    onChange={(e) => setData('phic_contribution', parseFloat(e.target.value) || 0)}
+                                                    disabled={period.status !== 'draft'}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="hdmf_contribution">Pag-IBIG</Label>
+                                                <Input
+                                                    id="hdmf_contribution"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={data.hdmf_contribution}
+                                                    onChange={(e) => setData('hdmf_contribution', parseFloat(e.target.value) || 0)}
+                                                    disabled={period.status !== 'draft'}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phic_contribution">PhilHealth</Label>
-                                        <Input
-                                            id="phic_contribution"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.phic_contribution}
-                                            onChange={(e) => setData('phic_contribution', parseFloat(e.target.value) || 0)}
-                                            disabled={period.status !== 'draft'}
-                                        />
-                                    </div>
+                                    <div>
+                                        <h4 className="mb-3 text-sm font-medium">Late & Undertime</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Total Late Minutes</Label>
+                                                <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+                                                    {data.late_undertime_minutes} minutes
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">From attendance records</p>
+                                            </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="hdmf_contribution">Pag-IBIG</Label>
-                                        <Input
-                                            id="hdmf_contribution"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.hdmf_contribution}
-                                            onChange={(e) => setData('hdmf_contribution', parseFloat(e.target.value) || 0)}
-                                            disabled={period.status !== 'draft'}
-                                        />
+                                            <div className="space-y-2">
+                                                <Label htmlFor="late_undertime_amount">Late Deduction Amount</Label>
+                                                <Input
+                                                    id="late_undertime_amount"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={data.late_undertime_amount}
+                                                    onChange={(e) => setData('late_undertime_amount', parseFloat(e.target.value) || 0)}
+                                                    disabled={period.status !== 'draft'}
+                                                />
+                                                <p className="text-xs text-muted-foreground">Auto-calculated (editable)</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -356,8 +432,16 @@ export default function Edit({ period, record }: Props) {
                                         <span className="font-medium">{formatCurrency(overtime)}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-2">
+                                        <span className="text-muted-foreground">Holiday Pay:</span>
+                                        <span className="font-medium">{formatCurrency(holidayPay)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Total Allowances:</span>
                                         <span className="font-medium">{formatCurrency(totalAllowances)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="text-muted-foreground">Adjustments:</span>
+                                        <span className="font-medium">{formatCurrency(data.adjustments)}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Gross Pay:</span>

@@ -9,10 +9,16 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\PositionController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PayrollController;
 
 Route::get('/', function () {
     return Inertia::render('auth/login');
 })->name('home');
+
+// API routes for AJAX requests
+Route::middleware(['auth', 'verified'])->prefix('api')->group(function () {
+    Route::get('/payroll-periods', [PayrollController::class, 'getPeriods']);
+});
 
 // Apply check.user.active middleware to all authenticated routes
 Route::middleware(['auth', 'verified', 'check.user.active'])->group(function () {
