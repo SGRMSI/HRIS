@@ -199,11 +199,11 @@ export default function Index({ periods, filters }: Props) {
                                                                     View
                                                                 </Button>
                                                             </Link>
-                                                            <Link href={route('payroll.export', period.period_id)}>
+                                                            <a href={route('payroll.export', period.period_id)}>
                                                                 <Button size="sm" variant="outline">
                                                                     <Download className="h-4 w-4" />
                                                                 </Button>
-                                                            </Link>
+                                                            </a>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>

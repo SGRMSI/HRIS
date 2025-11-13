@@ -17,8 +17,8 @@ import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, PageProps } from '@/types';
 import { PayrollPeriod, PayrollRecord } from '@/types/payroll';
 import { Head, Link, router } from '@inertiajs/react';
-import { format } from 'date-fns';
-import { CheckCircle, Download, Edit, FileText, Lock, Trash2, Users } from 'lucide-react';
+import { differenceInDays, format } from 'date-fns';
+import { CheckCircle, Download, Edit, FileText, Trash2, Users } from 'lucide-react';
 
 interface Props extends PageProps {
     period: PayrollPeriod & {
@@ -48,6 +48,29 @@ export default function Show({ period, records }: Props) {
         };
 
         return <Badge className={variants[status] || ''}>{status.toUpperCase()}</Badge>;
+    };
+
+    const getPaymentDateBadge = () => {
+        if (!period.payment_date) return null;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const paymentDate = new Date(period.payment_date);
+        paymentDate.setHours(0, 0, 0, 0);
+        const daysUntil = differenceInDays(paymentDate, today);
+
+        if (daysUntil === 0) {
+            return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">Payment Today</Badge>;
+        } else if (daysUntil > 0 && daysUntil <= 7) {
+            return (
+                <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                    Payment in {daysUntil} {daysUntil === 1 ? 'day' : 'days'}
+                </Badge>
+            );
+        } else if (daysUntil < 0) {
+            return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Payment Past</Badge>;
+        }
+        return null;
     };
 
     const handleApprove = () => {
@@ -121,12 +144,12 @@ export default function Show({ period, records }: Props) {
                                 Mark as Paid
                             </Button>
                         )}
-                        <Link href={route('payroll.export', period.period_id)}>
+                        <a href={route('payroll.export', period.period_id)}>
                             <Button>
                                 <Download className="mr-2 h-4 w-4" />
-                                Export
+                                Export Payslips
                             </Button>
-                        </Link>
+                        </a>
                     </div>
                 </div>
 
@@ -212,17 +235,11 @@ export default function Show({ period, records }: Props) {
                                                 ₱{parseFloat(String(record.net_pay)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                {record.is_editable ? (
-                                                    <Link href={route('payroll.records.edit', [period.period_id, record.payroll_id])}>
-                                                        <Button size="sm" variant="outline">
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                    </Link>
-                                                ) : (
-                                                    <Button size="sm" variant="ghost" disabled>
-                                                        <Lock className="h-4 w-4" />
+                                                <Link href={route('payroll.records.edit', [period.period_id, record.payroll_id])}>
+                                                    <Button size="sm" variant="outline">
+                                                        {record.is_editable ? <Edit className="h-4 w-4" /> : 'View'}
                                                     </Button>
-                                                )}
+                                                </Link>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -248,7 +265,10 @@ export default function Show({ period, records }: Props) {
                             {period.payment_date && (
                                 <div>
                                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Payment Date</p>
-                                    <p className="mt-1">{format(new Date(period.payment_date), 'MMMM d, yyyy')}</p>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <p>{format(new Date(period.payment_date), 'MMMM d, yyyy')}</p>
+                                        {getPaymentDateBadge()}
+                                    </div>
                                 </div>
                             )}
                             <div>

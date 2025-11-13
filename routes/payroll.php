@@ -21,6 +21,7 @@ Route::middleware(['auth', 'verified'])->prefix('payroll')->name('payroll.')->gr
     Route::get('/{period}/records/{record}/edit', [PayrollController::class, 'edit'])->name('records.edit');
     Route::put('/{period}/records/{record}', [PayrollController::class, 'update'])->name('records.update');
     Route::post('/{period}/records/{record}/recalculate', [PayrollController::class, 'recalculate'])->name('records.recalculate');
+    Route::get('/{period}/records/{record}/export-pdf', [PayrollController::class, 'exportPdf'])->name('records.export-pdf');
     
     // Payroll actions
     Route::post('/{period}/approve', [PayrollController::class, 'approve'])->name('approve');

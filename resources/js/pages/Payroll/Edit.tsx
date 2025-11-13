@@ -8,7 +8,7 @@ import { BreadcrumbItem, PageProps } from '@/types';
 import { PayrollPeriod, PayrollRecord } from '@/types/payroll';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ArrowLeft, Calculator, Save } from 'lucide-react';
+import { ArrowLeft, Calculator, Download, Save } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 interface Props extends PageProps {
@@ -39,8 +39,8 @@ export default function Edit({ period, record }: Props) {
             href: `/payroll/${period.period_id}`,
         },
         {
-            title: `Edit ${record.employee.full_name}`,
-            href: `/payroll/${period.period_id}/records/${record.final_id || record.payroll_id}/edit`,
+            title: `View ${record.employee?.full_name || 'Employee'}'s Payroll`,
+            href: `/payroll/${period.period_id}/records/${record.payroll_id}/edit`,
         },
     ];
 
@@ -68,7 +68,15 @@ export default function Edit({ period, record }: Props) {
 
     const handleRecalculate = () => {
         if (confirm('This will recalculate the payroll based on attendance and employee settings. Continue?')) {
-            router.post(route('payroll.records.recalculate', [period.period_id, record.final_id || record.payroll_id]));
+            router.post(
+                route('payroll.records.recalculate', [period.period_id, record.final_id || record.payroll_id]),
+                {},
+                {
+                    onSuccess: () => {
+                        router.reload();
+                    },
+                },
+            );
         }
     };
 
@@ -95,7 +103,7 @@ export default function Edit({ period, record }: Props) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Edit Payroll - ${record.employee.full_name}`} />
+            <Head title={`View Payroll - ${record.employee.full_name}`} />
 
             <div className="p-6">
                 <div className="mb-6 flex items-center justify-between">
@@ -105,12 +113,20 @@ export default function Edit({ period, record }: Props) {
                             Back to Payroll
                         </Link>
                     </Button>
-                    {period.status === 'draft' && (
-                        <Button variant="outline" onClick={handleRecalculate}>
-                            <Calculator className="mr-2 h-4 w-4" />
-                            Recalculate from Settings & Attendance
+                    <div className="flex gap-2">
+                        {period.status === 'draft' && (
+                            <Button variant="outline" onClick={handleRecalculate}>
+                                <Calculator className="mr-2 h-4 w-4" />
+                                Recalculate from Settings & Attendance
+                            </Button>
+                        )}
+                        <Button variant="outline" asChild>
+                            <a href={route('payroll.records.export-pdf', [period.period_id, record.payroll_id])} target="_blank">
+                                <Download className="mr-2 h-4 w-4" />
+                                Export Payslip (PDF)
+                            </a>
                         </Button>
-                    )}
+                    </div>
                 </div>
 
                 <div className="mx-auto max-w-4xl">

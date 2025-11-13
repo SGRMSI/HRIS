@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PayrollController extends Controller
 {
@@ -164,6 +165,15 @@ class PayrollController extends Controller
         }
 
         $record->load(['employee.department', 'employee.position', 'employee.company']);
+
+        // Construct full name
+        if ($record->employee) {
+            $record->employee->full_name = trim(
+                $record->employee->first_name . ' ' . 
+                ($record->employee->middle_name ? $record->employee->middle_name . ' ' : '') . 
+                $record->employee->last_name
+            );
+        }
 
         return Inertia::render('Payroll/Edit', [
             'period' => $period,
@@ -352,12 +362,95 @@ class PayrollController extends Controller
     }
 
     /**
-     * Export payroll to Excel
+     * Export all employee payslips as ZIP
      */
     public function export(PayrollPeriod $period)
     {
-        $filename = 'payroll_' . $period->period_name . '_' . now()->format('Y-m-d') . '.xlsx';
-        return Excel::download(new PayrollExport($period), $filename);
+        // Get all payroll records with employee details
+        $records = $period->payrollRecords()
+            ->with(['employee.company', 'employee.department', 'employee.position'])
+            ->get();
+
+        if ($records->isEmpty()) {
+            return back()->with('error', 'No payroll records found for this period.');
+        }
+
+        // Create a temporary directory for PDFs
+        $tempDir = storage_path('app/temp/payslips_' . time());
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        // Generate PDF for each employee
+        foreach ($records as $record) {
+            // Construct full name
+            if ($record->employee) {
+                $record->employee->full_name = trim(
+                    $record->employee->first_name . ' ' . 
+                    ($record->employee->middle_name ? $record->employee->middle_name . ' ' : '') . 
+                    $record->employee->last_name
+                );
+            }
+
+            $pdf = Pdf::loadView('payslips.payslip', [
+                'period' => $period,
+                'record' => $record,
+            ]);
+
+            $filename = str_replace(' ', '_', $record->employee->full_name) . '.pdf';
+            $pdf->save($tempDir . '/' . $filename);
+        }
+
+        // Create ZIP file
+        $zipFilename = 'Payslips_' . str_replace(' ', '_', $period->period_name) . '_' . now()->format('Y-m-d') . '.zip';
+        $zipPath = storage_path('app/temp/' . $zipFilename);
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+            // Add all PDF files to ZIP
+            $files = glob($tempDir . '/*.pdf');
+            foreach ($files as $file) {
+                $zip->addFile($file, basename($file));
+            }
+            $zip->close();
+        }
+
+        // Clean up temporary PDF files
+        array_map('unlink', glob($tempDir . '/*.pdf'));
+        rmdir($tempDir);
+
+        // Download ZIP file and then delete it
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Export individual payslip as PDF
+     */
+    public function exportPdf($periodId, $recordId)
+    {
+        $period = PayrollPeriod::findOrFail($periodId);
+        
+        // Get PayrollRecord
+        $record = PayrollRecord::with(['employee.company', 'employee.department', 'employee.position'])
+            ->findOrFail($recordId);
+
+        // Construct full name
+        if ($record->employee) {
+            $record->employee->full_name = trim(
+                $record->employee->first_name . ' ' . 
+                ($record->employee->middle_name ? $record->employee->middle_name . ' ' : '') . 
+                $record->employee->last_name
+            );
+        }
+
+        $pdf = Pdf::loadView('payslips.payslip', [
+            'period' => $period,
+            'record' => $record,
+        ]);
+
+        $filename = 'Payslip_' . str_replace(' ', '_', $record->employee->full_name) . '_' . str_replace(' ', '_', $period->period_name) . '.pdf';
+        
+        return $pdf->download($filename);
     }
 
     /**
