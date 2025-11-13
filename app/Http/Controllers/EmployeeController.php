@@ -28,7 +28,7 @@ class EmployeeController extends Controller
             ->map(function ($employee) {
                 $currentSchedule = $employee->currentSchedule;
                 
-                return [
+                $data = [
                     'employee_id' => $employee->employee_id,
                     'id_number' => $employee->id_number,
                     'full_name' => $this->employeeService->generateFullName(
@@ -45,6 +45,16 @@ class EmployeeController extends Controller
                     'current_shift' => $currentSchedule && $currentSchedule->shift ? $currentSchedule->shift->name : ($employee->work_shift ?? 'Not Assigned'),
                     'created_at' => $employee->created_at->toISOString(),
                 ];
+
+                // Add evaluation data for Probationary and Trainee employees
+                if (in_array($employee->employment_status, ['Probationary', 'Trainee']) && $employee->evaluation_end_date) {
+                    $data['evaluation_start_date'] = $employee->evaluation_start_date ? $employee->evaluation_start_date->format('Y-m-d') : null;
+                    $data['evaluation_end_date'] = $employee->evaluation_end_date->format('Y-m-d');
+                    $data['days_until_evaluation'] = $employee->getDaysUntilEvaluation();
+                    $data['is_evaluation_overdue'] = $employee->isEvaluationOverdue();
+                }
+
+                return $data;
             });
 
         return Inertia::render('employee', [
@@ -101,7 +111,9 @@ class EmployeeController extends Controller
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
             'date_regularized' => 'nullable|date|after_or_equal:date_hired',
-            'employment_status' => 'required|in:Probationary,Regular,Contractual,Terminated',
+            'employment_status' => 'required|in:Probationary,Trainee,Regular,Contractual,Terminated',
+            'evaluation_start_date' => 'nullable|date',
+            'evaluation_end_date' => 'nullable|date|after_or_equal:evaluation_start_date',
             'remarks' => 'nullable|string',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -207,6 +219,15 @@ class EmployeeController extends Controller
             'emergency_contact_number' => $employee->emergency_contact_number,
             'profile_picture' => $employee->profile_picture,
         ];
+
+        // Add evaluation data for Probationary and Trainee employees
+        if (in_array($employee->employment_status, ['Probationary', 'Trainee']) && $employee->evaluation_end_date) {
+            $employeeData['evaluation_start_date'] = $employee->evaluation_start_date ? date('Y-m-d', strtotime($employee->evaluation_start_date)) : null;
+            $employeeData['evaluation_end_date'] = date('Y-m-d', strtotime($employee->evaluation_end_date));
+            $employeeData['days_until_evaluation'] = $employee->getDaysUntilEvaluation();
+            $employeeData['is_evaluation_overdue'] = $employee->isEvaluationOverdue();
+            $employeeData['is_evaluation_due_soon'] = $employee->isEvaluationDueSoon() && !$employee->isEvaluationOverdue();
+        }
         
         $documents = $employee->documents()
             ->with('uploader')
@@ -314,6 +335,12 @@ class EmployeeController extends Controller
             'profile_picture' => $employee->profile_picture,
         ];
 
+        // Add evaluation data for Probationary and Trainee employees
+        if (in_array($employee->employment_status, ['Probationary', 'Trainee'])) {
+            $employeeData['evaluation_start_date'] = $employee->evaluation_start_date ? $employee->evaluation_start_date->format('Y-m-d') : null;
+            $employeeData['evaluation_end_date'] = $employee->evaluation_end_date ? $employee->evaluation_end_date->format('Y-m-d') : null;
+        }
+
         $documents = $employee->documents()
             ->with('uploader')
             ->orderBy('created_at', 'desc')
@@ -364,7 +391,9 @@ class EmployeeController extends Controller
             'tin_number' => 'nullable|string|max:20',
             'date_hired' => 'required|date',
             'date_regularized' => 'nullable|date|after_or_equal:date_hired',
-            'employment_status' => 'required|in:Probationary,Regular,Contractual,Resigned,Terminated',
+            'employment_status' => 'required|in:Probationary,Trainee,Regular,Contractual,Resigned,Terminated',
+            'evaluation_start_date' => 'nullable|date',
+            'evaluation_end_date' => 'nullable|date|after_or_equal:evaluation_start_date',
             'remarks' => 'nullable|string',
         ]);
 
@@ -407,6 +436,8 @@ class EmployeeController extends Controller
                 'date_hired' => $validated['date_hired'],
                 'date_regularized' => $validated['date_regularized'],
                 'employment_status' => $validated['employment_status'],
+                'evaluation_start_date' => $validated['evaluation_start_date'] ?? null,
+                'evaluation_end_date' => $validated['evaluation_end_date'] ?? null,
                 'remarks' => $validated['remarks'],
             ]);
 

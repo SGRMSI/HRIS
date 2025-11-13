@@ -71,6 +71,8 @@ export default function CreateEmployee({ companies, departments, positions, acco
         hdmf_number: '',
         tin_number: '',
         date_hired: '',
+        evaluation_start_date: '',
+        evaluation_end_date: '',
         date_regularized: '',
         employment_status: '',
         remarks: '',
@@ -303,6 +305,7 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="Probationary">Probationary</SelectItem>
+                                                <SelectItem value="Trainee">Trainee</SelectItem>
                                                 <SelectItem value="Regular">Regular</SelectItem>
                                                 <SelectItem value="Contractual">Contractual</SelectItem>
                                             </SelectContent>
@@ -395,6 +398,38 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                         />
                                     </div>
                                 </div>
+
+                                {/* Conditional Evaluation Period Fields */}
+                                {(data.employment_status === 'Probationary' || data.employment_status === 'Trainee') && (
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="evaluation_start_date">Evaluation Start Date</Label>
+                                            <Input
+                                                id="evaluation_start_date"
+                                                type="date"
+                                                value={data.evaluation_start_date}
+                                                onChange={(e) => setData('evaluation_start_date', e.target.value)}
+                                                className={errors.evaluation_start_date ? 'border-red-500' : ''}
+                                            />
+                                            {errors.evaluation_start_date && <p className="text-sm text-red-500">{errors.evaluation_start_date}</p>}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="evaluation_end_date">Evaluation End Date</Label>
+                                            <Input
+                                                id="evaluation_end_date"
+                                                type="date"
+                                                value={data.evaluation_end_date}
+                                                onChange={(e) => setData('evaluation_end_date', e.target.value)}
+                                                className={errors.evaluation_end_date ? 'border-red-500' : ''}
+                                            />
+                                            {errors.evaluation_end_date && <p className="text-sm text-red-500">{errors.evaluation_end_date}</p>}
+                                            <p className="text-xs text-muted-foreground">
+                                                You will be notified 3 days before this date
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="rounded-md bg-blue-50 p-4 dark:bg-blue-950/20">
                                     <p className="text-sm text-blue-800 dark:text-blue-200">

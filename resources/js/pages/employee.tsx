@@ -1,4 +1,5 @@
 import { EmployeeDataTable } from '@/components/employee/employee-data-table';
+import { EvaluationWarningCard } from '@/components/employee/evaluation-warning-card';
 import { columns, type Employee } from '@/components/employee/employeecolumns';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
@@ -31,6 +32,38 @@ export default function Employee({ employees, flash }: Props) {
 
     const uniqueCompanies = [...new Set(employees.map((emp) => emp.company).filter(Boolean))];
 
+    // Calculate status counts
+    const statusCounts = employees.reduce((acc, employee) => {
+        const status = employee.employment_status || 'Unknown';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+    }, {} as { [key: string]: number });
+
+    // Calculate evaluation warnings for Probationary and Trainee
+    const evaluationWarnings = ['Probationary', 'Trainee'].map(status => {
+        const employeesWithStatus = employees.filter(emp => 
+            emp.employment_status === status && 
+            emp.evaluation_end_date
+        );
+
+        const dueSoonCount = employeesWithStatus.filter(emp => {
+            if (!emp.days_until_evaluation) return false;
+            return emp.days_until_evaluation >= 0 && 
+                   emp.days_until_evaluation <= 3 && 
+                   !emp.is_evaluation_overdue;
+        }).length;
+
+        const overdueCount = employeesWithStatus.filter(emp => 
+            emp.is_evaluation_overdue === true
+        ).length;
+
+        return {
+            status,
+            dueSoonCount,
+            overdueCount
+        };
+    });
+
     
     useEffect(() => {
         if (flash?.success) {
@@ -57,7 +90,7 @@ export default function Employee({ employees, flash }: Props) {
             <Head title="Employee" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-6">
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                     <Card className="transition-shadow hover:shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
@@ -82,6 +115,10 @@ export default function Employee({ employees, flash }: Props) {
                             <p className="mt-1 text-xs text-muted-foreground">All active employees</p>
                         </div>
                     </Card>
+                    <EvaluationWarningCard 
+                        statusCounts={statusCounts}
+                        evaluationWarnings={evaluationWarnings}
+                    />
                 </div>
 
                 {/* Employee Data Table */}

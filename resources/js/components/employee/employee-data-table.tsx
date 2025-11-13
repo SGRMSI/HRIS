@@ -26,11 +26,18 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     const [recentlyAddedFilter, setRecentlyAddedFilter] = React.useState<string>('newest');
+    const [evaluationFilter, setEvaluationFilter] = React.useState<string>('all');
 
     // Extract unique companies for the filter dropdown
     const uniqueCompanies = React.useMemo(() => {
         const companies = data.map((row) => (row as { company?: string }).company).filter(Boolean) as string[];
         return [...new Set(companies)].sort();
+    }, [data]);
+
+    // Extract unique employment statuses for the filter dropdown
+    const uniqueStatuses = React.useMemo(() => {
+        const statuses = data.map((row) => (row as { employment_status?: string }).employment_status).filter(Boolean) as string[];
+        return [...new Set(statuses)].sort();
     }, [data]);
 
     // Filter and sort data
@@ -50,6 +57,55 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
             filtered = filtered.filter((row) => (row as { company?: string }).company === companyFilter.value);
         }
 
+        // Apply employment status filter
+        const statusFilter = columnFilters.find((f) => f.id === 'employment_status');
+        if (statusFilter && statusFilter.value) {
+            filtered = filtered.filter((row) => (row as { employment_status?: string }).employment_status === statusFilter.value);
+        }
+
+        // Apply evaluation warning filter
+        if (evaluationFilter !== 'all') {
+            filtered = filtered.filter((row) => {
+                const employee = row as { 
+                    employment_status?: string; 
+                    evaluation_end_date?: string | null; 
+                    is_evaluation_overdue?: boolean;
+                    days_until_evaluation?: number | null;
+                };
+                
+                const status = employee.employment_status;
+                const hasEvaluationTracking = (status === 'Probationary' || status === 'Trainee') && employee.evaluation_end_date;
+                
+                if (!hasEvaluationTracking) {
+                    return evaluationFilter === 'none';
+                }
+
+                if (evaluationFilter === 'overdue') {
+                    return employee.is_evaluation_overdue === true;
+                }
+
+                if (evaluationFilter === 'due-soon') {
+                    return employee.days_until_evaluation !== null && 
+                           employee.days_until_evaluation !== undefined &&
+                           employee.days_until_evaluation >= 0 && 
+                           employee.days_until_evaluation <= 3 && 
+                           !employee.is_evaluation_overdue;
+                }
+
+                if (evaluationFilter === 'warnings') {
+                    // Both overdue and due soon
+                    const isOverdue = employee.is_evaluation_overdue === true;
+                    const isDueSoon = employee.days_until_evaluation !== null && 
+                                     employee.days_until_evaluation !== undefined &&
+                                     employee.days_until_evaluation >= 0 && 
+                                     employee.days_until_evaluation <= 3;
+                    return isOverdue || isDueSoon;
+                }
+
+                return true;
+            });
+        }
+
         // Sort by created_at based on selected order
         filtered.sort((a, b) => {
             const dateA = (a as { created_at?: string }).created_at;
@@ -66,7 +122,7 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
         });
 
         return filtered;
-    }, [data, recentlyAddedFilter, columnFilters]);
+    }, [data, recentlyAddedFilter, columnFilters, evaluationFilter]);
 
     const table = useReactTable({
         data: filteredData,
@@ -111,6 +167,23 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                         </SelectContent>
                     </Select>
 
+                    <Select
+                        value={(table.getColumn('employment_status')?.getFilterValue() as string) ?? ''}
+                        onValueChange={(value) => table.getColumn('employment_status')?.setFilterValue(value === 'all' ? '' : value)}
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            {uniqueStatuses.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                    {status}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
                     <Select value={recentlyAddedFilter} onValueChange={setRecentlyAddedFilter}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Sort by date" />
@@ -118,6 +191,19 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                         <SelectContent>
                             <SelectItem value="newest">Newest to Oldest</SelectItem>
                             <SelectItem value="oldest">Oldest to Newest</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={evaluationFilter} onValueChange={setEvaluationFilter}>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Filter by evaluation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Employees</SelectItem>
+                            <SelectItem value="warnings">With Warnings</SelectItem>
+                            <SelectItem value="overdue">Overdue Only</SelectItem>
+                            <SelectItem value="due-soon">Due Soon Only</SelectItem>
+                            <SelectItem value="none">No Evaluation</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -146,13 +232,38 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                     </TableHeader>
                     <TableBody>
                         {table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow key={row.id}>
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
+                            table.getRowModel().rows.map((row) => {
+                                const employee = row.original as { 
+                                    employment_status?: string; 
+                                    evaluation_end_date?: string | null; 
+                                    is_evaluation_overdue?: boolean;
+                                    days_until_evaluation?: number | null;
+                                };
+                                
+                                // Determine if row should be highlighted
+                                const hasEvaluationTracking = (employee.employment_status === 'Probationary' || employee.employment_status === 'Trainee') && employee.evaluation_end_date;
+                                const isOverdue = hasEvaluationTracking && employee.is_evaluation_overdue === true;
+                                const isDueSoon = hasEvaluationTracking && 
+                                                 employee.days_until_evaluation !== null && 
+                                                 employee.days_until_evaluation !== undefined &&
+                                                 employee.days_until_evaluation >= 0 && 
+                                                 employee.days_until_evaluation <= 3 && 
+                                                 !employee.is_evaluation_overdue;
+                                
+                                const rowClassName = isOverdue 
+                                    ? 'bg-red-50 dark:bg-red-950/20 border-l-4 border-l-red-500'
+                                    : isDueSoon 
+                                    ? 'bg-amber-50 dark:bg-amber-950/20 border-l-4 border-l-amber-500'
+                                    : '';
+                                
+                                return (
+                                    <TableRow key={row.id} className={rowClassName}>
+                                        {row.getVisibleCells().map((cell) => (
+                                            <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                                        ))}
+                                    </TableRow>
+                                );
+                            })
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">

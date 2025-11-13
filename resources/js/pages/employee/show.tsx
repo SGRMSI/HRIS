@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash, Calendar, Camera } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash, Calendar, Camera, AlertTriangle, Clock } from 'lucide-react';
 import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dialog';
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 import { ProfilePictureDialog } from '@/components/employee/profile-picture-dialog';
@@ -22,7 +22,7 @@ interface Employee {
     company_id?: number;
     department: string;
     position: string;
-    employment_status: 'Probationary' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated';
+    employment_status: 'Probationary' | 'Trainee' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated';
     date_hired: string;
     contact_number?: string;
     email?: string;
@@ -42,6 +42,11 @@ interface Employee {
     hdmf_number?: string;
     tin_number?: string;
     profile_picture?: string | null;
+    evaluation_start_date?: string | null;
+    evaluation_end_date?: string | null;
+    days_until_evaluation?: number | null;
+    is_evaluation_overdue?: boolean;
+    is_evaluation_due_soon?: boolean;
     current_shift?: {
         schedule_id: number;
         name: string;
@@ -214,14 +219,56 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         <div className="flex flex-col gap-4">
                             {/* Status Card */}
                             <Card className="transition-shadow hover:shadow-lg">
-                                <CardContent className="p-2">
-                                    <div className="flex flex-col items-center justify-center gap-3">
-                                        <div
-                                            className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
-                                        >
-                                            {employee.employment_status}
+                                <CardContent className="p-4">
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <div
+                                                className={`inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium ${getStatusColor(employee.employment_status)}`}
+                                            >
+                                                {employee.employment_status}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">Employment Status</p>
                                         </div>
-                                        <p className="text-sm text-muted-foreground">Employment Status</p>
+
+                                        {/* Evaluation Period - Only for Probationary/Trainee */}
+                                        {(employee.employment_status === 'Probationary' || employee.employment_status === 'Trainee') && employee.evaluation_end_date && (
+                                            <div className="border-t pt-3 space-y-2">
+                                                <p className="text-xs font-semibold text-muted-foreground text-center">Evaluation Period</p>
+                                                
+                                                {/* Evaluation Dates */}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {employee.evaluation_start_date && (
+                                                        <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
+                                                            <span className="text-xs text-muted-foreground">Start</span>
+                                                            <span className="text-sm font-semibold text-foreground">{formatDate(employee.evaluation_start_date)}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col gap-1 py-2 px-3 bg-muted/50 rounded-md">
+                                                        <span className="text-xs text-muted-foreground">End</span>
+                                                        <span className="text-sm font-semibold text-foreground">{formatDate(employee.evaluation_end_date)}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Warning Messages */}
+                                                {employee.is_evaluation_overdue && (
+                                                    <div className="flex items-center gap-2 rounded-md bg-red-50 p-2 dark:bg-red-950/20">
+                                                        <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                                                        <div className="flex-1">
+                                                            <p className="text-xs font-semibold text-red-900 dark:text-red-100">Overdue by {Math.abs(employee.days_until_evaluation || 0)} day(s)</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {employee.is_evaluation_due_soon && !employee.is_evaluation_overdue && (
+                                                    <div className="flex items-center gap-2 rounded-md bg-amber-50 p-2 dark:bg-amber-950/20">
+                                                        <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                                                        <div className="flex-1">
+                                                            <p className="text-xs font-semibold text-amber-900 dark:text-amber-100">Due in {employee.days_until_evaluation || 0} day(s)</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </CardContent>
                             </Card>

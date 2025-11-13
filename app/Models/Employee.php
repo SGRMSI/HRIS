@@ -32,6 +32,8 @@ class Employee extends Model
         'hdmf_number',
         'tin_number',
         'date_hired',
+        'evaluation_start_date',
+        'evaluation_end_date',
         'date_regularized',
         'work_shift',
         'employment_status',
@@ -42,6 +44,8 @@ class Employee extends Model
     protected $casts = [
         'birth_date' => 'date',
         'date_hired' => 'date',
+        'evaluation_start_date' => 'date',
+        'evaluation_end_date' => 'date',
         'date_regularized' => 'date',
     ];
 
@@ -116,6 +120,51 @@ class Employee extends Model
     public function payrollSettings()
     {
         return $this->hasOne(EmployeePayrollSettings::class, 'employee_id', 'employee_id');
+    }
+
+    /**
+     * Check if employee's evaluation period is ending soon (within 3 days)
+     */
+    public function isEvaluationDueSoon(): bool
+    {
+        if (!$this->evaluation_end_date) {
+            return false;
+        }
+
+        $daysUntilEvaluation = now()->diffInDays($this->evaluation_end_date, false);
+        return $daysUntilEvaluation >= 0 && $daysUntilEvaluation <= 3;
+    }
+
+    /**
+     * Check if employee's evaluation period is overdue
+     */
+    public function isEvaluationOverdue(): bool
+    {
+        if (!$this->evaluation_end_date) {
+            return false;
+        }
+
+        return now()->isAfter($this->evaluation_end_date);
+    }
+
+    /**
+     * Get days until evaluation
+     */
+    public function getDaysUntilEvaluation(): ?int
+    {
+        if (!$this->evaluation_end_date) {
+            return null;
+        }
+
+        return now()->diffInDays($this->evaluation_end_date, false);
+    }
+
+    /**
+     * Check if employee requires evaluation tracking
+     */
+    public function requiresEvaluationTracking(): bool
+    {
+        return in_array($this->employment_status, ['Probationary', 'Trainee']);
     }
 }
 

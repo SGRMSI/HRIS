@@ -48,8 +48,10 @@ interface Employee {
     company: string;
     department: string;
     position: string;
-    employment_status: 'Probationary' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated';
+    employment_status: 'Probationary' | 'Trainee' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated';
     date_hired: string;
+    evaluation_start_date?: string;
+    evaluation_end_date?: string;
     contact_number?: string;
     address?: string;
     date_of_birth?: string;
@@ -136,6 +138,8 @@ export default function EditEmployee({ employee, companies, departments, positio
         hdmf_number: employee.hdmf_number || '',
         tin_number: employee.tin_number || '',
         date_hired: employee.date_hired || '',
+        evaluation_start_date: employee.evaluation_start_date || '',
+        evaluation_end_date: employee.evaluation_end_date || '',
         date_regularized: employee.date_regularized || '',
         employment_status: employee.employment_status || '',
         remarks: employee.remarks || '',
@@ -443,7 +447,7 @@ export default function EditEmployee({ employee, companies, departments, positio
                                                 onValueChange={(value) =>
                                                     setData(
                                                         'employment_status',
-                                                        value as 'Probationary' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated',
+                                                        value as 'Probationary' | 'Trainee' | 'Regular' | 'Contractual' | 'Resigned' | 'Terminated',
                                                     )
                                                 }
                                             >
@@ -452,6 +456,7 @@ export default function EditEmployee({ employee, companies, departments, positio
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="Probationary">Probationary</SelectItem>
+                                                    <SelectItem value="Trainee">Trainee</SelectItem>
                                                     <SelectItem value="Regular">Regular</SelectItem>
                                                     <SelectItem value="Contractual">Contractual</SelectItem>
                                                     <SelectItem value="Resigned">Resigned</SelectItem>
@@ -481,6 +486,38 @@ export default function EditEmployee({ employee, companies, departments, positio
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Conditional Evaluation Period Fields */}
+                                    {(data.employment_status === 'Probationary' || data.employment_status === 'Trainee') && (
+                                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="evaluation_start_date">Evaluation Start Date</Label>
+                                                <Input
+                                                    id="evaluation_start_date"
+                                                    type="date"
+                                                    value={data.evaluation_start_date}
+                                                    onChange={(e) => setData('evaluation_start_date', e.target.value)}
+                                                    className={errors.evaluation_start_date ? 'border-red-500' : ''}
+                                                />
+                                                {errors.evaluation_start_date && <p className="text-sm text-red-500">{errors.evaluation_start_date}</p>}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="evaluation_end_date">Evaluation End Date</Label>
+                                                <Input
+                                                    id="evaluation_end_date"
+                                                    type="date"
+                                                    value={data.evaluation_end_date}
+                                                    onChange={(e) => setData('evaluation_end_date', e.target.value)}
+                                                    className={errors.evaluation_end_date ? 'border-red-500' : ''}
+                                                />
+                                                {errors.evaluation_end_date && <p className="text-sm text-red-500">{errors.evaluation_end_date}</p>}
+                                                <p className="text-xs text-muted-foreground">
+                                                    You will be notified 3 days before this date
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Current Schedule Display */}
                                     {employee.current_shift ? (
