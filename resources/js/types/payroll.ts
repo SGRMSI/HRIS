@@ -27,15 +27,17 @@ export interface PayrollPeriod {
 }
 
 export interface PayrollRecord {
-    payroll_id: number;
+    payroll_id?: number;
+    final_id?: number; // New primary key for PayrollFinal
     period_id: number;
     employee_id: number;
     daily_rate: string | number;
     days_worked: string | number;
-    rate_15th: string | number;
-    rate_30th: string | number;
-    rate_15th_30th: string;
-    overtime: string;
+    basic_pay?: string | number; // New field replacing rate_15th_30th
+    rate_15th?: string | number; // Deprecated
+    rate_30th?: string | number; // Deprecated
+    rate_15th_30th?: string; // Deprecated
+    overtime: string | number;
     night_differential: string;
     special_holiday: string;
     legal_holiday: string;

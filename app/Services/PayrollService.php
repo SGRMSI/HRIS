@@ -73,32 +73,41 @@ class PayrollService
      */
     public function createPayrollRecord(PayrollPeriod $period, Employee $employee): PayrollRecord
     {
+        // Load employee payroll settings
+        $employee->load('payrollSettings');
+        $settings = $employee->payrollSettings;
+
         $record = new PayrollRecord([
             'period_id' => $period->period_id,
             'employee_id' => $employee->employee_id,
         ]);
 
-        // Set daily rate from employee or default
-        $record->daily_rate = $employee->daily_rate ?? 0;
+        // Set daily rate from employee_payroll_settings
+        $record->daily_rate = $settings->daily_rate ?? 0;
 
         // Calculate days worked from attendance
         $record->days_worked = $this->calculateDaysWorked($employee, $period);
 
-        // Set allowances from employee settings
-        $record->clothing_allowance = $employee->clothing_allowance ?? 0;
-        $record->rice_allowance = $employee->rice_allowance ?? 0;
-        $record->transportation_allowance = $employee->transportation_allowance ?? 0;
-        $record->program_allowance = $employee->program_allowance ?? 0;
-        $record->attendance_incentive = $employee->attendance_incentive ?? 0;
+        // Set allowances from employee_payroll_settings
+        $record->clothing_allowance = $settings->clothing_allowance ?? 0;
+        $record->rice_allowance = $settings->rice_allowance ?? 0;
+        $record->transportation_allowance = $settings->transportation_allowance ?? 0;
+        $record->program_allowance = $settings->program_allowance ?? 0;
+        $record->attendance_incentive = $settings->attendance_incentive ?? 0;
 
-        // Calculate overtime and additional earnings
+        // Set adjustments from employee_payroll_settings
+        $record->adjustments = $settings->adjustments ?? 0;
+
+        // Set government contributions from employee_payroll_settings
+        $record->sss_contribution = $settings->sss_contribution ?? 0;
+        $record->phic_contribution = $settings->phic_contribution ?? 0;
+        $record->hdmf_contribution = $settings->hdmf_contribution ?? 0;
+
+        // Calculate overtime and additional earnings from attendance
         $this->calculateEarnings($record, $employee, $period);
 
-        // Calculate late/undertime deductions
+        // Calculate late/undertime deductions from attendance
         $this->calculateLateUndertime($record, $employee, $period);
-
-        // Calculate government contributions
-        $this->calculateGovernmentContributions($record);
 
         // Calculate all totals using the exact formula
         $record->calculateAll();
@@ -132,8 +141,13 @@ class PayrollService
 
         $hourlyRate = $record->daily_rate / 8; // 8 hours per day
 
-        // Overtime
-        $overtimeHours = $attendances->sum('overtime_hours');
+        // Overtime: Calculate based on total_hours worked - 8 regular hours (only if > 8)
+        // Do NOT use attendance.overtime_hours as it may be incorrectly calculated
+        $overtimeHours = $attendances->sum(function ($att) {
+            // Only count overtime if total hours > 8
+            $totalHours = (float) $att->total_hours;
+            return $totalHours > 8 ? ($totalHours - 8) : 0;
+        });
         $record->overtime = round($hourlyRate * $overtimeHours * 1.25, 2);
 
         // Night Differential (10% of hourly rate, would need time tracking)
@@ -171,19 +185,23 @@ class PayrollService
 
     /**
      * Calculate government contributions (SSS, PhilHealth, Pag-IBIG)
+     * Note: Now pulled from employee_payroll_settings, this is kept for legacy/reference
      */
     protected function calculateGovernmentContributions(PayrollRecord $record): void
     {
-        $monthlyGross = $record->rate_15th_30th * 2; // Estimate monthly from semi-monthly
+        $monthlyGross = $record->basic_pay * 2; // Estimate monthly from semi-monthly
 
-        // SSS Contribution (Employee Share)
-        $record->sss_contribution = $this->calculateSSS($monthlyGross);
-
-        // PhilHealth Contribution (Employee Share = 2%)
-        $record->phic_contribution = $this->calculatePhilHealth($monthlyGross);
-
-        // Pag-IBIG/HDMF Contribution (Employee Share)
-        $record->hdmf_contribution = $this->calculatePagIBIG($monthlyGross);
+        // These are now set from employee_payroll_settings
+        // Only calculate if not already set
+        if (!$record->sss_contribution) {
+            $record->sss_contribution = $this->calculateSSS($monthlyGross);
+        }
+        if (!$record->phic_contribution) {
+            $record->phic_contribution = $this->calculatePhilHealth($monthlyGross);
+        }
+        if (!$record->hdmf_contribution) {
+            $record->hdmf_contribution = $this->calculatePagIBIG($monthlyGross);
+        }
     }
 
     /**
@@ -255,18 +273,31 @@ class PayrollService
     {
         $period = $record->period;
         $employee = $record->employee;
+        
+        // Reload employee payroll settings
+        $employee->load('payrollSettings');
+        $settings = $employee->payrollSettings;
 
-        // Recalculate days worked
+        // Update from employee_payroll_settings
+        $record->daily_rate = $settings->daily_rate ?? $record->daily_rate;
+        $record->clothing_allowance = $settings->clothing_allowance ?? 0;
+        $record->rice_allowance = $settings->rice_allowance ?? 0;
+        $record->transportation_allowance = $settings->transportation_allowance ?? 0;
+        $record->program_allowance = $settings->program_allowance ?? 0;
+        $record->attendance_incentive = $settings->attendance_incentive ?? 0;
+        $record->adjustments = $settings->adjustments ?? 0;
+        $record->sss_contribution = $settings->sss_contribution ?? 0;
+        $record->phic_contribution = $settings->phic_contribution ?? 0;
+        $record->hdmf_contribution = $settings->hdmf_contribution ?? 0;
+
+        // Recalculate days worked from attendance
         $record->days_worked = $this->calculateDaysWorked($employee, $period);
 
-        // Recalculate earnings
+        // Recalculate overtime and earnings from attendance
         $this->calculateEarnings($record, $employee, $period);
 
-        // Recalculate late/undertime
+        // Recalculate late/undertime from attendance
         $this->calculateLateUndertime($record, $employee, $period);
-
-        // Recalculate government contributions
-        $this->calculateGovernmentContributions($record);
 
         // Recalculate all totals
         $record->calculateAll();

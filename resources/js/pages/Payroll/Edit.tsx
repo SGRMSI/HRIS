@@ -40,35 +40,35 @@ export default function Edit({ period, record }: Props) {
         },
         {
             title: `Edit ${record.employee.full_name}`,
-            href: `/payroll/${period.period_id}/records/${record.payroll_id}/edit`,
+            href: `/payroll/${period.period_id}/records/${record.final_id || record.payroll_id}/edit`,
         },
     ];
 
-    const { data, setData, put, processing, errors } = useForm({
-        days_worked: record.days_worked || 0,
-        daily_rate: record.daily_rate || 0,
-        rate_15th: record.rate_15th || 0,
-        rate_30th: record.rate_30th || 0,
-        clothing_allowance: record.clothing_allowance || 0,
-        rice_allowance: record.rice_allowance || 0,
-        transportation_allowance: record.transportation_allowance || 0,
-        program_allowance: record.program_allowance || 0,
-        attendance_incentive: record.attendance_incentive || 0,
-        adjustments: record.adjustments || 0,
-        sss_contribution: record.sss_contribution || 0,
-        phic_contribution: record.phic_contribution || 0,
-        hdmf_contribution: record.hdmf_contribution || 0,
-        remarks: record.remarks || '',
+    const { data, setData, put, processing } = useForm({
+        days_worked: Number(record.days_worked) || 0,
+        daily_rate: Number(record.daily_rate) || 0,
+        basic_pay: Number(record.basic_pay) || 0,
+        overtime: Number(record.overtime) || 0,
+        clothing_allowance: Number(record.clothing_allowance) || 0,
+        rice_allowance: Number(record.rice_allowance) || 0,
+        transportation_allowance: Number(record.transportation_allowance) || 0,
+        program_allowance: Number(record.program_allowance) || 0,
+        attendance_incentive: Number(record.attendance_incentive) || 0,
+        adjustments: Number(record.adjustments) || 0,
+        sss_contribution: Number(record.sss_contribution) || 0,
+        phic_contribution: Number(record.phic_contribution) || 0,
+        hdmf_contribution: Number(record.hdmf_contribution) || 0,
+        remarks: (record.remarks || '') as string,
     });
 
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
-        put(route('payroll.records.update', [period.period_id, record.payroll_id]));
+        put(route('payroll.records.update', [period.period_id, record.final_id || record.payroll_id]));
     };
 
     const handleRecalculate = () => {
-        if (confirm('This will recalculate the payroll based on attendance. Continue?')) {
-            router.post(route('payroll.records.recalculate', [period.period_id, record.payroll_id]));
+        if (confirm('This will recalculate the payroll based on attendance and employee settings. Continue?')) {
+            router.post(route('payroll.records.recalculate', [period.period_id, record.final_id || record.payroll_id]));
         }
     };
 
@@ -80,19 +80,17 @@ export default function Edit({ period, record }: Props) {
     };
 
     // Calculate totals
-    const totalEarnings =
-        Number(data.rate_15th) +
-        Number(data.rate_30th) +
+    const basicPay = Number(data.basic_pay);
+    const overtime = Number(data.overtime);
+    const totalAllowances =
         Number(data.clothing_allowance) +
         Number(data.rice_allowance) +
         Number(data.transportation_allowance) +
         Number(data.program_allowance) +
-        Number(data.attendance_incentive) +
-        Number(data.adjustments);
+        Number(data.attendance_incentive);
 
+    const grossPay = basicPay + overtime + totalAllowances + Number(data.adjustments);
     const totalDeductions = Number(data.sss_contribution) + Number(data.phic_contribution) + Number(data.hdmf_contribution);
-
-    const grossPay = totalEarnings;
     const netPay = grossPay - totalDeductions;
 
     return (
@@ -110,7 +108,7 @@ export default function Edit({ period, record }: Props) {
                     {period.status === 'draft' && (
                         <Button variant="outline" onClick={handleRecalculate}>
                             <Calculator className="mr-2 h-4 w-4" />
-                            Recalculate from Attendance
+                            Recalculate from Settings & Attendance
                         </Button>
                     )}
                 </div>
@@ -144,7 +142,9 @@ export default function Edit({ period, record }: Props) {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Basic Earnings</CardTitle>
-                                <CardDescription>Daily Rate × Days Worked = Rate 15th/30th</CardDescription>
+                                <CardDescription>
+                                    Daily Rate × Days Worked = Basic Pay (Pre-filled from attendance and employee settings, editable)
+                                </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-3 gap-4">
@@ -156,17 +156,10 @@ export default function Edit({ period, record }: Props) {
                                             step="0.01"
                                             min="0"
                                             value={data.daily_rate}
-                                            onChange={(e) => {
-                                                const rate = parseFloat(e.target.value) || 0;
-                                                setData('daily_rate', rate);
-                                                const calculated = rate * Number(data.days_worked);
-                                                setData('rate_15th', calculated);
-                                                setData('rate_30th', calculated);
-                                            }}
+                                            onChange={(e) => setData('daily_rate', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                                             disabled={period.status !== 'draft'}
-                                            className={errors.daily_rate ? 'border-red-500' : ''}
                                         />
-                                        {errors.daily_rate && <p className="text-sm text-red-500">{errors.daily_rate}</p>}
+                                        <p className="text-xs text-muted-foreground">From Employee Settings (editable)</p>
                                     </div>
 
                                     <div className="space-y-2">
@@ -177,56 +170,18 @@ export default function Edit({ period, record }: Props) {
                                             step="0.5"
                                             min="0"
                                             value={data.days_worked}
-                                            onChange={(e) => {
-                                                const days = parseFloat(e.target.value) || 0;
-                                                setData('days_worked', days);
-                                                const calculated = Number(data.daily_rate) * days;
-                                                setData('rate_15th', calculated);
-                                                setData('rate_30th', calculated);
-                                            }}
+                                            onChange={(e) => setData('days_worked', e.target.value === '' ? 0 : parseFloat(e.target.value))}
                                             disabled={period.status !== 'draft'}
-                                            className={errors.days_worked ? 'border-red-500' : ''}
                                         />
-                                        {errors.days_worked && <p className="text-sm text-red-500">{errors.days_worked}</p>}
+                                        <p className="text-xs text-muted-foreground">From Attendance Records (editable)</p>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label>Calculated Rate</Label>
+                                        <Label>Basic Pay</Label>
                                         <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm font-medium">
-                                            {formatCurrency(Number(data.daily_rate) * Number(data.days_worked))}
+                                            {formatCurrency(basicPay)}
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="rate_15th">Rate 15th</Label>
-                                        <Input
-                                            id="rate_15th"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.rate_15th}
-                                            onChange={(e) => setData('rate_15th', parseFloat(e.target.value) || 0)}
-                                            disabled={period.status !== 'draft'}
-                                            className={errors.rate_15th ? 'border-red-500' : ''}
-                                        />
-                                        {errors.rate_15th && <p className="text-sm text-red-500">{errors.rate_15th}</p>}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="rate_30th">Rate 30th</Label>
-                                        <Input
-                                            id="rate_30th"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.rate_30th}
-                                            onChange={(e) => setData('rate_30th', parseFloat(e.target.value) || 0)}
-                                            disabled={period.status !== 'draft'}
-                                            className={errors.rate_30th ? 'border-red-500' : ''}
-                                        />
-                                        {errors.rate_30th && <p className="text-sm text-red-500">{errors.rate_30th}</p>}
+                                        <p className="text-xs text-muted-foreground">Auto-calculated</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -377,12 +332,20 @@ export default function Edit({ period, record }: Props) {
                             <CardContent>
                                 <div className="space-y-3">
                                     <div className="flex justify-between border-b pb-2">
-                                        <span className="text-muted-foreground">Total Earnings:</span>
-                                        <span className="font-medium">{formatCurrency(totalEarnings)}</span>
+                                        <span className="text-muted-foreground">Basic Pay:</span>
+                                        <span className="font-medium">{formatCurrency(basicPay)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="text-muted-foreground">Overtime:</span>
+                                        <span className="font-medium">{formatCurrency(overtime)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="text-muted-foreground">Total Allowances:</span>
+                                        <span className="font-medium">{formatCurrency(totalAllowances)}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Gross Pay:</span>
-                                        <span className="font-medium">{formatCurrency(grossPay)}</span>
+                                        <span className="font-medium text-green-600">{formatCurrency(grossPay)}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Total Deductions:</span>

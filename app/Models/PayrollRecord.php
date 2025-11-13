@@ -18,7 +18,7 @@ class PayrollRecord extends Model
         'employee_id',
         'daily_rate',
         'days_worked',
-        'rate_15th_30th',
+        'basic_pay',
         'overtime',
         'night_differential',
         'special_holiday',
@@ -46,7 +46,7 @@ class PayrollRecord extends Model
     protected $casts = [
         'daily_rate' => 'decimal:2',
         'days_worked' => 'decimal:2',
-        'rate_15th_30th' => 'decimal:2',
+        'basic_pay' => 'decimal:2',
         'overtime' => 'decimal:2',
         'night_differential' => 'decimal:2',
         'special_holiday' => 'decimal:2',
@@ -79,20 +79,20 @@ class PayrollRecord extends Model
     }
 
     /**
-     * Calculate Rate 15th/30th: Daily Rate × Days Worked
+     * Calculate Basic Pay: Daily Rate × Days Worked
      */
-    public function calculateRate15th30th(): void
+    public function calculateBasicPay(): void
     {
-        $this->rate_15th_30th = round($this->daily_rate * $this->days_worked, 2);
+        $this->basic_pay = round($this->daily_rate * $this->days_worked, 2);
     }
 
     /**
-     * Calculate Gross Pay: Rate 15th/30th + all earnings
+     * Calculate Gross Pay: Basic Pay + all earnings
      */
     public function calculateGrossPay(): void
     {
         $this->gross_pay = round(
-            $this->rate_15th_30th +
+            $this->basic_pay +
             $this->overtime +
             $this->night_differential +
             $this->special_holiday +
@@ -135,7 +135,7 @@ class PayrollRecord extends Model
      */
     public function calculateAll(): void
     {
-        $this->calculateRate15th30th();
+        $this->calculateBasicPay();
         $this->calculateGrossPay();
         $this->calculateTotalDeductions();
         $this->calculateNetPay();

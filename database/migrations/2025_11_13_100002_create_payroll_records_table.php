@@ -16,10 +16,10 @@ return new class extends Migration
             $table->foreignId('period_id')->constrained('payroll_periods', 'period_id')->cascadeOnDelete();
             $table->foreignId('employee_id')->constrained('employees', 'employee_id')->cascadeOnDelete();
             
-            // Basic Pay: Daily Rate * Days Worked = Rate 15th/30th
-            $table->decimal('daily_rate', 10, 2)->default(0);
-            $table->decimal('days_worked', 5, 2)->default(0);
-            $table->decimal('rate_15th_30th', 10, 2)->default(0);
+            // Basic Pay: Daily Rate * Days Worked = Basic Pay
+            $table->decimal('daily_rate', 10, 2)->default(0)->comment('From employee_payroll_settings');
+            $table->decimal('days_worked', 5, 2)->default(0)->comment('From attendance count');
+            $table->decimal('basic_pay', 10, 2)->default(0)->comment('Daily Rate * Days Worked');
             
             // Additional Earnings
             $table->decimal('overtime', 10, 2)->default(0);
@@ -38,7 +38,7 @@ return new class extends Migration
             $table->decimal('adjustments', 10, 2)->default(0);
             $table->text('adjustment_notes')->nullable();
             
-            // Gross Pay = Rate 15th/30th + Overtime + Night Diff + Holidays + Allowances + Adjustments
+            // Gross Pay = Basic Pay + Overtime + Night Diff + Holidays + Allowances + Adjustments
             $table->decimal('gross_pay', 10, 2)->default(0);
             
             // Government Contributions
