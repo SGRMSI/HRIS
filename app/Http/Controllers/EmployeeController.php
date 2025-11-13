@@ -839,4 +839,31 @@ class EmployeeController extends Controller
                 ->with('error', 'Failed to import CSV file. Error: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Get employees by company (API endpoint for payroll)
+     */
+    public function getByCompany(Company $company)
+    {
+        $employees = Employee::where('company_id', $company->company_id)
+            ->whereIn('employment_status', ['Probationary', 'Regular', 'Contractual'])
+            ->with(['department', 'position'])
+            ->orderBy('id_number')
+            ->get()
+            ->map(function ($employee) {
+                return [
+                    'employee_id' => $employee->employee_id,
+                    'id_number' => $employee->id_number,
+                    'full_name' => $this->employeeService->generateFullName(
+                        $employee->first_name,
+                        $employee->middle_name,
+                        $employee->last_name
+                    ),
+                    'department' => $employee->department,
+                    'position' => $employee->position,
+                ];
+            });
+
+        return response()->json($employees);
+    }
 }

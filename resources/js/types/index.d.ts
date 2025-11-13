@@ -51,3 +51,55 @@ export interface PageProps {
         user: User | null;
     };
 }
+
+export interface PaginatedData<T> {
+    data: T[];
+    current_page: number;
+    from: number;
+    to: number;
+    total: number;
+    per_page: number;
+    last_page: number;
+    links: Array<{
+        url: string | null;
+        label: string;
+        active: boolean;
+    }>;
+}
+
+export interface Company {
+    company_id: number;
+    name: string;
+    hasAccount?: boolean;
+    status?: string;
+}
+
+export interface Department {
+    department_id: number;
+    name: string;
+    company_id: number;
+}
+
+export interface Position {
+    position_id: number;
+    title: string;
+    company_id: number;
+}
+
+export interface Employee {
+    employee_id: number;
+    id_number: string;
+    full_name: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+    company_id?: number;
+    department_id?: number;
+    position_id?: number;
+    employment_status?: string;
+    date_hired?: string;
+    contact_number?: string;
+    company?: Company;
+    department?: Department;
+    position?: Position;
+}

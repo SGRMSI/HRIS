@@ -86,12 +86,12 @@ Route::middleware(['auth', 'verified', 'check.user.active'])->group(function () 
     Route::get('employee/documents/{document}/view', [\App\Http\Controllers\EmployeeDocumentController::class, 'view'])->name('employee.documents.view');
 });
 
-Route::middleware(['auth', 'verified', 'check.user.active'])->group(function () {
-    Route::get('payroll', function () {
-        return Inertia::render('payroll');
-    })->name('payroll');
+// API endpoints
+Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
+    Route::get('/employees/by-company/{company}', [\App\Http\Controllers\EmployeeController::class, 'getByCompany'])->name('employees.by-company');
 });
 
 require __DIR__.'/attendance.php';
+require __DIR__.'/payroll.php';
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

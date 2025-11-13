@@ -1,0 +1,85 @@
+export interface PayrollPeriod {
+    period_id: number;
+    period_name: string;
+    date_from: string;
+    date_to: string;
+    payment_date: string | null;
+    status: 'draft' | 'approved' | 'paid';
+    total_employees: number;
+    total_gross: string;
+    total_deductions: string;
+    total_net: string;
+    notes: string | null;
+    created_by: number;
+    approved_by: number | null;
+    approved_at: string | null;
+    created_at: string;
+    updated_at: string;
+    creator?: {
+        user_id: number;
+        name: string;
+    };
+    approver?: {
+        user_id: number;
+        name: string;
+    };
+    payroll_records_count?: number;
+}
+
+export interface PayrollRecord {
+    payroll_id: number;
+    period_id: number;
+    employee_id: number;
+    daily_rate: string;
+    days_worked: string;
+    rate_15th_30th: string;
+    overtime: string;
+    night_differential: string;
+    special_holiday: string;
+    legal_holiday: string;
+    clothing_allowance: string;
+    rice_allowance: string;
+    transportation_allowance: string;
+    program_allowance: string;
+    attendance_incentive: string;
+    adjustments: string;
+    adjustment_notes: string | null;
+    gross_pay: string;
+    sss_contribution: string;
+    phic_contribution: string;
+    hdmf_contribution: string;
+    late_undertime_minutes: number;
+    late_undertime_amount: string;
+    cash_advance: string;
+    total_deductions: string;
+    net_pay: string;
+    status: 'draft' | 'for_approval' | 'approved' | 'paid';
+    is_editable: boolean;
+    created_at: string;
+    updated_at: string;
+    employee?: {
+        employee_id: number;
+        id_number: string;
+        full_name: string;
+        company?: {
+            company_id: number;
+            name: string;
+        };
+        department?: {
+            department_id: number;
+            name: string;
+        };
+        position?: {
+            position_id: number;
+            name: string;
+        };
+    };
+    period?: PayrollPeriod;
+}
+
+export interface PayrollFilters {
+    status?: 'draft' | 'approved' | 'paid';
+    from_date?: string;
+    to_date?: string;
+    search?: string;
+}
