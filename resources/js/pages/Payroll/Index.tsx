@@ -9,7 +9,7 @@ import { BreadcrumbItem, PageProps, PaginatedData } from '@/types';
 import { PayrollFilters, PayrollPeriod } from '@/types/payroll';
 import { Head, Link, router } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { Calendar, Download, PlusCircle, Search, Users } from 'lucide-react';
+import { Calendar, Download, PlusCircle, Search, Settings, Users } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props extends PageProps {
@@ -58,12 +58,20 @@ export default function Index({ periods, filters }: Props) {
 
             <div className="mb-6 flex items-center justify-between p-6">
                 <h2 className="text-2xl font-bold tracking-tight">Payroll Management</h2>
-                <Link href={route('payroll.create')}>
-                    <Button>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Create Payroll Period
-                    </Button>
-                </Link>
+                <div className="flex gap-2">
+                    <Link href={route('payroll.employee-settings.index')}>
+                        <Button variant="outline">
+                            <Settings className="mr-2 h-4 w-4" />
+                            Employee Settings
+                        </Button>
+                    </Link>
+                    <Link href={route('payroll.create')}>
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Create Payroll Period
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <div className="">

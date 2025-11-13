@@ -1,9 +1,15 @@
 <?php
 
+use App\Http\Controllers\EmployeePayrollSettingsController;
 use App\Http\Controllers\PayrollController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('payroll')->name('payroll.')->group(function () {
+    // Employee payroll settings (must be before /{period} route)
+    Route::get('/employee-settings', [EmployeePayrollSettingsController::class, 'index'])->name('employee-settings.index');
+    Route::get('/employee-settings/{employee:employee_id}/edit', [EmployeePayrollSettingsController::class, 'edit'])->name('employee-settings.edit');
+    Route::put('/employee-settings/{employee:employee_id}', [EmployeePayrollSettingsController::class, 'update'])->name('employee-settings.update');
+    
     // Payroll periods
     Route::get('/', [PayrollController::class, 'index'])->name('index');
     Route::get('/create', [PayrollController::class, 'create'])->name('create');

@@ -36,7 +36,7 @@ class Employee extends Model
         'work_shift',
         'employment_status',
         'remarks',
-        'profile_picture'
+        'profile_picture',
     ];
 
     protected $casts = [
@@ -111,6 +111,11 @@ class Employee extends Model
     public function overtimes()
     {
         return $this->hasMany(EmployeeOvertime::class, 'employee_id', 'employee_id');
+    }
+
+    public function payrollSettings()
+    {
+        return $this->hasOne(EmployeePayrollSettings::class, 'employee_id', 'employee_id');
     }
 }
 

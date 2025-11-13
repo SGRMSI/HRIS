@@ -201,15 +201,15 @@ export default function Show({ period, records }: Props) {
                                             <TableCell className="font-mono text-sm">{record.employee?.id_number}</TableCell>
                                             <TableCell className="font-medium">{record.employee?.full_name}</TableCell>
                                             <TableCell>{record.employee?.department?.name}</TableCell>
-                                            <TableCell className="text-right">{parseFloat(record.days_worked).toFixed(1)}</TableCell>
+                                            <TableCell className="text-right">{parseFloat(String(record.days_worked)).toFixed(1)}</TableCell>
                                             <TableCell className="text-right font-medium">
-                                                ₱{parseFloat(record.gross_pay).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                                ₱{parseFloat(String(record.gross_pay)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                                             </TableCell>
                                             <TableCell className="text-right text-red-600">
-                                                ₱{parseFloat(record.total_deductions).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                                ₱{parseFloat(String(record.total_deductions)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-green-600">
-                                                ₱{parseFloat(record.net_pay).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                                ₱{parseFloat(String(record.net_pay)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 {record.is_editable ? (
