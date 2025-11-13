@@ -134,6 +134,15 @@ export default function Edit({ period, record }: Props) {
                     </div>
                 </div>
 
+                {period.status !== 'draft' && (
+                    <div className="mx-auto mb-4 max-w-4xl rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                            <strong>View Only:</strong> This payroll record is locked and cannot be edited because the payroll period has been{' '}
+                            {period.status}.
+                        </p>
+                    </div>
+                )}
+
                 <div className="mx-auto max-w-4xl">
                     {/* Employee Info */}
                     <Card className="mb-6">

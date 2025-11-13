@@ -159,11 +159,6 @@ class PayrollController extends Controller
                 ->with('error', 'Record not found in this payroll period.');
         }
 
-        if (!$record->is_editable) {
-            return redirect()->route('payroll.show', $period->period_id)
-                ->with('error', 'This payroll record is locked and cannot be edited.');
-        }
-
         $record->load(['employee.department', 'employee.position', 'employee.company']);
 
         // Construct full name

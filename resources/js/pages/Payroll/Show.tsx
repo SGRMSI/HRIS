@@ -285,7 +285,14 @@ export default function Show({ period, records }: Props) {
                                             <TableCell className="text-center">
                                                 <Link href={route('payroll.records.edit', [period.period_id, record.payroll_id])}>
                                                     <Button size="sm" variant="outline">
-                                                        {record.is_editable ? <Edit className="h-4 w-4" /> : 'View'}
+                                                        {period.status === 'draft' ? (
+                                                            <>
+                                                                <Edit className="mr-1 h-4 w-4" />
+                                                                Edit
+                                                            </>
+                                                        ) : (
+                                                            'View'
+                                                        )}
                                                     </Button>
                                                 </Link>
                                             </TableCell>
