@@ -417,7 +417,12 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
                                                 <TableRow key={schedule.id}>
                                                     <TableCell>
                                                         <div>
-                                                            <div className="font-medium">{schedule.employee.name}</div>
+                                                            <Link 
+                                                                href={`/employee/${schedule.employee.id}`}
+                                                                className="font-medium text-primary hover:underline cursor-pointer"
+                                                            >
+                                                                {schedule.employee.name}
+                                                            </Link>
                                                             <div className="text-sm text-muted-foreground">
                                                                 #{schedule.employee.employee_number}
                                                             </div>

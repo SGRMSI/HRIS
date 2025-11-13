@@ -691,7 +691,7 @@ class EmployeeLeaveController extends Controller
     {
         // Implementation depends on your leave balance tracking system
         // This is a placeholder
-        Log::info("Deducted {$days} days of {$type} leave for employee {$employee->id}");
+        Log::info("Deducted {$days} days of {$type} leave for employee {$employee->employee_id}");
     }
 
     /**
@@ -701,7 +701,7 @@ class EmployeeLeaveController extends Controller
     {
         // Implementation depends on your leave balance tracking system
         // This is a placeholder
-        Log::info("Restored {$days} days of {$type} leave for employee {$employee->id}");
+        Log::info("Restored {$days} days of {$type} leave for employee {$employee->employee_id}");
     }
 
     /**

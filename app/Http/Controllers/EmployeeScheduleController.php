@@ -66,7 +66,7 @@ class EmployeeScheduleController extends Controller
                 return [
                     'id' => $schedule->schedule_id,
                     'employee' => [
-                        'id' => $schedule->employee->id,
+                        'id' => $schedule->employee->employee_id,
                         'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
                         'employee_number' => $schedule->employee->id_number,
                         'department' => $schedule->employee->department->name ?? 'N/A',
@@ -226,7 +226,7 @@ class EmployeeScheduleController extends Controller
         $scheduleData = [
             'id' => $schedule->schedule_id,
             'employee' => [
-                'id' => $schedule->employee->id,
+                'id' => $schedule->employee->employee_id,
                 'name' => $schedule->employee->first_name . ' ' . $schedule->employee->last_name,
                 'employee_number' => $schedule->employee->id_number,
                 'department' => $schedule->employee->department->name ?? 'N/A'
