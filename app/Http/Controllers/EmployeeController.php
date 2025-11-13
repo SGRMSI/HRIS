@@ -205,6 +205,7 @@ class EmployeeController extends Controller
             'tin_number' => $employee->tin_number,
             'emergency_contact_name' => $employee->emergency_contact_name,
             'emergency_contact_number' => $employee->emergency_contact_number,
+            'profile_picture' => $employee->profile_picture,
         ];
         
         $documents = $employee->documents()
@@ -310,6 +311,7 @@ class EmployeeController extends Controller
             'position_id' => $employee->position_id,
             'account_id' => $employee->account_id,
             'remarks' => $employee->remarks,
+            'profile_picture' => $employee->profile_picture,
         ];
 
         $documents = $employee->documents()

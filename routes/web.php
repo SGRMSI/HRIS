@@ -84,6 +84,11 @@ Route::middleware(['auth', 'verified', 'check.user.active'])->group(function () 
     Route::delete('employee/documents/{document}', [\App\Http\Controllers\EmployeeDocumentController::class, 'destroy'])->name('employee.documents.destroy');
     Route::get('employee/documents/{document}/download', [\App\Http\Controllers\EmployeeDocumentController::class, 'download'])->name('employee.documents.download');
     Route::get('employee/documents/{document}/view', [\App\Http\Controllers\EmployeeDocumentController::class, 'view'])->name('employee.documents.view');
+    
+    // Profile Picture Management
+    Route::post('employee/{employee}/profile-picture', [\App\Http\Controllers\EmployeeProfilePictureController::class, 'store'])->name('employee.profile-picture.store');
+    Route::get('employee/{employee}/profile-picture/view', [\App\Http\Controllers\EmployeeProfilePictureController::class, 'view'])->name('employee.profile-picture.view');
+    Route::delete('employee/{employee}/profile-picture', [\App\Http\Controllers\EmployeeProfilePictureController::class, 'destroy'])->name('employee.profile-picture.destroy');
 });
 
 // API endpoints

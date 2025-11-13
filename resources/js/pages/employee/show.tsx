@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash, Calendar } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash, Calendar, Camera } from 'lucide-react';
 import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dialog';
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
+import { ProfilePictureDialog } from '@/components/employee/profile-picture-dialog';
 import { useState } from 'react';
 import { DeleteDocumentDialog } from '@/components/employee/delete-document-dialog';
 import { formatTime12Hour, formatDate } from '@/lib/date-utils';
@@ -40,6 +41,7 @@ interface Employee {
     phic_number?: string;
     hdmf_number?: string;
     tin_number?: string;
+    profile_picture?: string | null;
     current_shift?: {
         schedule_id: number;
         name: string;
@@ -67,10 +69,11 @@ interface Props {
 
 export default function EmployeeShow({ employee, documents }: Props) {
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+    const [profilePictureDialogOpen, setProfilePictureDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleteDocumentDialogOpen, setDeleteDocumentDialogOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<{ document_id: number; file_name: string } | null>(null);
-    const [selectedCategory, setSelectedCategory] = useState<'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other'>('Government_Documents');
+    // const [selectedCategory, setSelectedCategory] = useState<'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other'>('Government_Documents');
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -167,13 +170,35 @@ export default function EmployeeShow({ employee, documents }: Props) {
                         {/* Profile Card */}
                         <Card className="transition-shadow hover:shadow-lg">
                             <CardContent className="p-6 text-center">
-                                {/* Profile Picture with Initials Fallback */}
-                                <div className="mx-auto mb-4 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 text-3xl font-bold text-white shadow-lg">
-                                    {getInitials(employee.full_name)}
+                                {/* Profile Picture with Camera Icon Overlay */}
+                                <div className="relative mx-auto mb-4 inline-block">
+                                    {/* Profile Picture with Initials Fallback - Larger with border */}
+                                    <div className="flex h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 text-4xl font-bold text-white shadow-xl overflow-hidden border-4 border-gray-200 dark:border-gray-600">
+                                        {employee.profile_picture ? (
+                                            <img 
+                                                src={`/employee/${employee.employee_id}/profile-picture/view`}
+                                                alt={employee.full_name}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            getInitials(employee.full_name)
+                                        )}
+                                    </div>
+                                    
+                                    {/* Camera Icon Button - Bottom right, white background */}
+                                    <button
+                                        onClick={() => setProfilePictureDialogOpen(true)}
+                                        className="absolute bottom-0 right-0 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg border-2 border-slate-200 transition-all hover:scale-110 hover:bg-slate-50 dark:bg-white dark:text-slate-800 dark:border-slate-300 dark:hover:bg-slate-100"
+                                        title="Manage Profile Picture"
+                                        type="button"
+                                    >
+                                        <Camera className="h-5 w-5" />
+                                    </button>
                                 </div>
+
                                 <div className="flex flex-col items-center">
-                                <h2 className="mb-1 text-2xl font-semibold text-foreground">{employee.full_name}</h2>
-                                <p className="mb-4 text-xl text-muted-foreground">{employee.position}</p>
+                                <h2 className="mb-1 text-xl font-semibold text-foreground">{employee.full_name}</h2>
+                                <p className="mb-3 text-base text-muted-foreground">{employee.position}</p>
                                 <div className="flex items-end gap-2">
                                     <p className="mt-2 text-sm text-muted-foreground">Employee ID :</p>
                                     <div className="text-sm font-medium text-foreground">{employee.id_number}</div>
@@ -603,7 +628,16 @@ export default function EmployeeShow({ employee, documents }: Props) {
                 employeeId={employee.employee_id}
                 open={uploadDialogOpen}
                 onOpenChange={setUploadDialogOpen}
-                initialCategory={selectedCategory}
+                initialCategory="Government_Documents"
+            />
+
+            {/* Profile Picture Dialog */}
+            <ProfilePictureDialog
+                employeeId={employee.employee_id}
+                employeeName={employee.full_name}
+                currentProfilePicture={employee.profile_picture || null}
+                open={profilePictureDialogOpen}
+                onOpenChange={setProfilePictureDialogOpen}
             />
             
             {/* Document Delete Confirmation Dialog */}

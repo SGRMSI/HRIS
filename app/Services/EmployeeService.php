@@ -27,16 +27,55 @@ class EmployeeService
     /**
      * Handle profile picture upload
      */
-    public function handleProfilePictureUpload(?UploadedFile $file): ?string
+    public function handleProfilePictureUpload(?UploadedFile $file, ?string $employeeIdNumber = null, ?string $companyName = null): ?string
     {
         if (!$file) {
             return null;
         }
 
-        // Generate unique filename
-        $filename = time() . '_' . $file->getClientOriginalName();
+        // If employee ID and company provided, store in organized structure
+        if ($employeeIdNumber && $companyName) {
+            // Sanitize company name for folder
+            $sanitizedCompany = str_replace(' ', '_', $companyName);
+            
+            // Store in private disk: employee_documents/{company}/{employee_id}/profile_picture/
+            $relativePath = 'employee_documents/' . $sanitizedCompany . '/' . $employeeIdNumber . '/profile_picture';
+            
+            \Log::info('Creating profile picture directory structure', [
+                'company' => $companyName,
+                'sanitized_company' => $sanitizedCompany,
+                'employee_id' => $employeeIdNumber,
+                'relative_path' => $relativePath,
+                'storage_path' => storage_path('app/' . $relativePath),
+            ]);
+            
+            // Create directory if it doesn't exist
+            if (!Storage::disk('local')->exists($relativePath)) {
+                \Log::info('Directory does not exist, creating it');
+                Storage::disk('local')->makeDirectory($relativePath);
+            } else {
+                \Log::info('Directory already exists');
+            }
+            
+            // Generate unique filename
+            $extension = $file->getClientOriginalExtension();
+            $filename = 'profile_' . time() . '.' . $extension;
+            
+            \Log::info('Storing file', ['filename' => $filename]);
+            
+            // Store the file
+            $path = $file->storeAs($relativePath, $filename, 'local');
+            
+            \Log::info('File stored successfully', [
+                'path' => $path,
+                'full_path' => storage_path('app/' . $path),
+            ]);
+            
+            return $path;
+        }
         
-        // Store in public disk under employee_profiles directory
+        // Fallback: Generate unique filename and store in public disk
+        $filename = time() . '_' . $file->getClientOriginalName();
         $path = $file->storeAs('employee_profiles', $filename, 'public');
         
         return $path;
@@ -51,6 +90,12 @@ class EmployeeService
             return true;
         }
 
+        // Check if path is in private storage (contains 'employee_documents')
+        if (strpos($picturePath, 'employee_documents') !== false) {
+            return Storage::disk('local')->delete($picturePath);
+        }
+
+        // Otherwise, assume it's in public storage
         return Storage::disk('public')->delete($picturePath);
     }
 
