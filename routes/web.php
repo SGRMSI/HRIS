@@ -84,6 +84,9 @@ Route::middleware(['auth', 'verified', 'check.user.active'])->group(function () 
     Route::put('employee/{employee}', [EmployeeController::class, 'update'])->name('employee.update');
     Route::delete('employee/{employee}', [EmployeeController::class, 'destroy'])->name('employee.destroy');
     
+    // Get absents for employee by month (API endpoint)
+    Route::get('employee/{employee}/absents', [EmployeeController::class, 'getAbsents'])->name('employee.absents');
+    
     Route::post('/employee/import', [EmployeeController::class, 'importCsv'])->name('employee.import');
     
     Route::post('employee/{employee}/documents', [\App\Http\Controllers\EmployeeDocumentController::class, 'store'])->name('employee.documents.store');

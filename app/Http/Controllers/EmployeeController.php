@@ -230,7 +230,7 @@ class EmployeeController extends Controller
         }
         
         $documents = $employee->documents()
-            ->with('uploader')
+            ->with(relations: 'uploader')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($document) {
@@ -247,9 +247,56 @@ class EmployeeController extends Controller
             
         $infractionCount = $documents->where('category', 'Infractions')->count();
 
+        // Get current month absents
+        $currentYear = now()->year;
+        $currentMonth = now()->month;
+        $absentsThisMonth = $employee->getAbsentsForMonth($currentYear, $currentMonth);
+
         return Inertia::render('employee/show', [
-            'employee' => array_merge($employeeData, ['infractions' => $infractionCount]),
+            'employee' => array_merge($employeeData, [
+                'infractions' => $infractionCount,
+                'infractions_last_reset_at' => $employee->infractions_last_reset_at,
+                'absents_this_month' => $absentsThisMonth,
+                'current_year' => $currentYear,
+                'current_month' => $currentMonth,
+            ]),
             'documents' => $documents,
+        ]);
+    }
+
+    public function getAbsents(Employee $employee, Request $request)
+    {
+        $year = $request->input('year', now()->year);
+        $month = $request->input('month', now()->month);
+        
+        $absentsCount = $employee->attendances()
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->whereRaw('LOWER(status) = ?', ['absent'])
+            ->whereNotNull('approved_at') // Only finalized absents
+            ->count();
+        
+        // Get detailed absent records for the month
+        $absentRecords = $employee->attendances()
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->whereRaw('LOWER(status) = ?', ['absent'])
+            ->whereNotNull('approved_at')
+            ->orderBy('date', 'asc')
+            ->get(['date', 'remarks', 'approved_at'])
+            ->map(function ($record) {
+                return [
+                    'date' => $record->date,
+                    'remarks' => $record->remarks,
+                    'approved_at' => $record->approved_at,
+                ];
+            });
+        
+        return response()->json([
+            'absents_count' => $absentsCount,
+            'records' => $absentRecords,
+            'year' => $year,
+            'month' => $month,
         ]);
     }
 

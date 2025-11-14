@@ -3,13 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash, Calendar, Camera, AlertTriangle, Clock } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, FileUp, ExternalLink, Trash, Calendar, Camera, AlertTriangle, Clock, UserX } from 'lucide-react';
 import { DeleteEmployeeDialog } from '@/components/employee/delete-employee-dialog';
 import { UploadDocumentDialog } from '@/components/employee/upload-document-dialog';
 import { ProfilePictureDialog } from '@/components/employee/profile-picture-dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DeleteDocumentDialog } from '@/components/employee/delete-document-dialog';
 import { formatTime12Hour, formatDate } from '@/lib/date-utils';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface Employee {
     employee_id: number;
@@ -36,6 +43,9 @@ interface Employee {
     date_regularized?: string;
     date_separated?: string;
     absents?: number;
+    absents_this_month?: number;
+    current_year?: number;
+    current_month?: number;
     infractions?: number;
     infractions_last_reset_at?: string | null;
     sss_number?: string;
@@ -68,6 +78,19 @@ interface EmployeeDocument {
     file_path: string;
 }
 
+interface AbsentRecord {
+    date: string;
+    remarks?: string;
+    approved_at: string;
+}
+
+interface AbsentsResponse {
+    absents_count: number;
+    records: AbsentRecord[];
+    year: number;
+    month: number;
+}
+
 interface Props {
     employee: Employee;
     documents: EmployeeDocument[];
@@ -79,6 +102,58 @@ export default function EmployeeShow({ employee, documents }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleteDocumentDialogOpen, setDeleteDocumentDialogOpen] = useState(false);
     const [selectedDocument, setSelectedDocument] = useState<{ document_id: number; file_name: string } | null>(null);
+    
+    // Absents state management
+    const [selectedYear, setSelectedYear] = useState(employee.current_year || new Date().getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState(employee.current_month || new Date().getMonth() + 1);
+    const [absentsData, setAbsentsData] = useState<AbsentsResponse>({
+        absents_count: employee.absents_this_month || 0,
+        records: [],
+        year: selectedYear,
+        month: selectedMonth,
+    });
+    const [loading, setLoading] = useState(false);
+
+    const fetchAbsents = async (year: number, month: number) => {
+        setLoading(true);
+        try {
+            const response = await fetch(
+                `/employee/${employee.employee_id}/absents?year=${year}&month=${month}`
+            );
+            const data = await response.json();
+            setAbsentsData(data);
+        } catch (error) {
+            console.error('Failed to fetch absents:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch absents when month/year changes
+    useEffect(() => {
+        fetchAbsents(selectedYear, selectedMonth);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedYear, selectedMonth]);
+
+    const months = [
+        { value: 1, label: 'January' },
+        { value: 2, label: 'February' },
+        { value: 3, label: 'March' },
+        { value: 4, label: 'April' },
+        { value: 5, label: 'May' },
+        { value: 6, label: 'June' },
+        { value: 7, label: 'July' },
+        { value: 8, label: 'August' },
+        { value: 9, label: 'September' },
+        { value: 10, label: 'October' },
+        { value: 11, label: 'November' },
+        { value: 12, label: 'December' },
+    ];
+
+    // Generate last 3 years for selection
+    const currentYear = new Date().getFullYear();
+    const years = Array.from({ length: 3 }, (_, i) => currentYear - i);
+    
     // const [selectedCategory, setSelectedCategory] = useState<'Government_Documents' | 'Company_Documents' | 'Infractions' | 'Other'>('Government_Documents');
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -399,23 +474,129 @@ export default function EmployeeShow({ employee, documents }: Props) {
                             </Card>
                         </div>
 
-                        {/* Stats */}
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Stats - Stacked Vertically */}
+                        <div className="space-y-4">
+                            {/* Absents Card with Month Filter */}
                             <Card className="transition-shadow hover:shadow-lg">
-                                <CardContent className="p-4 text-center">
-                                    <div className="text-3xl font-bold text-foreground">{employee.absents || 2}</div>
-                                    <div className="text-sm text-muted-foreground">Absents</div>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                                            <UserX className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                        </div>
+                                        <CardTitle className="text-sm font-medium">
+                                            Absents
+                                        </CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="px-4 pb-4">
+                                    <div className="space-y-3">
+                                        {/* Month/Year Filters */}
+                                        <div className="flex gap-2">
+                                            <Select
+                                                value={selectedMonth.toString()}
+                                                onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                                            >
+                                                <SelectTrigger className="w-full h-8 text-xs">
+                                                    <SelectValue placeholder="Select month" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {months.map((month) => (
+                                                        <SelectItem key={month.value} value={month.value.toString()}>
+                                                            {month.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Select
+                                                value={selectedYear.toString()}
+                                                onValueChange={(value) => setSelectedYear(parseInt(value))}
+                                            >
+                                                <SelectTrigger className="w-[120px] h-8 text-xs">
+                                                    <SelectValue placeholder="Year" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {years.map((year) => (
+                                                        <SelectItem key={year} value={year.toString()}>
+                                                            {year}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Absents Count */}
+                                        <div className="flex items-baseline gap-2">
+                                            <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                                {loading ? '...' : absentsData.absents_count}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                                {absentsData.absents_count === 1 ? 'day' : 'days'}
+                                            </div>
+                                        </div>
+
+                                        {/* Absent Records List */}
+                                        {!loading && absentsData.records.length > 0 && (
+                                            <div className="space-y-2">
+                                                <div className="text-xs font-medium text-muted-foreground">
+                                                    Absent Dates:
+                                                </div>
+                                                <div className="space-y-1 max-h-40 overflow-y-auto pr-2">
+                                                    {absentsData.records.map((record, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="flex items-center justify-between text-xs p-2.5 rounded bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30"
+                                                        >
+                                                            <span className="font-medium">
+                                                                {formatDate(record.date)}
+                                                            </span>
+                                                            {record.remarks && (
+                                                                <span className="text-muted-foreground truncate ml-2 flex-1 text-right">
+                                                                    {record.remarks}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {!loading && absentsData.absents_count === 0 && (
+                                            <p className="text-xs text-muted-foreground">
+                                                No absents recorded for this month
+                                            </p>
+                                        )}
+                                    </div>
                                 </CardContent>
                             </Card>
+                            
+                            {/* Infractions Card */}
                             <Card className="transition-shadow hover:shadow-lg">
-                                <CardContent className="p-4 text-center">
-                                    <div className="text-3xl font-bold text-foreground">{employee.infractions || 0}</div>
-                                    <div className="text-sm text-muted-foreground">Infractions</div>
-                                    <div className='text-xs text-muted-foreground mt-1'>
-                                        {employee.infractions_last_reset_at 
-                                            ? `Last reset: ${formatDate(employee.infractions_last_reset_at)}`
-                                            : 'Resets every 30 days'
-                                        }
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 pt-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-amber-100 dark:bg-amber-900/20 rounded-lg">
+                                            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                        </div>
+                                        <CardTitle className="text-sm font-medium">
+                                            Infractions
+                                        </CardTitle>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="px-4 pb-4">
+                                    <div className="space-y-2">
+                                        <div className="flex items-baseline gap-2">
+                                            <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                                                {employee.infractions || 0}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                                total infractions
+                                            </div>
+                                        </div>
+                                        <div className='text-xs text-muted-foreground'>
+                                            {employee.infractions_last_reset_at 
+                                                ? `Last reset: ${formatDate(employee.infractions_last_reset_at)}`
+                                                : 'Resets every 30 days'
+                                            }
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

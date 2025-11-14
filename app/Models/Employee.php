@@ -168,5 +168,18 @@ class Employee extends Model
     {
         return in_array($this->employment_status, ['Probationary', 'Trainee']);
     }
+
+    /**
+     * Get absents count for a specific month
+     */
+    public function getAbsentsForMonth($year, $month)
+    {
+        return $this->attendances()
+            ->whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->whereRaw('LOWER(status) = ?', ['absent'])
+            ->whereNotNull('approved_at') // Only count finalized/approved absents
+            ->count();
+    }
 }
 
