@@ -196,7 +196,7 @@ export function QuickActions() {
                     {/* Export Buttons */}
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {/* Export Attendance */}
-                        <Button onClick={handleExportAttendanceClick} className="flex items-center justify-center gap-2" variant="default">
+                        <Button onClick={handleExportAttendanceClick} className="flex items-center justify-center gap-2" variant="outline">
                             <FileSpreadsheet className="h-4 w-4" />
                             Export Attendance
                         </Button>
