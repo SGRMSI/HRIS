@@ -10,18 +10,7 @@ import { cn } from '@/lib/utils';
 import { PayrollPeriod } from '@/types/payroll';
 import { Link } from '@inertiajs/react';
 import { format } from 'date-fns';
-import {
-    BarChart3,
-    Calendar as CalendarIcon,
-    CalendarPlus,
-    DollarSign,
-    Download,
-    FileSpreadsheet,
-    FileText,
-    Loader2,
-    Upload,
-    UserPlus,
-} from 'lucide-react';
+import { Calendar as CalendarIcon, CalendarPlus, DollarSign, Download, FileSpreadsheet, FileText, Loader2, Upload, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface QuickAction {
@@ -86,10 +75,10 @@ export function QuickActions() {
             bgColor: 'bg-pink-100 dark:bg-pink-900/30',
         },
         {
-            title: 'Attendance Reports',
-            description: 'View final records',
-            href: route('attendance.final.index'),
-            icon: BarChart3,
+            title: 'Create Payroll',
+            description: 'Generate payroll period',
+            href: route('payroll.create'),
+            icon: DollarSign,
             color: 'text-indigo-600 dark:text-indigo-400',
             bgColor: 'bg-indigo-100 dark:bg-indigo-900/30',
         },
@@ -207,7 +196,7 @@ export function QuickActions() {
                     {/* Export Buttons */}
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         {/* Export Attendance */}
-                        <Button onClick={handleExportAttendanceClick} className="flex items-center justify-center gap-2" variant="default">
+                        <Button onClick={handleExportAttendanceClick} className="flex items-center justify-center gap-2" variant="outline">
                             <FileSpreadsheet className="h-4 w-4" />
                             Export Attendance
                         </Button>
