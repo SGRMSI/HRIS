@@ -144,13 +144,18 @@ class PayrollService
 
         $hourlyRate = $record->daily_rate / 8; // 8 hours per day
 
-        // Overtime: Calculate based on total_hours worked - 8 regular hours (only if > 8)
-        // Do NOT use attendance.overtime_hours as it may be incorrectly calculated
-        $overtimeHours = $attendances->sum(function ($att) {
-            // Only count overtime if total hours > 8
-            $totalHours = (float) $att->total_hours;
-            return $totalHours > 8 ? ($totalHours - 8) : 0;
+        // Overtime: Use approved EmployeeOvertime records only
+        // Formula: (daily_rate / 8) * 1.25 * total_overtime_hours
+        $approvedOvertimes = \App\Models\EmployeeOvertime::where('employee_id', $employee->employee_id)
+            ->whereBetween('overtime_date', [$period->date_from, $period->date_to])
+            ->where('status', 'approved')
+            ->get();
+
+        $totalOvertimeMinutes = $approvedOvertimes->sum(function ($ot) {
+            return ($ot->duration_hours * 60) + $ot->duration_minutes;
         });
+
+        $overtimeHours = $totalOvertimeMinutes / 60;
         $record->overtime_hours = round($overtimeHours, 2);
         $record->overtime = round($hourlyRate * $overtimeHours * 1.25, 2);
 
@@ -208,8 +213,8 @@ class PayrollService
             ->whereBetween('date', [$period->date_from, $period->date_to])
             ->get();
 
-        // Calculate per-minute rate based on 8-hour workday (480 minutes)
-        $minuteRate = $record->daily_rate / 480;
+        // Calculate per-minute rate: daily_rate / 8 hours / 60 minutes
+        $minuteRate = $record->daily_rate / 8 / 60;
 
         $totalLateMinutes = $attendances->sum('late_minutes');
         $totalUndertimeMinutes = $attendances->sum('undertime_hours') * 60;
