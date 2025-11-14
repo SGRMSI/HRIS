@@ -141,8 +141,17 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
 
     return (
         <div className="w-full">
-            <div className="flex items-center justify-between py-4">
-                <div className="flex items-center gap-3">
+                                {/* Action buttons on the same row */}
+                    <div className="ml-auto flex items-center gap-2">
+                        <Button asChild>
+                            <Link href="/employee/create">Add Employee</Link>
+                        </Button>
+
+                        <EmployeeImportCsv />
+                    </div>
+            <div className="flex flex-col gap-4 py-4">
+                {/* First row: Search and main filters */}
+                <div className="flex flex-wrap items-center gap-3">
                     <Input
                         placeholder="Search by name..."
                         value={(table.getColumn('full_name')?.getFilterValue() as string) ?? ''}
@@ -200,19 +209,13 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Employees</SelectItem>
-                            <SelectItem value="warnings">With Warnings</SelectItem>
+                            <SelectItem value="warnings"> With Warnings</SelectItem>
                             <SelectItem value="overdue">Overdue Only</SelectItem>
-                            <SelectItem value="due-soon">Due Soon Only</SelectItem>
+                            <SelectItem value="due-soon"> Due Soon Only</SelectItem>
                             <SelectItem value="none">No Evaluation</SelectItem>
                         </SelectContent>
                     </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button asChild>
-                        <Link href="/employee/create">Add Employee</Link>
-                    </Button>
 
-                    <EmployeeImportCsv />
                 </div>
             </div>
             <div className="rounded-md border">
