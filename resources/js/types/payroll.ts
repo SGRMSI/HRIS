@@ -38,6 +38,7 @@ export interface PayrollRecord {
     rate_30th?: string | number; // Deprecated
     rate_15th_30th?: string; // Deprecated
     overtime: string | number;
+    overtime_hours: string | number;
     night_differential: string;
     special_holiday: string;
     legal_holiday: string;

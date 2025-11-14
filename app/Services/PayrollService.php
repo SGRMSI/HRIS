@@ -151,6 +151,7 @@ class PayrollService
             $totalHours = (float) $att->total_hours;
             return $totalHours > 8 ? ($totalHours - 8) : 0;
         });
+        $record->overtime_hours = round($overtimeHours, 2);
         $record->overtime = round($hourlyRate * $overtimeHours * 1.25, 2);
 
         // Night Differential (10% of hourly rate, would need time tracking)

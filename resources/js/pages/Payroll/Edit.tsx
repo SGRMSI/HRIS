@@ -58,6 +58,7 @@ export default function Edit({ period, record, holidays }: Props) {
         daily_rate: Number(record.daily_rate) || 0,
         basic_pay: Number(record.basic_pay) || 0,
         overtime: Number(record.overtime) || 0,
+        overtime_hours: Number(record.overtime_hours) || 0,
         holiday_pay: Number(record.holiday_pay) || 0,
         clothing_allowance: Number(record.clothing_allowance) || 0,
         rice_allowance: Number(record.rice_allowance) || 0,
@@ -237,33 +238,50 @@ export default function Edit({ period, record, holidays }: Props) {
                                 <CardDescription>Overtime and holiday pay from attendance</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="overtime">Overtime Pay</Label>
-                                        <Input
-                                            id="overtime"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.overtime}
-                                            onChange={(e) => setData('overtime', parseFloat(e.target.value) || 0)}
-                                            disabled={period.status !== 'draft'}
-                                        />
-                                        <p className="text-xs text-muted-foreground">From attendance records (editable)</p>
-                                    </div>
+                                <div>
+                                    <h4 className="mb-3 text-sm font-medium">Overtime</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Total Overtime Hours</Label>
+                                            <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+                                                {Number(data.overtime_hours).toFixed(2)} hours ({(Number(data.overtime_hours) * 60).toFixed(0)}{' '}
+                                                minutes)
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">From attendance records</p>
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="holiday_pay">Holiday Pay</Label>
-                                        <Input
-                                            id="holiday_pay"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.holiday_pay}
-                                            onChange={(e) => setData('holiday_pay', parseFloat(e.target.value) || 0)}
-                                            disabled={period.status !== 'draft'}
-                                        />
-                                        <p className="text-xs text-muted-foreground">For holidays worked (editable)</p>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="overtime">Overtime Pay</Label>
+                                            <Input
+                                                id="overtime"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.overtime}
+                                                onChange={(e) => setData('overtime', parseFloat(e.target.value) || 0)}
+                                                disabled={period.status !== 'draft'}
+                                            />
+                                            <p className="text-xs text-muted-foreground">Auto-calculated (editable)</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="mb-3 text-sm font-medium">Holiday Pay</h4>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="holiday_pay">Holiday Pay</Label>
+                                            <Input
+                                                id="holiday_pay"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.holiday_pay}
+                                                onChange={(e) => setData('holiday_pay', parseFloat(e.target.value) || 0)}
+                                                disabled={period.status !== 'draft'}
+                                            />
+                                            <p className="text-xs text-muted-foreground">For holidays worked (editable)</p>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
