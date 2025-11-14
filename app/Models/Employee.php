@@ -133,7 +133,10 @@ class Employee extends Model
             return false;
         }
 
-        $daysUntilEvaluation = now()->diffInDays($this->evaluation_end_date, false);
+        $today = now()->startOfDay();
+        $endDate = \Carbon\Carbon::parse($this->evaluation_end_date)->startOfDay();
+        $daysUntilEvaluation = $today->diffInDays($endDate, false);
+        
         return $daysUntilEvaluation >= 0 && $daysUntilEvaluation <= 3;
     }
 
@@ -146,7 +149,11 @@ class Employee extends Model
             return false;
         }
 
-        return now()->isAfter($this->evaluation_end_date);
+        // Compare dates at midnight to avoid time-based false positives
+        $today = now()->startOfDay();
+        $endDate = \Carbon\Carbon::parse($this->evaluation_end_date)->startOfDay();
+        
+        return $today->isAfter($endDate);
     }
 
     /**
@@ -158,7 +165,27 @@ class Employee extends Model
             return null;
         }
 
-        return now()->diffInDays($this->evaluation_end_date, false);
+        // Compare dates at midnight to get accurate day count
+        $today = now()->startOfDay();
+        $endDate = \Carbon\Carbon::parse($this->evaluation_end_date)->startOfDay();
+        
+        return $today->diffInDays($endDate, false);
+    }
+
+    /**
+     * Get the total evaluation period in days (end date - start date + 1)
+     */
+    public function getEvaluationPeriodDays(): ?int
+    {
+        if (!$this->evaluation_start_date || !$this->evaluation_end_date) {
+            return null;
+        }
+
+        $startDate = \Carbon\Carbon::parse($this->evaluation_start_date)->startOfDay();
+        $endDate = \Carbon\Carbon::parse($this->evaluation_end_date)->startOfDay();
+        
+        // Add 1 to include both start and end dates
+        return $startDate->diffInDays($endDate) + 1;
     }
 
     /**

@@ -56,6 +56,7 @@ interface Employee {
     evaluation_start_date?: string | null;
     evaluation_end_date?: string | null;
     days_until_evaluation?: number | null;
+    evaluation_period_days?: number | null;
     is_evaluation_overdue?: boolean;
     is_evaluation_due_soon?: boolean;
     current_shift?: {
@@ -335,11 +336,20 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                                     </div>
                                                 )}
 
-                                                {employee.is_evaluation_due_soon && !employee.is_evaluation_overdue && (
+                                                {!employee.is_evaluation_overdue && employee.days_until_evaluation === 0 && (
+                                                    <div className="flex items-center gap-2 rounded-md bg-red-50 p-2 dark:bg-red-950/20">
+                                                        <AlertTriangle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                                                        <div className="flex-1">
+                                                            <p className="text-xs font-semibold text-red-900 dark:text-red-100">Due TODAY</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {employee.is_evaluation_due_soon && !employee.is_evaluation_overdue && (employee.days_until_evaluation ?? 0) > 0 && (
                                                     <div className="flex items-center gap-2 rounded-md bg-amber-50 p-2 dark:bg-amber-950/20">
                                                         <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                                                         <div className="flex-1">
-                                                            <p className="text-xs font-semibold text-amber-900 dark:text-amber-100">Due in {employee.days_until_evaluation || 0} day(s)</p>
+                                                            <p className="text-xs font-semibold text-amber-900 dark:text-amber-100">Due in {employee.days_until_evaluation} day(s)</p>
                                                         </div>
                                                     </div>
                                                 )}

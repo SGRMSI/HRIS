@@ -225,6 +225,7 @@ class EmployeeController extends Controller
             $employeeData['evaluation_start_date'] = $employee->evaluation_start_date ? date('Y-m-d', strtotime($employee->evaluation_start_date)) : null;
             $employeeData['evaluation_end_date'] = date('Y-m-d', strtotime($employee->evaluation_end_date));
             $employeeData['days_until_evaluation'] = $employee->getDaysUntilEvaluation();
+            $employeeData['evaluation_period_days'] = $employee->getEvaluationPeriodDays();
             $employeeData['is_evaluation_overdue'] = $employee->isEvaluationOverdue();
             $employeeData['is_evaluation_due_soon'] = $employee->isEvaluationDueSoon() && !$employee->isEvaluationOverdue();
         }
