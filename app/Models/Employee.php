@@ -38,6 +38,7 @@ class Employee extends Model
         'work_shift',
         'employment_status',
         'remarks',
+        'infractions',
         'profile_picture',
     ];
 
@@ -47,6 +48,7 @@ class Employee extends Model
         'evaluation_start_date' => 'date',
         'evaluation_end_date' => 'date',
         'date_regularized' => 'date',
+        'infractions_last_reset_at' => 'datetime',
     ];
 
 

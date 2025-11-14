@@ -37,6 +37,7 @@ interface Employee {
     date_separated?: string;
     absents?: number;
     infractions?: number;
+    infractions_last_reset_at?: string | null;
     sss_number?: string;
     phic_number?: string;
     hdmf_number?: string;
@@ -410,6 +411,12 @@ export default function EmployeeShow({ employee, documents }: Props) {
                                 <CardContent className="p-4 text-center">
                                     <div className="text-3xl font-bold text-foreground">{employee.infractions || 0}</div>
                                     <div className="text-sm text-muted-foreground">Infractions</div>
+                                    <div className='text-xs text-muted-foreground mt-1'>
+                                        {employee.infractions_last_reset_at 
+                                            ? `Last reset: ${formatDate(employee.infractions_last_reset_at)}`
+                                            : 'Resets every 30 days'
+                                        }
+                                    </div>
                                 </CardContent>
                             </Card>
                         </div>
