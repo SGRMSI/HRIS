@@ -11,6 +11,14 @@ import { format } from 'date-fns';
 import { ArrowLeft, Calculator, Download, Save } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
+interface Holiday {
+    holiday_id: number;
+    name: string;
+    date: string;
+    type: string;
+    is_double_pay: boolean;
+}
+
 interface Props extends PageProps {
     period: PayrollPeriod;
     record: PayrollRecord & {
@@ -26,9 +34,10 @@ interface Props extends PageProps {
             position?: { title: string };
         };
     };
+    holidays: Holiday[];
 }
 
-export default function Edit({ period, record }: Props) {
+export default function Edit({ period, record, holidays }: Props) {
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Payroll',
@@ -105,6 +114,10 @@ export default function Edit({ period, record }: Props) {
     const totalDeductions =
         Number(data.sss_contribution) + Number(data.phic_contribution) + Number(data.hdmf_contribution) + Number(data.late_undertime_amount);
     const netPay = grossPay - totalDeductions;
+
+    // Calculate expected holiday pay based on double pay holidays
+    const doublePayHolidays = holidays.filter((h) => h.is_double_pay);
+    const expectedHolidayPay = doublePayHolidays.length * Number(data.daily_rate);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -255,6 +268,58 @@ export default function Edit({ period, record }: Props) {
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Holidays in Period */}
+                        {holidays.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Holidays in This Period</CardTitle>
+                                    <CardDescription>
+                                        {doublePayHolidays.length > 0 && (
+                                            <>
+                                                Expected Holiday Pay: {doublePayHolidays.length} double pay holiday
+                                                {doublePayHolidays.length !== 1 ? 's' : ''} × {formatCurrency(data.daily_rate)} ={' '}
+                                                {formatCurrency(expectedHolidayPay)}
+                                            </>
+                                        )}
+                                        {doublePayHolidays.length === 0 && 'No double pay holidays in this period'}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        {holidays.map((holiday) => (
+                                            <div key={holiday.holiday_id} className="flex items-center justify-between rounded-md border p-3 text-sm">
+                                                <div>
+                                                    <p className="font-medium">{holiday.name}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {format(new Date(holiday.date), 'MMMM d, yyyy')} • {holiday.type}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    {holiday.is_double_pay ? (
+                                                        <>
+                                                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+                                                                Double Pay
+                                                            </span>
+                                                            <p className="mt-1 text-xs font-medium text-green-600">
+                                                                {formatCurrency(data.daily_rate)}
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                                                                Regular Pay
+                                                            </span>
+                                                            <p className="mt-1 text-xs text-muted-foreground">₱0.00</p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         {/* Allowances */}
                         <Card>

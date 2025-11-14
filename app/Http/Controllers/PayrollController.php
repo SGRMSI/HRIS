@@ -170,9 +170,20 @@ class PayrollController extends Controller
             );
         }
 
+        // Get holidays within the payroll period for the employee's company (including company-specific and all-company holidays)
+        $holidays = \App\Models\Holiday::where(function($query) use ($record) {
+                $query->where('company_id', $record->employee->company_id)
+                      ->orWhereNull('company_id');
+            })
+            ->whereDate('date', '>=', $period->date_from)
+            ->whereDate('date', '<=', $period->date_to)
+            ->orderBy('date')
+            ->get(['holiday_id', 'name', 'date', 'type', 'is_double_pay']);
+
         return Inertia::render('Payroll/Edit', [
             'period' => $period,
             'record' => $record,
+            'holidays' => $holidays,
         ]);
     }
 

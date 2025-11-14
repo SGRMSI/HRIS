@@ -26,7 +26,7 @@ return new class extends Migration
             $table->decimal('night_differential', 10, 2)->default(0);
             $table->decimal('special_holiday', 10, 2)->default(0);
             $table->decimal('legal_holiday', 10, 2)->default(0);
-            $table->decimal('holiday_pay', 10, 2)->default(0)->comment('Daily rate * 1 or * 2 if double pay');
+            $table->decimal('holiday_pay', 10, 2)->default(0)->comment('Daily rate * the number of holiday days worked');
             
             // Allowances
             $table->decimal('clothing_allowance', 10, 2)->default(0);
