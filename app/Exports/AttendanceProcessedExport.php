@@ -43,7 +43,15 @@ class AttendanceProcessedExport implements FromQuery, WithHeadings, WithMapping,
                 }
             })
             ->when($this->filters['batch_id'] ?? null, function ($query, $batchId) {
-                $query->where('batch_id', $batchId);
+                // Filter by batch_id OR if batch is in source_batches (meta field)
+                // SQLite uses json_extract, MySQL uses JSON_CONTAINS
+                $query->where(function ($q) use ($batchId) {
+                    $q->where('batch_id', $batchId)
+                      ->orWhereRaw("EXISTS (
+                          SELECT 1 FROM json_each(meta, '$.source_batches') 
+                          WHERE value = ?
+                      )", [$batchId]);
+                });
             })
             ->latest('date');
     }

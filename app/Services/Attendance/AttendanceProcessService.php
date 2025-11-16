@@ -48,11 +48,24 @@ class AttendanceProcessService
                         $batchDateRange->max_date
                     ])
                     ->where('batch_id', '!=', $batch->batch_id)
-                    ->select('batch_id', 'date')
+                    ->select('batch_id', 'date', 'meta')
                     ->distinct()
                     ->get();
                 
-                $intersectingBatchIds = $intersecting->pluck('batch_id')->unique()->toArray();
+                // Collect all unique batch IDs, including those stored in meta->source_batches
+                $allBatchIds = collect();
+                foreach ($intersecting as $record) {
+                    $allBatchIds->push($record->batch_id);
+                    
+                    // Also get batches from meta if they contributed raw data
+                    if (isset($record->meta['source_batches'])) {
+                        foreach ($record->meta['source_batches'] as $sourceBatch) {
+                            $allBatchIds->push($sourceBatch);
+                        }
+                    }
+                }
+                
+                $intersectingBatchIds = $allBatchIds->unique()->toArray();
                 $intersectingDates = $intersecting->pluck('date')->map(fn($d) => Carbon::parse($d)->toDateString())->unique()->toArray();
                 
                 if (!empty($intersectingBatchIds)) {
@@ -349,6 +362,17 @@ class AttendanceProcessService
                     // Determine which batch this attendance belongs to
                     // Use the batch_id from the clock-in event (the shift start determines ownership)
                     $attendanceBatchId = $clockIn->batch_id;
+                    
+                    // Track all batches that contributed raw data to THIS specific processed record
+                    // Only count batches from events actually used (clock-in, clock-out, breaks)
+                    $sourceBatches = collect([
+                        $clockIn->batch_id,
+                        $clockOut?->batch_id,
+                        $breakStart?->batch_id,
+                        $breakEnd?->batch_id,
+                    ])->filter()->unique()->sort()->values()->toArray();
+                    
+                    $meta['source_batches'] = $sourceBatches;
 
                     AttendanceProcessed::updateOrCreate(
                         [

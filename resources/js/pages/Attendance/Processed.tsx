@@ -541,7 +541,7 @@ export default function Processed({ batches, processed, filters, companies, empl
                                                 <TableHead>Break In</TableHead>
                                                 <TableHead>Break (min)</TableHead>
                                                 <TableHead>Hours</TableHead>
-                                                <TableHead className="w-[220px]">Status</TableHead>
+                                                <TableHead>Status</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -602,7 +602,7 @@ export default function Processed({ batches, processed, filters, companies, empl
                                                             <span className="text-gray-400">-</span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="w-[220px]">{getRecordStatusBadge(record.status, record.status_message)}</TableCell>
+                                                    <TableCell>{getRecordStatusBadge(record.status, record.status_message)}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
