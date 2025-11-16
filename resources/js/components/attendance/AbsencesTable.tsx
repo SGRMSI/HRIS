@@ -50,6 +50,7 @@ interface AbsenceRecord {
     shift_id: number | null;
     shift: Shift | null;
     status: string;
+    remarks: string | null;
     approved_by: string | null;
     approved_at: string | null;
     can_approve: boolean;
@@ -157,6 +158,16 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
         setShowApproveModal(true);
     };
 
+    const handleBulkReject = () => {
+        if (selectedAbsences.length === 0) {
+            toast.error('Please select absences to reject');
+            return;
+        }
+        setModalType('deny');
+        setSingleAbsenceData(null);
+        setShowDenyModal(true);
+    };
+
     const handleApproveAbsence = (employee_id: number, date: string, shift_id: number | null, employee_name: string) => {
         setModalType('approve');
         setSingleAbsenceData({ employee_id, date, shift_id, employee_name });
@@ -183,7 +194,7 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
                 },
                 {
                     preserveScroll: true,
-                    only: ['absences', 'attendances', 'stats', 'flash'],
+                    preserveState: true,
                     onFinish: () => {
                         setBulkProcessing(false);
                         setShowApproveModal(false);
@@ -198,7 +209,7 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
                 { absences: selectedAbsences },
                 {
                     preserveScroll: true,
-                    only: ['absences', 'attendances', 'stats', 'flash'],
+                    preserveState: true,
                     onFinish: () => {
                         setBulkProcessing(false);
                         setShowApproveModal(false);
@@ -210,25 +221,43 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
     };
 
     const handleDenyConfirm = () => {
-        if (!singleAbsenceData) return;
-
         setBulkProcessing(true);
-        router.post(
-            route('attendance.final.absences.deny'),
-            {
-                employee_id: singleAbsenceData.employee_id,
-                date: singleAbsenceData.date,
-            },
-            {
-                preserveScroll: true,
-                only: ['absences', 'flash'],
-                onFinish: () => {
-                    setBulkProcessing(false);
-                    setShowDenyModal(false);
-                    setSingleAbsenceData(null);
+        
+        if (singleAbsenceData) {
+            // Single denial
+            router.post(
+                route('attendance.final.absences.deny'),
+                {
+                    employee_id: singleAbsenceData.employee_id,
+                    date: singleAbsenceData.date,
+                    shift_id: singleAbsenceData.shift_id,
                 },
-            }
-        );
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onFinish: () => {
+                        setBulkProcessing(false);
+                        setShowDenyModal(false);
+                        setSingleAbsenceData(null);
+                    },
+                }
+            );
+        } else {
+            // Bulk denial
+            router.post(
+                route('attendance.final.absences.bulk-reject'),
+                { absences: selectedAbsences },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onFinish: () => {
+                        setBulkProcessing(false);
+                        setShowDenyModal(false);
+                        setSelectedAbsences([]);
+                    },
+                }
+            );
+        }
     };
 
     const isSelected = (employee_id: number, date: string) => {
@@ -258,14 +287,25 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
                                 Deselect All
                             </Button>
                         </div>
-                        <Button
-                            onClick={handleBulkApprove}
-                            disabled={bulkProcessing}
-                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg h-9"
-                        >
-                            <CheckCircle2 className="h-4 w-4 mr-2" />
-                            {bulkProcessing ? 'Approving...' : `Approve ${selectedAbsences.length} Absence${selectedAbsences.length !== 1 ? 's' : ''}`}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={handleBulkReject}
+                                disabled={bulkProcessing}
+                                variant="destructive"
+                                className="h-9"
+                            >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                {bulkProcessing ? 'Denying...' : `Deny ${selectedAbsences.length} Absence${selectedAbsences.length !== 1 ? 's' : ''}`}
+                            </Button>
+                            <Button
+                                onClick={handleBulkApprove}
+                                disabled={bulkProcessing}
+                                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg h-9"
+                            >
+                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                {bulkProcessing ? 'Approving...' : `Approve ${selectedAbsences.length} Absence${selectedAbsences.length !== 1 ? 's' : ''}`}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -389,7 +429,11 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
                                             <TableCell>
                                                 {absence.approved_by ? (
                                                     <div>
-                                                        <Badge variant="default" className="bg-green-600">Approved</Badge>
+                                                        {absence.remarks === 'Denied' ? (
+                                                            <Badge variant="destructive">Denied</Badge>
+                                                        ) : (
+                                                            <Badge variant="default" className="bg-green-600">Approved</Badge>
+                                                        )}
                                                         <p className="text-xs text-gray-500 mt-1">by {absence.approved_by}</p>
                                                     </div>
                                                 ) : (
@@ -440,7 +484,7 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
             </Card>
 
             {/* Pagination */}
-            {absences.last_page > 1 && (
+            {absences && absences.last_page > 1 && (
                 <div className="flex items-center justify-between px-2 py-4">
                     <div className="text-sm text-muted-foreground">
                         Showing {((absences.current_page - 1) * absences.per_page) + 1} to{' '}
@@ -515,10 +559,11 @@ export function AbsencesTable({ absences, totalPendingAbsences }: Props) {
             <Dialog open={showDenyModal} onOpenChange={setShowDenyModal}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Deny Absence</DialogTitle>
+                        <DialogTitle>Deny Absence{singleAbsenceData ? '' : 's'}</DialogTitle>
                         <DialogDescription>
-                            {singleAbsenceData &&
-                                `Are you sure you want to deny the absence for ${singleAbsenceData.employee_name} on ${formatDate(singleAbsenceData.date)}? This will NOT create an attendance record and the absence will not count.`
+                            {singleAbsenceData
+                                ? `Are you sure you want to deny the absence for ${singleAbsenceData.employee_name} on ${formatDate(singleAbsenceData.date)}? This will create an attendance record marked as "Denied" in the absences table.`
+                                : `Are you sure you want to deny ${selectedAbsences.length} absence${selectedAbsences.length !== 1 ? 's' : ''}? This will create attendance records marked as "Denied" in the absences table for each selected absence.`
                             }
                         </DialogDescription>
                     </DialogHeader>

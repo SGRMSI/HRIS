@@ -40,14 +40,6 @@ class AttendanceFinalController extends Controller
      */
     public function index(Request $request)
     {
-        // Set default date filters if not provided (1st of current month to today)
-        if (!$request->has('date_from') && !$request->has('date_to')) {
-            $request->merge([
-                'date_from' => now()->startOfMonth()->format('Y-m-d'),
-                'date_to' => now()->format('Y-m-d'),
-            ]);
-        }
-        
         // Get companies for filter
         $companies = Company::select(['company_id as id', 'name'])->get();
         
@@ -349,11 +341,12 @@ class AttendanceFinalController extends Controller
 
                 // Include absence if:
                 // 1. No attendance record at all (pending absence)
-                // 2. Has attendance record with status='absent' (approved/denied absence)
+                // 2. Has attendance record with status='absent' (approved or denied absence)
                 // Exclude if: has attendance with other status (present, late, etc) or on leave
                 $isAbsence = false;
                 $approvedBy = null;
                 $approvedAt = null;
+                $remarks = null;
 
                 if ($onLeave) {
                     // Skip if on leave
@@ -365,10 +358,11 @@ class AttendanceFinalController extends Controller
                     // No attendance record = pending absence
                     $isAbsence = true;
                 } elseif ($attendanceRecord->status === 'absent') {
-                    // Has attendance with status='absent' = approved/denied absence
+                    // Has attendance with status='absent' = approved or denied absence
                     $isAbsence = true;
                     $approvedBy = $attendanceRecord->approved_by;
                     $approvedAt = $attendanceRecord->approved_at;
+                    $remarks = $attendanceRecord->remarks;
                 }
 
                 if ($isAbsence) {
@@ -390,9 +384,10 @@ class AttendanceFinalController extends Controller
                             'time_out' => $schedule->shift->getAttributes()['time_out'],
                         ] : null,
                         'status' => 'absent',
+                        'remarks' => $remarks,
                         'approved_by' => $approvedBy ? ($attendanceRecord->approvedBy->name ?? 'N/A') : null,
                         'approved_at' => $approvedAt,
-                        'can_approve' => !$approvedBy, // Can only approve if not already approved
+                        'can_approve' => !$approvedBy, // Can only approve/deny if not already processed
                     ]);
                 }
 
@@ -695,26 +690,58 @@ class AttendanceFinalController extends Controller
     }
 
     /**
-     * Deny an absence - simply don't create a record (it won't count)
+     * Deny an absence - creates an Attendance record with status='absent' and remarks='Denied'
      */
     public function denyAbsence(Request $request)
     {
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,employee_id',
             'date' => 'required|date',
+            'shift_id' => 'nullable|exists:shifts,shift_id',
         ]);
 
-        // Log the denial for audit purposes
-        activity()
-            ->causedBy(Auth::user())
-            ->withProperties([
+        try {
+            DB::beginTransaction();
+
+            // Check if attendance record already exists
+            $existing = Attendance::where('employee_id', $validated['employee_id'])
+                ->where(DB::raw('DATE(date)'), $validated['date'])
+                ->first();
+
+            if ($existing) {
+                DB::rollBack();
+                return back()->with('error', 'Attendance record already exists for this date.');
+            }
+
+            // Create denied absence record - status is 'absent' but remarks is 'Denied'
+            $attendance = Attendance::create([
                 'employee_id' => $validated['employee_id'],
                 'date' => $validated['date'],
-                'action' => 'denied'
-            ])
-            ->log('Denied absence');
+                'shift_id' => $validated['shift_id'],
+                'status' => 'absent',
+                'remarks' => 'Denied',
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
+                'created_by' => Auth::id(),
+            ]);
 
-        return back()->with('success', 'Absence denied successfully.');
+            activity()
+                ->performedOn($attendance)
+                ->causedBy(Auth::user())
+                ->withProperties(['date' => $validated['date']])
+                ->log('Denied absence');
+
+            DB::commit();
+
+            return back()->with('success', 'Absence denied successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to deny absence', [
+                'data' => $validated,
+                'error' => $e->getMessage()
+            ]);
+            return back()->with('error', 'Failed to deny absence.');
+        }
     }
 
     /**
@@ -782,6 +809,75 @@ class AttendanceFinalController extends Controller
                 'error' => $e->getMessage()
             ]);
             return back()->with('error', 'Failed to approve absences.');
+        }
+    }
+
+    /**
+     * Bulk reject absences
+     */
+    public function bulkRejectAbsences(Request $request)
+    {
+        $validated = $request->validate([
+            'absences' => 'required|array',
+            'absences.*.employee_id' => 'required|exists:employees,employee_id',
+            'absences.*.date' => 'required|date',
+            'absences.*.shift_id' => 'nullable|exists:shifts,shift_id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $rejected = 0;
+            $skipped = 0;
+
+            foreach ($validated['absences'] as $absence) {
+                // Check if attendance record already exists
+                $existing = Attendance::where('employee_id', $absence['employee_id'])
+                    ->where(DB::raw('DATE(date)'), $absence['date'])
+                    ->exists();
+
+                if ($existing) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Create denied absence record - status is 'absent' but remarks is 'Denied'
+                Attendance::create([
+                    'employee_id' => $absence['employee_id'],
+                    'date' => $absence['date'],
+                    'shift_id' => $absence['shift_id'] ?? null,
+                    'status' => 'absent',
+                    'remarks' => 'Denied',
+                    'approved_by' => Auth::id(),
+                    'approved_at' => now(),
+                    'created_by' => Auth::id(),
+                ]);
+
+                $rejected++;
+            }
+
+            activity()
+                ->causedBy(Auth::user())
+                ->withProperties([
+                    'rejected' => $rejected,
+                    'skipped' => $skipped
+                ])
+                ->log('Bulk denied absences');
+
+            DB::commit();
+
+            $message = "Successfully denied {$rejected} absence(s).";
+            if ($skipped > 0) {
+                $message .= " {$skipped} record(s) were skipped (already exist).";
+            }
+
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to bulk deny absences', [
+                'error' => $e->getMessage()
+            ]);
+            return back()->with('error', 'Failed to deny absences.');
         }
     }
 }

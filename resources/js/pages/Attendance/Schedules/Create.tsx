@@ -256,7 +256,6 @@ export default function SchedulesCreate({ companies = [], shifts = [], prefilled
                                                 value={data.date_start}
                                                 onChange={(e) => setData('date_start', e.target.value)}
                                                 className={errors.date_start ? 'border-red-500' : ''}
-                                                min={new Date().toISOString().split('T')[0]}
                                             />
                                             {errors.date_start && (
                                                 <p className="text-sm text-red-500">{errors.date_start}</p>
@@ -271,7 +270,7 @@ export default function SchedulesCreate({ companies = [], shifts = [], prefilled
                                                 value={data.date_end}
                                                 onChange={(e) => setData('date_end', e.target.value)}
                                                 className={errors.date_end ? 'border-red-500' : ''}
-                                                min={data.date_start || new Date().toISOString().split('T')[0]}
+                                                min={data.date_start}
                                             />
                                             <p className="text-sm text-muted-foreground">
                                                 Leave empty for ongoing schedule

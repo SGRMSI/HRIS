@@ -46,6 +46,7 @@ Route::middleware(['auth', 'verified'])->prefix('attendance')->name('attendance.
         Route::post('absences/approve', [AttendanceFinalController::class, 'approveAbsence'])->name('absences.approve');
         Route::post('absences/deny', [AttendanceFinalController::class, 'denyAbsence'])->name('absences.deny');
         Route::post('absences/bulk-approve', [AttendanceFinalController::class, 'bulkApproveAbsences'])->name('absences.bulk-approve');
+        Route::post('absences/bulk-reject', [AttendanceFinalController::class, 'bulkRejectAbsences'])->name('absences.bulk-reject');
     });
     
     // Shifts Management

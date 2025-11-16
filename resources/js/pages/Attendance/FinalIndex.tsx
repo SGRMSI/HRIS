@@ -106,6 +106,7 @@ interface AbsenceRecord {
     shift_id: number | null;
     shift: Shift | null;
     status: string;
+    remarks: string | null;
     approved_by: string | null;
     approved_at: string | null;
     can_approve: boolean;
@@ -317,7 +318,8 @@ export default function FinalIndex({
             route('attendance.final.bulk-approve'),
             { ids: idsToApprove },
             {
-                preserveScroll: false,
+                preserveScroll: true,
+                preserveState: true,
                 onFinish: () => {
                     setBulkProcessing(false);
                     setShowApproveModal(false);
@@ -363,6 +365,7 @@ export default function FinalIndex({
             { employee_id, date },
             {
                 preserveScroll: true,
+                preserveState: true,
                 onSuccess: () => {
                     toast.success('Absence denied successfully');
                 },
@@ -380,6 +383,7 @@ export default function FinalIndex({
                 singleAbsenceData,
                 {
                     preserveScroll: true,
+                    preserveState: true,
                     onFinish: () => {
                         setBulkProcessing(false);
                         setShowAbsenceApproveModal(false);
@@ -394,6 +398,7 @@ export default function FinalIndex({
                 { absences: selectedAbsences },
                 {
                     preserveScroll: true,
+                    preserveState: true,
                     onFinish: () => {
                         setBulkProcessing(false);
                         setShowAbsenceApproveModal(false);

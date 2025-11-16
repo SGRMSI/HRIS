@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Attendance;
 use App\Models\Employee;
-use App\Models\EmployeeOvertime;
 use Carbon\Carbon;
 
 class AttendanceCalculationService
@@ -15,7 +14,7 @@ class AttendanceCalculationService
      * Logic:
      * 1. Get employee's shift schedule for the date
      * 2. Calculate total rendered hours (capped by shift duration, excluding breaks)
-     * 3. Calculate overtime based on approved overtime requests and actual clock out time
+     * 3. Calculate overtime for display (time worked past shift end)
      * 4. Calculate undertime if clocked out before shift end time
      */
     public function calculateAttendance(Attendance $attendance): void
@@ -116,41 +115,24 @@ class AttendanceCalculationService
     }
     
     /**
-     * Calculate overtime based on approved overtime request and actual clock out time
+     * Calculate overtime for display purposes only (not for payroll)
      * 
-     * Overtime only counts if:
-     * 1. Employee has an approved overtime request for that date
-     * 2. Employee clocked out after their shift end time
-     * 3. The deviation from shift end is the overtime hours
+     * Simply shows how many minutes the employee worked past their scheduled shift end time
+     * This is just for breakdown display on the attendance view page
      */
     private function calculateOvertime(Attendance $attendance, Carbon $clockOut, Carbon $shiftEnd): float
     {
-        // Check if there's an approved overtime request for this date
-        $approvedOvertime = EmployeeOvertime::where('employee_id', $attendance->employee_id)
-            ->where('overtime_date', $attendance->date)
-            ->where('status', 'approved')
-            ->first();
-        
-        if (!$approvedOvertime) {
-            return 0;
-        }
-        
         // Check if employee actually worked past shift end time
         if ($clockOut->lte($shiftEnd)) {
             return 0;
         }
         
-        // Calculate actual overtime worked (time worked beyond shift end)
-        // Use true parameter to get absolute value, and we know clockOut > shiftEnd from above check
-        $overtimeMinutes = $shiftEnd->diffInMinutes($clockOut, false);
+        // Calculate overtime worked (time worked beyond shift end)
+        // Simple calculation: clock out time - shift end time
+        $overtimeMinutes = $shiftEnd->diffInMinutes($clockOut);
         $overtimeHours = round($overtimeMinutes / 60, 2);
         
-        // Get approved overtime duration
-        $approvedOvertimeMinutes = ($approvedOvertime->duration_hours * 60) + $approvedOvertime->duration_minutes;
-        $approvedOvertimeHours = round($approvedOvertimeMinutes / 60, 2);
-        
-        // Use the lesser of actual overtime or approved overtime
-        return min($overtimeHours, $approvedOvertimeHours);
+        return $overtimeHours;
     }
     
     /**
