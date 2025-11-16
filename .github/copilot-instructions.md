@@ -1,7 +1,7 @@
 # AI Agent Instructions for HRIS
 
 ## Project Overview
-This is a Human Resource Information System built with Laravel and React (Inertia.js), focusing on employee document management, attendance tracking, and HR workflows.
+This is a Human Resource Information System built with Laravel and React (Inertia.js), focusing on employee document management, attendance tracking, payroll processing, and HR workflows.
 
 ## Architecture & Patterns
 
@@ -11,6 +11,7 @@ This is a Human Resource Information System built with Laravel and React (Inerti
 - UI: TailwindCSS with ShadcnUI components
 - Testing: Pest PHP
 - Excel Handling: Laravel Excel
+- PDF Generation: DomPDF (for payslips)
 - Activity Logging: Spatie Activity Log
 
 ### Key Components
@@ -18,10 +19,12 @@ This is a Human Resource Information System built with Laravel and React (Inerti
   - Base models: Employee, Document, Department, etc.
   - Attendance models: AttendanceUploadBatch, AttendanceRaw, AttendanceProcessed, etc.
   - Schedule models: Shift, EmployeeSchedule, Holiday, EmployeeLeave
+  - Payroll models: PayrollPeriod, PayrollRecord, EmployeePayrollSettings
 - `app/Services/` - Business logic layer for complex operations
   - `EmployeeService` - Document and employee data handling
   - `AttendanceService` - Attendance processing and calculations
   - `ScheduleResolver` - Schedule and leave resolution
+  - `PayrollService` - Payroll calculation and processing
 
 ### Frontend Components Organization
 
@@ -201,6 +204,46 @@ This is a Human Resource Information System built with Laravel and React (Inerti
      - Balance restoration on cancellation
      - Type-based categorization
 
+9. **PayrollController** (`app/Http/Controllers/PayrollController.php`)
+   - **Purpose:** Manage payroll periods and employee payroll records
+   - **Methods:**
+     - `index()` - List all payroll periods with filters
+     - `create()` - Show payroll period creation form
+     - `store()` - Create new payroll period with selected employees
+     - `show()` - Display payroll period with all employee records (grouped by company)
+     - `edit()` - Edit individual employee payroll record
+     - `update()` - Update individual employee payroll record
+     - `recalculate()` - Recalculate single employee payroll from attendance
+     - `approve()` - Approve payroll period and lock all records
+     - `markPaid()` - Mark payroll period as paid
+     - `export()` - Export payroll data as CSV
+     - `exportPayslips()` - Export all employee payslips as ZIP
+     - `exportPdf()` - Export individual payslip as PDF
+     - `destroy()` - Delete draft payroll period
+   - **Features:**
+     - Period-based payroll processing
+     - Automatic calculation from attendance data
+     - Holiday pay integration
+     - Overtime pay from approved EmployeeOvertime records
+     - Government contributions (SSS, PhilHealth, Pag-IBIG)
+     - Late/undertime deductions
+     - Manual adjustments with notes
+     - Multi-status workflow (draft → approved → paid)
+     - Activity logging for audit trail
+     - Bulk payslip generation
+
+10. **EmployeePayrollSettingsController** (`app/Http/Controllers/EmployeePayrollSettingsController.php`)
+    - **Purpose:** Manage employee-specific payroll settings
+    - **Methods:**
+      - `index()` - List all employees with payroll settings
+      - `edit()` - Show employee payroll settings form
+      - `update()` - Update employee payroll settings
+    - **Features:**
+      - Daily rate configuration
+      - Allowances (clothing, rice, transportation, program, attendance incentive)
+      - Government contribution rates
+      - Adjustment tracking
+
 ### Service Layer Architecture
 
 #### Attendance Services
@@ -215,6 +258,26 @@ This is a Human Resource Information System built with Laravel and React (Inerti
      - Holiday checking
      - Leave validation
      - Schedule conflict resolution
+
+2. **PayrollService** (`app/Services/PayrollService.php`)
+   - **Purpose:** Calculate and manage employee payroll
+   - **Methods:**
+     - `addEmployeesToPeriod()` - Add employees to payroll period
+     - `createPayrollRecord()` - Create payroll record for an employee
+     - `calculateDaysWorked()` - Calculate days worked from attendance
+     - `calculateEarnings()` - Calculate overtime, night differential, and holiday pay
+     - `calculateHolidayPay()` - Calculate holiday pay for employees who worked on holidays
+     - `calculateLateUndertime()` - Calculate late and undertime deductions
+     - `calculateGovernmentContributions()` - Calculate SSS, PhilHealth, Pag-IBIG
+     - `recalculateRecord()` - Recalculate payroll record from current data
+   - **Features:**
+     - Automatic payroll generation from attendance
+     - Overtime calculation from approved EmployeeOvertime records (1.25x hourly rate)
+     - Holiday pay based on holiday type and pay_percentage
+     - Late/undertime deductions (daily_rate / 8 hours / 60 minutes)
+     - Government contribution tables
+     - Integration with employee_payroll_settings
+     - Transaction management
 
 #### Import/Export Handlers
 1. **AttendanceRawImport** (`app/Imports/AttendanceRawImport.php`)
@@ -240,6 +303,15 @@ This is a Human Resource Information System built with Laravel and React (Inerti
    - Exports final attendance records
    - Comprehensive filtering options
    - Includes employee details and calculations
+
+6. **AttendanceProcessedExport** (`app/Exports/AttendanceProcessedExport.php`)
+   - Exports processed attendance records
+   - Supports company, employee, date range, status, and batch filters
+
+7. **PayrollExport** (`app/Exports/PayrollExport.php`)
+   - Exports payroll period data to CSV
+   - Includes all employee records with detailed breakdown
+   - Shows gross pay, deductions, and net pay
 
 ### Attendance Processing Flow
 
@@ -342,6 +414,27 @@ EmployeeLeave -> belongsTo(User::class, 'approved_by')
 Employee -> hasMany(EmployeeLeave::class, 'employee_id')
 ```
 
+#### Payroll Management
+```php
+// Payroll periods
+PayrollPeriod -> hasMany(PayrollRecord::class, 'period_id')
+PayrollPeriod -> belongsTo(User::class, 'created_by')
+PayrollPeriod -> belongsTo(User::class, 'approved_by')
+
+// Payroll records
+PayrollRecord -> belongsTo(PayrollPeriod::class, 'period_id')
+PayrollRecord -> belongsTo(Employee::class, 'employee_id')
+Employee -> hasMany(PayrollRecord::class, 'employee_id')
+
+// Employee payroll settings
+EmployeePayrollSettings -> belongsTo(Employee::class, 'employee_id')
+Employee -> hasOne(EmployeePayrollSettings::class, 'employee_id')
+
+// Integration with attendance
+PayrollRecord uses Attendance data via PayrollService
+PayrollService -> uses EmployeeOvertime for overtime calculations
+```
+
 #### Model Properties & Casts
 
 **AttendanceUploadBatch:**
@@ -389,6 +482,30 @@ Employee -> hasMany(EmployeeLeave::class, 'employee_id')
 **EmployeeLeave:**
 - `$fillable`: employee_id, leave_type, date_start, date_end, days_count, reason, status, approved_by, approved_at, document_path
 - `$casts`: date_start (datetime), date_end (datetime), approved_at (datetime), days_count (decimal:1)
+
+**PayrollPeriod:**
+- `$primaryKey`: period_id
+- `$fillable`: period_name, period_start, period_end, total_employees, total_gross, total_deductions, total_net, status, created_by, approved_by, approved_at, paid_at
+- `$casts`: period_start (date), period_end (date), approved_at (datetime), paid_at (datetime), total_gross (decimal:2), total_deductions (decimal:2), total_net (decimal:2)
+- **Foreign Keys**: created_by → users.user_id, approved_by → users.user_id
+- **Methods**: calculateTotals() - Sums gross, deductions, net from all records
+
+**PayrollRecord:**
+- `$primaryKey`: payroll_id
+- `$fillable`: period_id, employee_id, days_worked, basic_pay, overtime_pay, holiday_pay, night_differential_pay, clothing_allowance, rice_allowance, transportation_allowance, program_allowance, attendance_incentive, gross_pay, sss_contribution, philhealth_contribution, pagibig_contribution, late_deduction, undertime_deduction, other_deductions, total_deductions, net_pay, adjustment_amount, adjustment_notes, overtime_hours, undertime_hours
+- `$casts`: days_worked (decimal:2), overtime_hours (decimal:2), undertime_hours (decimal:2), basic_pay (decimal:2), overtime_pay (decimal:2), holiday_pay (decimal:2), night_differential_pay (decimal:2), clothing_allowance (decimal:2), rice_allowance (decimal:2), transportation_allowance (decimal:2), program_allowance (decimal:2), attendance_incentive (decimal:2), gross_pay (decimal:2), sss_contribution (decimal:2), philhealth_contribution (decimal:2), pagibig_contribution (decimal:2), late_deduction (decimal:2), undertime_deduction (decimal:2), other_deductions (decimal:2), total_deductions (decimal:2), net_pay (decimal:2), adjustment_amount (decimal:2)
+- **Foreign Keys**: period_id → payroll_periods.period_id, employee_id → employees.employee_id
+- **Methods**:
+  - `calculateBasicPay()`: days_worked * daily_rate
+  - `calculateGrossPay()`: Sum of basic_pay + overtime + holiday + night_differential + allowances + adjustment
+  - `calculateTotalDeductions()`: Sum of all deductions
+  - `calculateNetPay()`: gross_pay - total_deductions
+  - `calculateAll()`: Runs all 4 calculations in sequence
+
+**EmployeePayrollSettings:**
+- `$fillable`: employee_id, daily_rate, clothing_allowance, rice_allowance, transportation_allowance, program_allowance, attendance_incentive, sss_rate, philhealth_rate, pagibig_rate
+- `$casts`: daily_rate (decimal:2), clothing_allowance (decimal:2), rice_allowance (decimal:2), transportation_allowance (decimal:2), program_allowance (decimal:2), attendance_incentive (decimal:2), sss_rate (decimal:2), philhealth_rate (decimal:2), pagibig_rate (decimal:2)
+- **Foreign Keys**: employee_id → employees.employee_id
 
 ### Route Organization
 All attendance routes are defined in `routes/attendance.php` and included in `routes/web.php`.
@@ -455,6 +572,39 @@ All attendance routes are defined in `routes/attendance.php` and included in `ro
    - DELETE `/attendance/leaves/{leave}` → `attendance.leaves.destroy`
    - POST `/attendance/leaves/{leave}/approve` → `attendance.leaves.approve`
    - POST `/attendance/leaves/{leave}/cancel` → `attendance.leaves.cancel`
+
+### Payroll Routes
+All payroll routes are defined in `routes/payroll.php` and included in `routes/web.php`.
+
+**Route Structure:**
+- Prefix: `/payroll`
+- Middleware: `auth`, `verified`
+- Naming convention: `payroll.{resource}.{action}`
+
+**Implemented Routes:**
+1. **Employee Payroll Settings**
+   - GET `/payroll/employee-settings` → `payroll.employee-settings.index` → `Payroll/EmployeeSettings/Index.tsx`
+   - GET `/payroll/employee-settings/{employee}/edit` → `payroll.employee-settings.edit` → `Payroll/EmployeeSettings/Edit.tsx`
+   - PUT `/payroll/employee-settings/{employee}` → `payroll.employee-settings.update`
+
+2. **Payroll Periods**
+   - GET `/payroll` → `payroll.index` → `Payroll/Index.tsx`
+   - GET `/payroll/create` → `payroll.create` → `Payroll/Create.tsx`
+   - POST `/payroll` → `payroll.store`
+   - GET `/payroll/{period}` → `payroll.show` → `Payroll/Show.tsx`
+   - DELETE `/payroll/{period}` → `payroll.destroy`
+
+3. **Payroll Record Management**
+   - GET `/payroll/{period}/{record}/edit` → `payroll.edit` → `Payroll/Edit.tsx`
+   - PUT `/payroll/{period}/{record}` → `payroll.update`
+   - POST `/payroll/{period}/{record}/recalculate` → `payroll.recalculate`
+
+4. **Payroll Actions**
+   - POST `/payroll/{period}/approve` → `payroll.approve`
+   - POST `/payroll/{period}/mark-paid` → `payroll.mark-paid`
+   - GET `/payroll/{period}/export` → `payroll.export`
+   - GET `/payroll/{period}/export-payslips` → `payroll.export-payslips`
+   - GET `/payroll/{period}/{record}/export-pdf` → `payroll.export-pdf`
 
 ### Code Style & Conventions
 
@@ -566,3 +716,17 @@ export default function ComponentName({ prop1, prop2 }: ComponentProps) {
 24. Use pagination for large datasets
 25. Index frequently queried columns (employee_number, date, batch_id)
 26. Consider chunking for bulk operations on large batches
+
+### Payroll
+27. **Payroll Period Status Workflow**: Enforce strict state transitions (draft → approved → paid). Once approved, records are locked from editing.
+28. **Government Contribution Calculations**:
+    - SSS uses stepped table (135.00 to 900.00 based on salary range)
+    - PhilHealth is 2% of salary (min 200, max 1800)
+    - Pag-IBIG is 1-2% of salary (max 100)
+29. **Overtime Calculation**: Only count approved EmployeeOvertime records. Rate is 1.25x hourly rate (daily_rate / 8)
+30. **Holiday Pay**: Based on holiday type's pay_percentage. Formula: (daily_rate * pay_percentage / 100) / 8 * hours_worked
+31. **Late/Undertime Deductions**: Per-minute calculation: (daily_rate / 8 hours / 60 minutes) * minutes
+32. **Payroll Recalculation**: Use PayrollService->recalculateRecord() to refresh from current attendance data. Preserves manual adjustments.
+33. **PDF Payslips**: Generated via DomPDF. Bulk export creates ZIP file of all employee payslips.
+34. **Employee Settings Required**: Each employee must have EmployeePayrollSettings before payroll generation. Default to company settings if missing.
+35. **Activity Logging**: All payroll changes (create, update, approve, mark paid) are logged via Spatie Activity Log for audit trail.
