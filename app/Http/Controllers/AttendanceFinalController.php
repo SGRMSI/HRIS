@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\Employee;
 use App\Models\EmployeeSchedule;
 use App\Models\EmployeeLeave;
+use App\Services\AttendanceCalculationService;
 use App\Services\ScheduleResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -21,10 +22,14 @@ use Maatwebsite\Excel\Facades\Excel;
 class AttendanceFinalController extends Controller
 {
     protected $scheduleResolver;
+    protected $attendanceCalculationService;
 
-    public function __construct(ScheduleResolver $scheduleResolver) 
-    {
+    public function __construct(
+        ScheduleResolver $scheduleResolver,
+        AttendanceCalculationService $attendanceCalculationService
+    ) {
         $this->scheduleResolver = $scheduleResolver;
+        $this->attendanceCalculationService = $attendanceCalculationService;
     }
 
     /**
@@ -444,6 +449,7 @@ class AttendanceFinalController extends Controller
                 'computations' => [
                     'total_hours' => $attendance->total_hours ?? 0,
                     'total_minutes' => $attendance->total_minutes ?? 0,
+                    'total_rendered_hours' => number_format((float) $attendance->total_rendered_hours ?? 0, 2),
                     'overtime_hours' => number_format((float) $attendance->overtime_hours ?? 0, 2),
                     'undertime_hours' => number_format((float) $attendance->undertime_hours ?? 0, 2),
                     'break_minutes' => $attendance->break_minutes ?? 0,
@@ -505,6 +511,10 @@ class AttendanceFinalController extends Controller
 
             // Update record
             $attendance->update($updateData);
+            
+            // Recalculate attendance metrics (total rendered hours, overtime, etc.)
+            $attendance->refresh();
+            $this->attendanceCalculationService->calculateAttendance($attendance);
 
             // Record the changes in activity log
             activity()

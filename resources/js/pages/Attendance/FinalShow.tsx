@@ -1,34 +1,16 @@
-import { useState, useEffect } from 'react';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { ArrowLeft, Calendar, CheckCircle2, Clock, Edit, Save, User, XCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { 
-    Calendar, 
-    Clock, 
-    User, 
-    Building2, 
-    Save, 
-    ArrowLeft, 
-    CheckCircle2,
-    XCircle,
-    AlertCircle,
-    Edit
-} from 'lucide-react';
 
 interface AttendanceProps {
     attendance: {
@@ -57,6 +39,7 @@ interface AttendanceProps {
         computations: {
             total_hours: number;
             total_minutes: number;
+            total_rendered_hours: number;
             overtime_hours: string;
             undertime_hours: string;
             break_minutes: number;
@@ -80,7 +63,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [isApproving, setIsApproving] = useState(false);
-    
+
     const { data, setData, put, processing, errors, reset } = useForm({
         clock_in: attendance.times.clock_in || '',
         break_out: attendance.times.break_out || '',
@@ -108,7 +91,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
             },
             onError: () => {
                 toast.error('Failed to update attendance record.');
-            }
+            },
         });
     };
 
@@ -124,15 +107,15 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
     const handleApproveConfirm = () => {
         setIsApproving(true);
         router.post(
-            route('attendance.final.bulk-approve'), 
+            route('attendance.final.bulk-approve'),
             { ids: [attendance.id] },
             {
                 preserveScroll: false,
                 onFinish: () => {
                     setIsApproving(false);
                     setShowApproveModal(false);
-                }
-            }
+                },
+            },
         );
     };
 
@@ -147,7 +130,11 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
             case 'late':
                 return <Badge variant="destructive">Late</Badge>;
             case 'undertime':
-                return <Badge variant="outline" className="border-orange-600 text-orange-600">Undertime</Badge>;
+                return (
+                    <Badge variant="outline" className="border-orange-600 text-orange-600">
+                        Undertime
+                    </Badge>
+                );
             case 'absent':
                 return <Badge variant="destructive">Absent</Badge>;
             default:
@@ -164,51 +151,37 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
             ]}
         >
             <Head title="Attendance Details" />
-            
+
             <div className="space-y-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">Attendance Details</h1>
-                        <p className="text-muted-foreground mt-1">
-                            View and edit attendance record
-                        </p>
+                        <p className="mt-1 text-muted-foreground">View and edit attendance record</p>
                     </div>
                     <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => router.visit(route('attendance.final.index'))}
-                        >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
+                        <Button variant="outline" onClick={() => router.visit(route('attendance.final.index'))}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
                             Back to List
                         </Button>
                         {can.edit && !attendance.approved_by && (
                             <>
                                 {isEditing ? (
-                                    <Button
-                                        onClick={handleCancelEdit}
-                                        variant="outline"
-                                    >
-                                        <XCircle className="h-4 w-4 mr-2" />
+                                    <Button onClick={handleCancelEdit} variant="outline">
+                                        <XCircle className="mr-2 h-4 w-4" />
                                         Cancel
                                     </Button>
                                 ) : (
-                                    <Button
-                                        onClick={() => setIsEditing(true)}
-                                        variant="default"
-                                    >
-                                        <Edit className="h-4 w-4 mr-2" />
+                                    <Button onClick={() => setIsEditing(true)} variant="default">
+                                        <Edit className="mr-2 h-4 w-4" />
                                         Edit Record
                                     </Button>
                                 )}
                             </>
                         )}
                         {!attendance.approved_by && (
-                            <Button
-                                onClick={handleApproveClick}
-                                className="bg-green-600 hover:bg-green-700"
-                            >
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                            <Button onClick={handleApproveClick} className="bg-green-600 hover:bg-green-700">
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
                                 Approve
                             </Button>
                         )}
@@ -247,19 +220,11 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowApproveModal(false)}
-                                disabled={isApproving}
-                            >
+                            <Button variant="outline" onClick={() => setShowApproveModal(false)} disabled={isApproving}>
                                 Cancel
                             </Button>
-                            <Button
-                                onClick={handleApproveConfirm}
-                                disabled={isApproving}
-                                className="bg-green-600 hover:bg-green-700"
-                            >
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                            <Button onClick={handleApproveConfirm} disabled={isApproving} className="bg-green-600 hover:bg-green-700">
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
                                 {isApproving ? 'Approving...' : 'Approve'}
                             </Button>
                         </DialogFooter>
@@ -275,7 +240,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                             <div>
                                 <Label className="text-xs text-muted-foreground">Employee Name</Label>
                                 <p className="font-medium">{attendance.employee.name}</p>
@@ -305,7 +270,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
                                 <Label className="text-xs text-muted-foreground">Date</Label>
                                 <p className="font-medium">{attendance.date}</p>
@@ -321,9 +286,9 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                         </div>
 
                         {attendance.shift && (
-                            <div className="bg-muted/50 rounded-lg p-4 mb-6">
-                                <p className="text-sm font-medium mb-2">Scheduled Shift Times</p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div className="mb-6 rounded-lg bg-muted/50 p-4">
+                                <p className="mb-2 text-sm font-medium">Scheduled Shift Times</p>
+                                <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                                     <div>
                                         <Label className="text-xs text-muted-foreground">Clock In</Label>
                                         <p className="font-mono">{attendance.shift.time_in}</p>
@@ -350,7 +315,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
 
                         <form onSubmit={handleSubmit}>
                             <div className="space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                                     {/* Clock In */}
                                     <div>
                                         <Label htmlFor="clock_in">Clock In Time</Label>
@@ -363,9 +328,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                                             disabled={!isEditing || !!attendance.approved_by}
                                             className={isEditing && !attendance.approved_by ? 'border-blue-300' : ''}
                                         />
-                                        {errors.clock_in && (
-                                            <p className="text-xs text-red-600 mt-1">{errors.clock_in}</p>
-                                        )}
+                                        {errors.clock_in && <p className="mt-1 text-xs text-red-600">{errors.clock_in}</p>}
                                     </div>
 
                                     {/* Break Out */}
@@ -380,9 +343,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                                             disabled={!isEditing || !!attendance.approved_by}
                                             className={isEditing && !attendance.approved_by ? 'border-blue-300' : ''}
                                         />
-                                        {errors.break_out && (
-                                            <p className="text-xs text-red-600 mt-1">{errors.break_out}</p>
-                                        )}
+                                        {errors.break_out && <p className="mt-1 text-xs text-red-600">{errors.break_out}</p>}
                                     </div>
 
                                     {/* Break In */}
@@ -397,9 +358,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                                             disabled={!isEditing || !!attendance.approved_by}
                                             className={isEditing && !attendance.approved_by ? 'border-blue-300' : ''}
                                         />
-                                        {errors.break_in && (
-                                            <p className="text-xs text-red-600 mt-1">{errors.break_in}</p>
-                                        )}
+                                        {errors.break_in && <p className="mt-1 text-xs text-red-600">{errors.break_in}</p>}
                                     </div>
 
                                     {/* Clock Out */}
@@ -414,9 +373,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                                             disabled={!isEditing || !!attendance.approved_by}
                                             className={isEditing && !attendance.approved_by ? 'border-blue-300' : ''}
                                         />
-                                        {errors.clock_out && (
-                                            <p className="text-xs text-red-600 mt-1">{errors.clock_out}</p>
-                                        )}
+                                        {errors.clock_out && <p className="mt-1 text-xs text-red-600">{errors.clock_out}</p>}
                                     </div>
                                 </div>
 
@@ -433,16 +390,14 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                                         rows={3}
                                         className={isEditing && !attendance.approved_by ? 'border-blue-300' : ''}
                                     />
-                                    {errors.remarks && (
-                                        <p className="text-xs text-red-600 mt-1">{errors.remarks}</p>
-                                    )}
+                                    {errors.remarks && <p className="mt-1 text-xs text-red-600">{errors.remarks}</p>}
                                 </div>
 
                                 {/* Save Button */}
                                 {isEditing && (
                                     <div className="flex justify-end">
                                         <Button type="submit" disabled={processing}>
-                                            <Save className="h-4 w-4 mr-2" />
+                                            <Save className="mr-2 h-4 w-4" />
                                             {processing ? 'Saving...' : 'Save Changes'}
                                         </Button>
                                     </div>
@@ -462,32 +417,32 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
                         <CardDescription>Automatically calculated based on clock times</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                            <div className="bg-blue-50 rounded-lg p-4">
+                        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                            <div className="rounded-lg bg-blue-50 p-4">
                                 <Label className="text-xs text-muted-foreground">Total Hours</Label>
                                 <p className="text-2xl font-bold text-blue-600">
                                     {attendance.computations.total_hours}h {attendance.computations.total_minutes}m
                                 </p>
                             </div>
-                            <div className="bg-orange-50 rounded-lg p-4">
+                            <div className="rounded-lg bg-cyan-50 p-4">
+                                <Label className="text-xs text-muted-foreground">Total Rendered</Label>
+                                <p className="text-2xl font-bold text-cyan-600">{attendance.computations.total_rendered_hours ?? '0.00'}h</p>
+                            </div>
+                            <div className="rounded-lg bg-orange-50 p-4">
                                 <Label className="text-xs text-muted-foreground">Break Time</Label>
-                                <p className="text-2xl font-bold text-orange-600">
-                                    {attendance.computations.break_minutes} min
-                                </p>
+                                <p className="text-2xl font-bold text-orange-600">{attendance.computations.break_minutes} min</p>
                             </div>
-                            <div className="bg-red-50 rounded-lg p-4">
+                            <div className="rounded-lg bg-red-50 p-4">
                                 <Label className="text-xs text-muted-foreground">Late</Label>
-                                <p className="text-2xl font-bold text-red-600">
-                                    {attendance.computations.late_minutes} min
-                                </p>
+                                <p className="text-2xl font-bold text-red-600">{attendance.computations.late_minutes} min</p>
                             </div>
-                            <div className="bg-purple-50 rounded-lg p-4">
+                            <div className="rounded-lg bg-purple-50 p-4">
                                 <Label className="text-xs text-muted-foreground">Overtime</Label>
                                 <p className="text-2xl font-bold text-purple-600">
                                     {Math.round(parseFloat(attendance.computations.overtime_hours) * 60)} min
                                 </p>
                             </div>
-                            <div className="bg-yellow-50 rounded-lg p-4">
+                            <div className="rounded-lg bg-yellow-50 p-4">
                                 <Label className="text-xs text-muted-foreground">Undertime</Label>
                                 <p className="text-2xl font-bold text-yellow-600">
                                     {Math.round(parseFloat(attendance.computations.undertime_hours) * 60)} min
@@ -499,7 +454,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
 
                 {/* Approval Status */}
                 {attendance.approved_by && (
-                    <Alert className="bg-green-50 border-green-200">
+                    <Alert className="border-green-200 bg-green-50">
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                         <AlertDescription className="text-green-800">
                             <strong>Approved</strong> by {attendance.approved_by} on {attendance.approved_at}
@@ -529,4 +484,3 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
         </AppLayout>
     );
 }
-

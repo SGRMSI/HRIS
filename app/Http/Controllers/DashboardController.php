@@ -252,11 +252,13 @@ class DashboardController extends Controller
     {
         try {
             $today = Carbon::today();
-            $next30Days = Carbon::today()->addDays(30);
+            $startOfYear = Carbon::now()->startOfYear();
+            $endOfNextYear = Carbon::now()->addYear()->endOfYear();
 
             // Holidays (include all holidays: company-specific and all-company)
-            $holidays = Holiday::whereDate('date', '>=', $today)
-                ->whereDate('date', '<=', $next30Days)
+            // Get all holidays for current and next year so calendar can show them when navigating
+            $holidays = Holiday::whereDate('date', '>=', $startOfYear)
+                ->whereDate('date', '<=', $endOfNextYear)
                 ->with('company')
                 ->orderBy('date', 'asc')
                 ->get()
@@ -275,86 +277,109 @@ class DashboardController extends Controller
                     ];
                 });
 
-            // Employee birthdays
+            // Employee birthdays - show for current and next year
             $birthdays = Employee::whereNotNull('birth_date')
                 ->get()
-                ->filter(function ($employee) use ($today, $next30Days) {
+                ->filter(function ($employee) use ($startOfYear, $endOfNextYear) {
                     try {
                         $birthday = Carbon::parse($employee->birth_date);
-                        $thisYearBirthday = $birthday->copy()->setYear($today->year);
+                        $thisYearBirthday = $birthday->copy()->setYear(Carbon::now()->year);
+                        $nextYearBirthday = $birthday->copy()->setYear(Carbon::now()->year + 1);
 
-                        if ($thisYearBirthday->lt($today)) {
-                            $thisYearBirthday->addYear();
-                        }
-
-                        return $thisYearBirthday->between($today, $next30Days);
+                        return $thisYearBirthday->between($startOfYear, $endOfNextYear) ||
+                               $nextYearBirthday->between($startOfYear, $endOfNextYear);
                     } catch (\Exception $e) {
                         return false;
                     }
                 })
-                ->map(function ($employee) use ($today) {
+                ->flatMap(function ($employee) use ($startOfYear, $endOfNextYear) {
                     $birthday = Carbon::parse($employee->birth_date);
-                    $thisYearBirthday = $birthday->copy()->setYear($today->year);
-
-                    if ($thisYearBirthday->lt($today)) {
-                        $thisYearBirthday->addYear();
-                    }
-
-                    return [
-                        'id' => $employee->employee_id,
-                        'type' => 'birthday',
-                        'title' => trim($employee->first_name . ' ' . $employee->last_name),
-                        'date' => $thisYearBirthday->toDateString(),
-                        'employee' => [
+                    $birthdays = [];
+                    
+                    // This year's birthday
+                    $thisYearBirthday = $birthday->copy()->setYear(Carbon::now()->year);
+                    if ($thisYearBirthday->between($startOfYear, $endOfNextYear)) {
+                        $birthdays[] = [
                             'id' => $employee->employee_id,
-                            'name' => trim($employee->first_name . ' ' . $employee->last_name),
-                        ],
-                    ];
+                            'type' => 'birthday',
+                            'title' => trim($employee->first_name . ' ' . $employee->last_name),
+                            'date' => $thisYearBirthday->toDateString(),
+                            'employee' => [
+                                'id' => $employee->employee_id,
+                                'name' => trim($employee->first_name . ' ' . $employee->last_name),
+                            ],
+                        ];
+                    }
+                    
+                    // Next year's birthday
+                    $nextYearBirthday = $birthday->copy()->setYear(Carbon::now()->year + 1);
+                    if ($nextYearBirthday->between($startOfYear, $endOfNextYear)) {
+                        $birthdays[] = [
+                            'id' => $employee->employee_id,
+                            'type' => 'birthday',
+                            'title' => trim($employee->first_name . ' ' . $employee->last_name),
+                            'date' => $nextYearBirthday->toDateString(),
+                            'employee' => [
+                                'id' => $employee->employee_id,
+                                'name' => trim($employee->first_name . ' ' . $employee->last_name),
+                            ],
+                        ];
+                    }
+                    
+                    return $birthdays;
                 });
 
-            // Work anniversaries
+            // Work anniversaries - show for current and next year
             $anniversaries = Employee::whereNotNull('date_hired')
                 ->get()
-                ->filter(function ($employee) use ($today, $next30Days) {
+                ->filter(function ($employee) use ($startOfYear) {
                     try {
                         $hireDate = Carbon::parse($employee->date_hired);
-                        $thisYearAnniversary = $hireDate->copy()->setYear($today->year);
-
                         // Only include if it's been at least 1 year
-                        if ($today->diffInYears($hireDate) < 1) {
-                            return false;
-                        }
-
-                        if ($thisYearAnniversary->lt($today)) {
-                            $thisYearAnniversary->addYear();
-                        }
-
-                        return $thisYearAnniversary->between($today, $next30Days);
+                        return $startOfYear->diffInYears($hireDate) >= 1;
                     } catch (\Exception $e) {
                         return false;
                     }
                 })
-                ->map(function ($employee) use ($today) {
+                ->flatMap(function ($employee) use ($startOfYear, $endOfNextYear) {
                     $hireDate = Carbon::parse($employee->date_hired);
-                    $thisYearAnniversary = $hireDate->copy()->setYear($today->year);
-
-                    if ($thisYearAnniversary->lt($today)) {
-                        $thisYearAnniversary->addYear();
-                    }
-
-                    $years = $today->diffInYears($hireDate);
-
-                    return [
-                        'id' => $employee->employee_id,
-                        'type' => 'anniversary',
-                        'title' => trim($employee->first_name . ' ' . $employee->last_name),
-                        'date' => $thisYearAnniversary->toDateString(),
-                        'description' => $years . ' year' . ($years !== 1 ? 's' : '') . ' with the company',
-                        'employee' => [
+                    $anniversaries = [];
+                    
+                    // This year's anniversary
+                    $thisYearAnniversary = $hireDate->copy()->setYear(Carbon::now()->year);
+                    if ($thisYearAnniversary->between($startOfYear, $endOfNextYear)) {
+                        $years = $thisYearAnniversary->diffInYears($hireDate);
+                        $anniversaries[] = [
                             'id' => $employee->employee_id,
-                            'name' => trim($employee->first_name . ' ' . $employee->last_name),
-                        ],
-                    ];
+                            'type' => 'anniversary',
+                            'title' => trim($employee->first_name . ' ' . $employee->last_name),
+                            'date' => $thisYearAnniversary->toDateString(),
+                            'description' => $years . ' year' . ($years !== 1 ? 's' : '') . ' with the company',
+                            'employee' => [
+                                'id' => $employee->employee_id,
+                                'name' => trim($employee->first_name . ' ' . $employee->last_name),
+                            ],
+                        ];
+                    }
+                    
+                    // Next year's anniversary
+                    $nextYearAnniversary = $hireDate->copy()->setYear(Carbon::now()->year + 1);
+                    if ($nextYearAnniversary->between($startOfYear, $endOfNextYear)) {
+                        $years = $nextYearAnniversary->diffInYears($hireDate);
+                        $anniversaries[] = [
+                            'id' => $employee->employee_id,
+                            'type' => 'anniversary',
+                            'title' => trim($employee->first_name . ' ' . $employee->last_name),
+                            'date' => $nextYearAnniversary->toDateString(),
+                            'description' => $years . ' year' . ($years !== 1 ? 's' : '') . ' with the company',
+                            'employee' => [
+                                'id' => $employee->employee_id,
+                                'name' => trim($employee->first_name . ' ' . $employee->last_name),
+                            ],
+                        ];
+                    }
+                    
+                    return $anniversaries;
                 });
 
             // Merge and sort all events
@@ -362,7 +387,6 @@ class DashboardController extends Controller
                 ->concat($birthdays)
                 ->concat($anniversaries)
                 ->sortBy('date')
-                ->take(10)
                 ->values();
 
             return $events->toArray();
