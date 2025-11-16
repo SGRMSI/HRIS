@@ -180,8 +180,12 @@ class PayrollService
     protected function calculateHolidayPay(PayrollRecord $record, Employee $employee, PayrollPeriod $period): void
     {
         // Get holidays within the payroll period for the employee's company
-        $holidays = \App\Models\Holiday::where('company_id', $employee->company_id)
-            ->whereBetween('date', [$period->date_from, $period->date_to])
+        $holidays = \App\Models\Holiday::where(function($query) use ($employee) {
+                $query->where('company_id', $employee->company_id)
+                      ->orWhereNull('company_id');
+            })
+            ->whereDate('date', '>=', $period->date_from)
+            ->whereDate('date', '<=', $period->date_to)
             ->get();
 
         $totalHolidayPay = 0;
@@ -193,10 +197,15 @@ class PayrollService
                 ->whereIn('status', ['present', 'late']) // Only if they actually worked
                 ->first();
 
-            if ($attendance) {
-                // Calculate holiday pay: daily_rate * 1 (or * 2 if double pay)
-                $multiplier = $holiday->is_double_pay ? 2 : 1;
-                $totalHolidayPay += $record->daily_rate * $multiplier;
+            if ($attendance && $holiday->pay_percentage > 0) {
+                // Calculate holiday pay: (daily_rate * pay_percentage / 100) / 8 * hours_worked
+                // Example: For 100% increase with 8 hours: (1500 * 100 / 100) / 8 * 8 = 1500
+                // Example: For 30% increase with 8 hours: (1500 * 30 / 100) / 8 * 8 = 450
+                // Example: For 0% increase: No additional pay
+                
+                $hoursWorked = $attendance->total_hours ?? 8; // Default to 8 if no hours recorded
+                $holidayPay = ($record->daily_rate * $holiday->pay_percentage / 100) / 8 * $hoursWorked;
+                $totalHolidayPay += $holidayPay;
             }
         }
 
@@ -216,11 +225,17 @@ class PayrollService
         // Calculate per-minute rate: daily_rate / 8 hours / 60 minutes
         $minuteRate = $record->daily_rate / 8 / 60;
 
+        // Separate late and undertime calculations
         $totalLateMinutes = $attendances->sum('late_minutes');
         $totalUndertimeMinutes = $attendances->sum('undertime_hours') * 60;
 
-        $record->late_undertime_minutes = (int) ($totalLateMinutes + $totalUndertimeMinutes);
-        $record->late_undertime_amount = round($minuteRate * $record->late_undertime_minutes, 2);
+        // Late deduction
+        $record->late_undertime_minutes = (int) $totalLateMinutes;
+        $record->late_undertime_amount = round($minuteRate * $totalLateMinutes, 2);
+
+        // Undertime deduction
+        $record->undertime_minutes = (int) $totalUndertimeMinutes;
+        $record->undertime_amount = round($minuteRate * $totalUndertimeMinutes, 2);
     }
 
     /**

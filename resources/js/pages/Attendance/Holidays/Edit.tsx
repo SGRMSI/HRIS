@@ -25,7 +25,7 @@ interface Holiday {
     name: string;
     date: string;
     type: string;
-    is_double_pay: boolean;
+    pay_percentage: number;
     company_id: number | null;
     company: {
         id: number;
@@ -45,7 +45,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
         date: holiday.date,
         type: holiday.type,
         company_id: holiday.company_id?.toString() || '',
-        is_double_pay: holiday.is_double_pay || false,
+        pay_percentage: holiday.pay_percentage || 0,
         description: '',
     });
 
@@ -157,21 +157,37 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
                                         </div>
                                     )}
 
-                                    {/* Double Pay Checkbox */}
-                                    <div className="flex items-center space-x-2">
-                                        <input
-                                            type="checkbox"
-                                            id="is_double_pay"
-                                            checked={data.is_double_pay}
-                                            onChange={(e) => setData('is_double_pay', e.target.checked)}
-                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                        />
-                                        <Label htmlFor="is_double_pay" className="cursor-pointer">
-                                            Double Pay Holiday
-                                            <span className="ml-2 text-xs text-muted-foreground">
-                                                (Pay will be 2x daily rate if employee works on this day)
-                                            </span>
-                                        </Label>
+                                    {/* Pay Percentage */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="pay_percentage">Holiday Pay Percentage</Label>
+                                        <Select
+                                            value={String(data.pay_percentage)}
+                                            onValueChange={(value) => setData('pay_percentage', parseInt(value))}
+                                        >
+                                            <SelectTrigger id="pay_percentage">
+                                                <SelectValue placeholder="Select pay percentage" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="0">
+                                                    0% - No Extra Pay
+                                                    <span className="ml-2 text-xs text-muted-foreground">(Employee receives regular pay only)</span>
+                                                </SelectItem>
+                                                <SelectItem value="30">
+                                                    30% - Additional Pay
+                                                    <span className="ml-2 text-xs text-muted-foreground">
+                                                        (Employee receives +30% per hour worked)
+                                                    </span>
+                                                </SelectItem>
+                                                <SelectItem value="100">
+                                                    100% - Double Pay
+                                                    <span className="ml-2 text-xs text-muted-foreground">
+                                                        (Employee receives +100% per hour worked)
+                                                    </span>
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-muted-foreground">Formula: (daily_rate × percentage / 100) / 8 × hours_worked</p>
+                                        {errors.pay_percentage && <p className="text-sm text-red-500">{errors.pay_percentage}</p>}
                                     </div>
 
                                     {/* Description */}

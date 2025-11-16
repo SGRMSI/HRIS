@@ -254,8 +254,9 @@ class DashboardController extends Controller
             $today = Carbon::today();
             $next30Days = Carbon::today()->addDays(30);
 
-            // Holidays
-            $holidays = Holiday::whereBetween('date', [$today, $next30Days])
+            // Holidays (include all holidays: company-specific and all-company)
+            $holidays = Holiday::whereDate('date', '>=', $today)
+                ->whereDate('date', '<=', $next30Days)
                 ->with('company')
                 ->orderBy('date', 'asc')
                 ->get()
@@ -265,10 +266,12 @@ class DashboardController extends Controller
                         'type' => 'holiday',
                         'title' => $holiday->name ?? 'Holiday',
                         'date' => $holiday->date ? $holiday->date->toDateString() : today()->toDateString(),
-                        'description' => $holiday->description ?? null,
+                        'description' => $holiday->type . ($holiday->company ? ' - ' . $holiday->company->name : ' - All Companies'),
                         'company' => $holiday->company ? [
                             'name' => $holiday->company->name,
-                        ] : null,
+                        ] : [
+                            'name' => 'All Companies',
+                        ],
                     ];
                 });
 

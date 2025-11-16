@@ -23,12 +23,12 @@ class Holiday extends Model
         'date',
         'type',
         'company_id',
-        'is_double_pay',
+        'pay_percentage',
     ];
 
     protected $casts = [
         'date' => 'date',
-        'is_double_pay' => 'boolean',
+        'pay_percentage' => 'integer',
         'created_at' => 'datetime',
     ];
 

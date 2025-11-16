@@ -47,7 +47,7 @@ class HolidayController extends Controller
                     'formatted_date' => $holiday->date->format('F d, Y'),
                     'day_of_week' => $holiday->date->format('l'),
                     'type' => $holiday->type,
-                    'is_double_pay' => $holiday->is_double_pay,
+                    'pay_percentage' => $holiday->pay_percentage,
                     'company' => $holiday->company ? [
                         'id' => $holiday->company->company_id,
                         'name' => $holiday->company->name
@@ -113,7 +113,7 @@ class HolidayController extends Controller
             'date' => ['required', 'date'],
             'type' => ['required', 'string', 'in:regular,special,company'],
             'company_id' => ['nullable', 'exists:companies,company_id'],
-            'is_double_pay' => ['nullable', 'boolean'],
+            'pay_percentage' => ['required', 'integer', 'in:0,30,100'],
             'description' => ['nullable', 'string', 'max:500']
         ]);
 
@@ -150,7 +150,7 @@ class HolidayController extends Controller
                 'date' => $validated['date'],
                 'type' => $validated['type'],
                 'company_id' => $validated['company_id'] ?? null,
-                'is_double_pay' => $validated['is_double_pay'] ?? false
+                'pay_percentage' => $validated['pay_percentage']
             ]);
 
             // Log the creation
@@ -192,7 +192,7 @@ class HolidayController extends Controller
                 'name' => $holiday->name,
                 'date' => $holiday->date->format('Y-m-d'),
                 'type' => $holiday->type,
-                'is_double_pay' => $holiday->is_double_pay,
+                'pay_percentage' => $holiday->pay_percentage,
                 'company_id' => $holiday->company_id,
                 'company' => $holiday->company ? [
                     'id' => $holiday->company->company_id,
@@ -222,7 +222,7 @@ class HolidayController extends Controller
             'date' => ['required', 'date'],
             'type' => ['required', 'string', 'in:regular,special,company'],
             'company_id' => ['nullable', 'exists:companies,company_id'],
-            'is_double_pay' => ['nullable', 'boolean']
+            'pay_percentage' => ['required', 'integer', 'in:0,30,100']
         ]);
 
         // Additional validation
@@ -261,7 +261,7 @@ class HolidayController extends Controller
                 'date' => $validated['date'],
                 'type' => $validated['type'],
                 'company_id' => $validated['company_id'] ?? null,
-                'is_double_pay' => $validated['is_double_pay'] ?? false
+                'pay_percentage' => $validated['pay_percentage']
             ]);
 
             // Log the update with changes

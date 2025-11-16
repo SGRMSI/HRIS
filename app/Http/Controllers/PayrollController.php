@@ -178,7 +178,7 @@ class PayrollController extends Controller
             ->whereDate('date', '>=', $period->date_from)
             ->whereDate('date', '<=', $period->date_to)
             ->orderBy('date')
-            ->get(['holiday_id', 'name', 'date', 'type', 'is_double_pay']);
+            ->get(['holiday_id', 'name', 'date', 'type', 'pay_percentage']);
 
         return Inertia::render('Payroll/Edit', [
             'period' => $period,

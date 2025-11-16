@@ -38,6 +38,8 @@ class PayrollRecord extends Model
         'hdmf_contribution',
         'late_undertime_minutes',
         'late_undertime_amount',
+        'undertime_minutes',
+        'undertime_amount',
         'cash_advance',
         'total_deductions',
         'net_pay',
@@ -67,6 +69,8 @@ class PayrollRecord extends Model
         'hdmf_contribution' => 'decimal:2',
         'late_undertime_minutes' => 'integer',
         'late_undertime_amount' => 'decimal:2',
+        'undertime_minutes' => 'integer',
+        'undertime_amount' => 'decimal:2',
         'cash_advance' => 'decimal:2',
         'total_deductions' => 'decimal:2',
         'net_pay' => 'decimal:2',
@@ -123,6 +127,7 @@ class PayrollRecord extends Model
             $this->phic_contribution +
             $this->hdmf_contribution +
             $this->late_undertime_amount +
+            $this->undertime_amount +
             $this->cash_advance,
             2
         );

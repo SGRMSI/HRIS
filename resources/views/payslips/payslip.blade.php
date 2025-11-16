@@ -122,8 +122,12 @@
             <div class="info-value">{{ number_format($record->days_worked, 1) }}</div>
         </div>
         <div class="info-row">
-            <div class="info-label">Rate 15th/30th:</div>
-            <div class="info-value">PHP {{ number_format($record->basic_pay, 2) }}</div>
+            <div class="info-label">Late Minutes:</div>
+            <div class="info-value">{{ $record->late_undertime_minutes ?? 0 }} minutes</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Undertime Minutes:</div>
+            <div class="info-value">{{ $record->undertime_minutes ?? 0 }} minutes</div>
         </div>
     </div>
 
@@ -228,12 +232,14 @@
                 <td class="amount">PHP {{ number_format($record->hdmf_contribution, 2) }}</td>
             </tr>
             @endif
-            @if($record->late_undertime_amount > 0)
             <tr>
-                <td>Late/Undertime:</td>
-                <td class="amount">PHP {{ number_format($record->late_undertime_amount, 2) }}</td>
+                <td>Late Deduction ({{ $record->late_undertime_minutes ?? 0 }} mins):</td>
+                <td class="amount">PHP {{ number_format($record->late_undertime_amount ?? 0, 2) }}</td>
             </tr>
-            @endif
+            <tr>
+                <td>Undertime Deduction ({{ $record->undertime_minutes ?? 0 }} mins):</td>
+                <td class="amount">PHP {{ number_format($record->undertime_amount ?? 0, 2) }}</td>
+            </tr>
             @if($record->cash_advance > 0)
             <tr>
                 <td>Cash Advance:</td>

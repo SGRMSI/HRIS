@@ -56,6 +56,8 @@ export interface PayrollRecord {
     hdmf_contribution: string | number;
     late_undertime_minutes: number;
     late_undertime_amount: string;
+    undertime_minutes: number;
+    undertime_amount: string;
     cash_advance: string;
     total_deductions: string;
     net_pay: string;

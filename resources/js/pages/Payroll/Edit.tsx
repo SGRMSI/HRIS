@@ -16,7 +16,7 @@ interface Holiday {
     name: string;
     date: string;
     type: string;
-    is_double_pay: boolean;
+    pay_percentage: number; // 0, 30, or 100
 }
 
 interface Props extends PageProps {
@@ -71,6 +71,8 @@ export default function Edit({ period, record, holidays }: Props) {
         hdmf_contribution: Number(record.hdmf_contribution) || 0,
         late_undertime_minutes: Number(record.late_undertime_minutes) || 0,
         late_undertime_amount: Number(record.late_undertime_amount) || 0,
+        undertime_minutes: Number(record.undertime_minutes) || 0,
+        undertime_amount: Number(record.undertime_amount) || 0,
         remarks: (record.remarks || '') as string,
     });
 
@@ -113,11 +115,15 @@ export default function Edit({ period, record, holidays }: Props) {
 
     const grossPay = basicPay + overtime + holidayPay + totalAllowances + Number(data.adjustments);
     const totalDeductions =
-        Number(data.sss_contribution) + Number(data.phic_contribution) + Number(data.hdmf_contribution) + Number(data.late_undertime_amount);
+        Number(data.sss_contribution) +
+        Number(data.phic_contribution) +
+        Number(data.hdmf_contribution) +
+        Number(data.late_undertime_amount) +
+        Number(data.undertime_amount);
     const netPay = grossPay - totalDeductions;
 
     // Calculate expected holiday pay based on double pay holidays
-    const doublePayHolidays = holidays.filter((h) => h.is_double_pay);
+    const doublePayHolidays = holidays.filter((h) => h.pay_percentage === 100);
     const expectedHolidayPay = doublePayHolidays.length * Number(data.daily_rate);
 
     return (
@@ -314,19 +320,28 @@ export default function Edit({ period, record, holidays }: Props) {
                                                     </p>
                                                 </div>
                                                 <div className="text-right">
-                                                    {holiday.is_double_pay ? (
+                                                    {holiday.pay_percentage === 100 ? (
                                                         <>
                                                             <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-                                                                Double Pay
+                                                                +100%
                                                             </span>
                                                             <p className="mt-1 text-xs font-medium text-green-600">
                                                                 {formatCurrency(data.daily_rate)}
                                                             </p>
                                                         </>
+                                                    ) : holiday.pay_percentage === 30 ? (
+                                                        <>
+                                                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                                                +30%
+                                                            </span>
+                                                            <p className="mt-1 text-xs font-medium text-blue-600">
+                                                                {formatCurrency(data.daily_rate * 0.3)}
+                                                            </p>
+                                                        </>
                                                     ) : (
                                                         <>
                                                             <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                                                                Regular Pay
+                                                                +0%
                                                             </span>
                                                             <p className="mt-1 text-xs text-muted-foreground">₱0.00</p>
                                                         </>
@@ -479,7 +494,7 @@ export default function Edit({ period, record, holidays }: Props) {
                                     </div>
 
                                     <div>
-                                        <h4 className="mb-3 text-sm font-medium">Late & Undertime</h4>
+                                        <h4 className="mb-3 text-sm font-medium">Late</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label>Total Late Minutes</Label>
@@ -498,6 +513,33 @@ export default function Edit({ period, record, holidays }: Props) {
                                                     min="0"
                                                     value={data.late_undertime_amount}
                                                     onChange={(e) => setData('late_undertime_amount', parseFloat(e.target.value) || 0)}
+                                                    disabled={period.status !== 'draft'}
+                                                />
+                                                <p className="text-xs text-muted-foreground">Auto-calculated (editable)</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="mb-3 text-sm font-medium">Undertime</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Total Undertime Minutes</Label>
+                                                <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+                                                    {Number(data.undertime_minutes) || 0} minutes
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">From attendance records</p>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="undertime_amount">Undertime Deduction Amount</Label>
+                                                <Input
+                                                    id="undertime_amount"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={Number(data.undertime_amount) || 0}
+                                                    onChange={(e) => setData('undertime_amount', parseFloat(e.target.value) || 0)}
                                                     disabled={period.status !== 'draft'}
                                                 />
                                                 <p className="text-xs text-muted-foreground">Auto-calculated (editable)</p>
@@ -538,6 +580,22 @@ export default function Edit({ period, record, holidays }: Props) {
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Gross Pay:</span>
                                         <span className="font-medium text-green-600">{formatCurrency(grossPay)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2 text-sm">
+                                        <span className="text-muted-foreground">Government Contributions:</span>
+                                        <span className="font-medium text-red-600">
+                                            {formatCurrency(
+                                                Number(data.sss_contribution) + Number(data.phic_contribution) + Number(data.hdmf_contribution),
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2 text-sm">
+                                        <span className="text-muted-foreground">Late Deduction:</span>
+                                        <span className="font-medium text-red-600">{formatCurrency(data.late_undertime_amount)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2 text-sm">
+                                        <span className="text-muted-foreground">Undertime Deduction:</span>
+                                        <span className="font-medium text-red-600">{formatCurrency(data.undertime_amount)}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Total Deductions:</span>
