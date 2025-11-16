@@ -17,11 +17,13 @@ class AttendanceProcessService
      * Process raw attendance records into processed format
      * 
      * Handles intelligent merging of overlapping attendance data:
-     * - Example: User uploads Oct 1-15 (Batch 1), then Oct 14-31 (Batch 2)
-     * - System detects overlap (Oct 14-15)
-     * - Merges raw data from both batches for overlapping dates
-     * - Deduplicates by sequence (C/In, OverTime In, OverTime Out, C/Out)
-     * - Processes non-overlapping dates normally (Oct 1-13, Oct 16-31)
+     * - Detects intersecting dates between new batch and existing processed records
+     * - Merges raw data from ALL batches with intersecting dates
+     * - Reprocesses as one combined dataset to properly pair clock-in/out across batches
+     * - Tracks original batch_id for each processed record for filtering
+     * 
+     * Example: Batch 1 (Oct 1-16) has Oct 16 clock-in, Batch 2 (Oct 16-Nov 1) has Oct 16 clock-in + Oct 17 clock-out
+     * Result: System merges both, pairs Oct 16 clock-in with Oct 17 clock-out, creates complete record
      *
      * @param AttendanceUploadBatch $batch
      * @return void
@@ -31,45 +33,67 @@ class AttendanceProcessService
         try {
             DB::beginTransaction();
 
-            // Delete existing processed records for this batch to avoid duplicates on reprocess
-            AttendanceProcessed::where('batch_id', $batch->batch_id)->delete();
-            
-            Log::info("Deleted existing processed records for batch", [
-                'batch_id' => $batch->batch_id,
-            ]);
-
             // Get date range of this batch
             $batchDateRange = $batch->raws()
                 ->selectRaw('MIN(DATE(time_log)) as min_date, MAX(DATE(time_log)) as max_date')
                 ->first();
             
-            // Find overlapping dates from other processed batches
-            $overlappingDates = [];
+            // Find batches with intersecting dates (processed records that overlap with this batch's date range)
+            $intersectingBatchIds = [];
+            $intersectingDates = [];
+            
             if ($batchDateRange->min_date && $batchDateRange->max_date) {
-                $overlappingDates = AttendanceProcessed::whereBetween('date', [
+                $intersecting = AttendanceProcessed::whereBetween('date', [
                         $batchDateRange->min_date, 
                         $batchDateRange->max_date
                     ])
                     ->where('batch_id', '!=', $batch->batch_id)
+                    ->select('batch_id', 'date')
                     ->distinct()
-                    ->pluck('date')
-                    ->map(fn($d) => Carbon::parse($d)->toDateString())
-                    ->toArray();
+                    ->get();
                 
-                if (!empty($overlappingDates)) {
-                    Log::info("Found overlapping dates with other batches", [
-                        'batch_id' => $batch->batch_id,
-                        'overlapping_dates' => $overlappingDates,
-                        'count' => count($overlappingDates)
+                $intersectingBatchIds = $intersecting->pluck('batch_id')->unique()->toArray();
+                $intersectingDates = $intersecting->pluck('date')->map(fn($d) => Carbon::parse($d)->toDateString())->unique()->toArray();
+                
+                if (!empty($intersectingBatchIds)) {
+                    Log::info("Found intersecting batches", [
+                        'current_batch' => $batch->batch_id,
+                        'intersecting_batches' => $intersectingBatchIds,
+                        'intersecting_dates' => $intersectingDates,
+                        'count' => count($intersectingDates)
                     ]);
                 }
             }
 
-            // Group raw records by employee name (not AC-No)
-            $rows = $batch->raws()
+            // Delete processed records for ALL intersecting batches + current batch
+            // We'll reprocess them together with merged raw data
+            $batchesToReprocess = array_merge([$batch->batch_id], $intersectingBatchIds);
+            
+            $deletedCount = AttendanceProcessed::whereIn('batch_id', $batchesToReprocess)->delete();
+            
+            Log::info("Deleted processed records for reprocessing", [
+                'batches' => $batchesToReprocess,
+                'deleted_count' => $deletedCount,
+            ]);
+
+            Log::info("Deleted processed records for reprocessing", [
+                'batches' => $batchesToReprocess,
+                'deleted_count' => $deletedCount,
+            ]);
+
+            // Get ALL raw records from current batch + intersecting batches
+            // This merges raw data across batches for complete clock-in/out pairing
+            $allRawRecords = AttendanceRaw::whereIn('batch_id', $batchesToReprocess)
                 ->orderBy('time_log')
-                ->get()
-                ->groupBy(fn($r) => strtolower(trim($r->name)));
+                ->get();
+            
+            Log::info("Merged raw records from all intersecting batches", [
+                'batches' => $batchesToReprocess,
+                'total_raw_records' => $allRawRecords->count()
+            ]);
+
+            // Group raw records by employee name (not AC-No)
+            $rows = $allRawRecords->groupBy(fn($r) => strtolower(trim($r->name)));
 
             foreach ($rows as $employeeName => $events) {
                 // Match employee by name
@@ -94,39 +118,10 @@ class AttendanceProcessService
                     continue;
                 }
 
-                // For overlapping dates, merge raw data from all batches
-                $mergedEvents = $events;
-                if (!empty($overlappingDates)) {
-                    // Get raw data from other batches for this employee on overlapping dates
-                    $additionalRaws = AttendanceRaw::where('name', $employeeName)
-                        ->where('batch_id', '!=', $batch->batch_id)
-                        ->whereIn(DB::raw('DATE(time_log)'), $overlappingDates)
-                        ->orderBy('time_log')
-                        ->get();
-                    
-                    if ($additionalRaws->count() > 0) {
-                        Log::info("Merging overlapping data for employee", [
-                            'employee_name' => $employeeName,
-                            'employee_id' => $employee->employee_id,
-                            'current_batch' => $batch->batch_id,
-                            'additional_records' => $additionalRaws->count(),
-                            'overlapping_dates' => $overlappingDates
-                        ]);
-                        
-                        // Merge the collections
-                        $mergedEvents = $events->merge($additionalRaws)->sortBy('time_log');
-                        
-                        // Delete old processed records for this employee on overlapping dates
-                        AttendanceProcessed::where('employee_id', $employee->employee_id)
-                            ->whereIn('date', $overlappingDates)
-                            ->where('batch_id', '!=', $batch->batch_id)
-                            ->delete();
-                    }
-                }
-
                 // Process attendance by pairing Clock In -> Clock Out sequences
+                // Events are already merged from all intersecting batches
                 // Deduplicate events based on sequence (consecutive same states)
-                $deduplicatedEvents = $this->deduplicateEvents($mergedEvents);
+                $deduplicatedEvents = $this->deduplicateEvents($events);
                 
                 // Get all clock-in events sorted by time
                 $clockInEvents = $deduplicatedEvents
@@ -351,9 +346,13 @@ class AttendanceProcessService
                         $meta['warnings']['break_issues'] = $breakWarnings;
                     }
 
+                    // Determine which batch this attendance belongs to
+                    // Use the batch_id from the clock-in event (the shift start determines ownership)
+                    $attendanceBatchId = $clockIn->batch_id;
+
                     AttendanceProcessed::updateOrCreate(
                         [
-                            'batch_id' => $batch->batch_id,
+                            'batch_id' => $attendanceBatchId,
                             'employee_id' => $employee->employee_id,
                             'date' => $attendanceDate,
                         ],
@@ -374,10 +373,22 @@ class AttendanceProcessService
                 }
             }
 
+            // Update status for the current batch
             $batch->update([
                 'status' => 'processed',
                 'processed_rows' => AttendanceProcessed::where('batch_id', $batch->batch_id)->count(),
             ]);
+            
+            // Update processed_rows count for all intersecting batches too
+            foreach ($intersectingBatchIds as $intersectingBatchId) {
+                $intersectingBatch = AttendanceUploadBatch::find($intersectingBatchId);
+                if ($intersectingBatch) {
+                    $intersectingBatch->update([
+                        'status' => 'processed',
+                        'processed_rows' => AttendanceProcessed::where('batch_id', $intersectingBatchId)->count(),
+                    ]);
+                }
+            }
 
             DB::commit();
 
