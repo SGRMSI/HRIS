@@ -86,7 +86,7 @@ export default function Upload({ batches, flash }: UploadPageProps) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Upload', href: '/attendance/upload' },
             ]}
         >

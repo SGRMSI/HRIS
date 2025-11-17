@@ -145,7 +145,7 @@ export default function FinalShow({ attendance, can }: AttendanceProps) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Final Attendance', href: '/attendance/final' },
                 { title: 'Details', href: '#' },
             ]}

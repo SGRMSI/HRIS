@@ -183,9 +183,9 @@ export default function LeavesShow({ leave }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Leaves', href: '/attendance/leaves' },
-                { title: 'Details', href: '#' },
+                { title: 'Leave Details', href: '#' },
             ]}
         >
             <Head title="Leave Request Details" />

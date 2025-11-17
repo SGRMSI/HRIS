@@ -54,7 +54,7 @@ export default function HolidaysCreate({ companies = [], types = [] }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Holidays', href: '/attendance/holidays' },
                 { title: 'Create', href: '#' },
             ]}

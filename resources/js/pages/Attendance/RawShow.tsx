@@ -151,7 +151,7 @@ export default function RawShow({ batch, records, stats, filters }: RawShowProps
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Raw Data', href: '/attendance/raw' },
                 { title: batch.filename, href: route('attendance.raw.show', batch.id) },
             ]}

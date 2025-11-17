@@ -206,7 +206,7 @@ export default function HolidaysIndex({
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Holidays', href: '#' }
             ]}
         >

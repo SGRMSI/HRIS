@@ -135,9 +135,9 @@ export default function SchedulesCreate({ companies = [], shifts = [], prefilled
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Schedules', href: '/attendance/schedules' },
-                { title: 'Create', href: '/attendance/schedules/create' },
+                { title: 'Assign Schedule', href: '/attendance/schedules/create' },
             ]}
         >
             <Head title="Create Schedule" />

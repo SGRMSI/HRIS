@@ -131,7 +131,7 @@ export default function ShiftsIndex({ shifts, filters, flash }: Props) {
 
     return (
         <AppLayout breadcrumbs={[
-            { title: 'Attendance', href: '/attendance/upload' },
+            { title: 'Attendance', href: '#' },
             { title: 'Shifts', href: '/attendance/shifts' }
         ]}>
             <Head title="Shifts Management" />

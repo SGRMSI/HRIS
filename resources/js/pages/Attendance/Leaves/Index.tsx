@@ -272,8 +272,8 @@ export default function LeavesIndex({
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
-                { title: 'Leaves', href: '#' }
+                { title: 'Attendance', href: '#' },
+                { title: 'Leaves', href: '/attendance/leaves' },
             ]}
         >
             <Head title="Leave Management" />

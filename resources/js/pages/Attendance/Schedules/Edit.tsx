@@ -72,9 +72,9 @@ export default function SchedulesEdit({ schedule, shifts = [] }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Schedules', href: '/attendance/schedules' },
-                { title: 'Edit', href: '#' },
+                { title: 'Edit Schedule', href: '#' },
             ]}
         >
             <Head title="Edit Schedule" />

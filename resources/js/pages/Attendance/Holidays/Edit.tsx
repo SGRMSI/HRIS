@@ -59,7 +59,7 @@ export default function HolidaysEdit({ holiday, companies = [], types = [] }: Pr
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Holidays', href: '/attendance/holidays' },
                 { title: 'Edit', href: '#' },
             ]}

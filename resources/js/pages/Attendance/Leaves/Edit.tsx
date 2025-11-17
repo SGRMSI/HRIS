@@ -107,9 +107,9 @@ export default function LeavesEdit({ leave, types = [] }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Leaves', href: '/attendance/leaves' },
-                { title: 'Edit', href: '#' },
+                { title: 'Edit Leave', href: '#' },
             ]}
         >
             <Head title="Edit Leave Request" />

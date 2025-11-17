@@ -100,7 +100,7 @@ export default function ShiftsCreate({ defaultLateRules }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Shifts', href: '/attendance/shifts' },
                 { title: 'Create', href: '/attendance/shifts/create' },
             ]}

@@ -144,9 +144,9 @@ export default function LeavesCreate({ companies = [], types = [] }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Leaves', href: '/attendance/leaves' },
-                { title: 'Create', href: '#' },
+                { title: 'Request Leave', href: '#' },
             ]}
         >
             <Head title="Create Leave Request" />

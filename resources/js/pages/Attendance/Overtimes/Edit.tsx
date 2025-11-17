@@ -133,8 +133,8 @@ export default function Edit({ overtime }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
-                { title: 'Overtimes', href: '/attendance/overtimes' },
+                { title: 'Attendance', href: '#' },
+                { title: 'Overtime', href: '/attendance/overtimes' },
                 { title: 'Edit', href: '#' },
             ]}
         >

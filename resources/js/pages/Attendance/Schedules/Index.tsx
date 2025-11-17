@@ -263,7 +263,7 @@ export default function SchedulesIndex({ schedules, filters = {}, companies = []
 
     return (
         <AppLayout breadcrumbs={[
-            { title: 'Attendance', href: '/attendance/upload' }, 
+            { title: 'Attendance', href: '#' }, 
             { title: 'Schedules', href: '/attendance/schedules' }
         ]}>
             <Head title="Employee Schedules" />

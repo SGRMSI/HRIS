@@ -493,7 +493,7 @@ export default function FinalIndex({
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Attendance', href: '/attendance/upload' },
+                { title: 'Attendance', href: '#' },
                 { title: 'Final Attendance', href: '/attendance/final' },
             ]}
         >
