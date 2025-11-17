@@ -77,14 +77,17 @@ class AttendanceCalculationService
         // Calculate shift duration in minutes
         $shiftDurationMinutes = $shiftStart->diffInMinutes($shiftEnd);
         
-        // Total rendered hours = shift duration - scheduled break (capped at 8 hours)
-        $totalRenderedMinutes = min($shiftDurationMinutes - $shiftBreakMinutes, 8 * 60);
+        // Calculate actual worked minutes (from actual start to actual end, minus break)
+        $actualWorkedMinutes = $actualStart->diffInMinutes($actualEnd) - $shiftBreakMinutes;
+        
+        // Total rendered hours = actual worked (capped at 8 hours)
+        $totalRenderedMinutes = min($actualWorkedMinutes, 8 * 60);
         $totalRenderedHours = round($totalRenderedMinutes / 60, 2);
         
         // Calculate late minutes (no grace period - late is late)
         $lateMinutes = 0;
         if ($clockIn->gt($shiftStart)) {
-            $lateMinutes = $clockIn->diffInMinutes($shiftStart);
+            $lateMinutes = $shiftStart->diffInMinutes($clockIn);
         }
         
         // Check if should be marked as absent (2+ hours late)
@@ -113,7 +116,8 @@ class AttendanceCalculationService
         $totalHours = floor($totalMinutesWorkedWithBreaks / 60);
         $totalMinutes = $totalMinutesWorkedWithBreaks % 60;
         
-        // Update attendance record
+        // Update attendance record with skip flag to prevent infinite loop
+        Attendance::$skipCalculation = true;
         $attendance->update([
             'total_hours' => $totalHours,
             'total_minutes' => $totalMinutes,
@@ -123,27 +127,50 @@ class AttendanceCalculationService
             'overtime_hours' => $overtimeHours,
             'undertime_hours' => $undertimeHours,
         ]);
+        Attendance::$skipCalculation = false;
     }
     
     /**
-     * Calculate overtime for display purposes only (not for payroll)
+     * Calculate overtime based on approved overtime request
      * 
-     * Simply shows how many minutes the employee worked past their scheduled shift end time
-     * This is just for breakdown display on the attendance view page
+     * Overtime is only calculated if:
+     * 1. There is an approved overtime request for this date
+     * 2. Employee actually worked past shift end time
+     * 
+     * The overtime hours returned is the minimum of:
+     * - Approved overtime hours
+     * - Actual overtime worked (clock_out - shift_end)
      */
     private function calculateOvertime(Attendance $attendance, Carbon $clockOut, Carbon $shiftEnd): float
     {
+        // Check if there's an approved overtime request
+        $approvedOvertime = DB::table('employee_overtimes')
+            ->where('employee_id', $attendance->employee_id)
+            ->whereDate('overtime_date', $attendance->date)
+            ->where('status', 'approved')
+            ->first();
+        
+        // No approved overtime = no overtime hours
+        if (!$approvedOvertime) {
+            return 0;
+        }
+        
         // Check if employee actually worked past shift end time
         if ($clockOut->lte($shiftEnd)) {
             return 0;
         }
         
-        // Calculate overtime worked (time worked beyond shift end)
-        // Simple calculation: clock out time - shift end time
-        $overtimeMinutes = $shiftEnd->diffInMinutes($clockOut);
-        $overtimeHours = round($overtimeMinutes / 60, 2);
+        // Calculate actual overtime worked (time worked beyond shift end)
+        $actualOvertimeMinutes = $shiftEnd->diffInMinutes($clockOut);
+        $actualOvertimeHours = $actualOvertimeMinutes / 60;
         
-        return $overtimeHours;
+        // Get approved overtime hours
+        $approvedHours = $approvedOvertime->duration_hours + ($approvedOvertime->duration_minutes / 60);
+        
+        // Return minimum of actual worked or approved
+        $overtimeHours = min($actualOvertimeHours, $approvedHours);
+        
+        return round($overtimeHours, 2);
     }
     
     /**

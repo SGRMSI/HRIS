@@ -428,6 +428,16 @@ class EmployeeOvertimeController extends Controller
                 'approved_at' => now(),
             ]);
 
+            // Recalculate attendance for this date to update overtime hours
+            $attendance = \App\Models\Attendance::where('employee_id', $overtime->employee_id)
+                ->whereDate('date', $overtime->overtime_date)
+                ->first();
+            
+            if ($attendance) {
+                $calculationService = app(\App\Services\AttendanceCalculationService::class);
+                $calculationService->calculateAttendance($attendance);
+            }
+
             // Log activity
             activity()
                 ->performedOn($overtime)
@@ -436,7 +446,7 @@ class EmployeeOvertimeController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Overtime request approved successfully.');
+            return back()->with('success', 'Overtime request approved successfully. Attendance updated.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -472,6 +482,16 @@ class EmployeeOvertimeController extends Controller
                 'approved_at' => now(),
             ]);
 
+            // Recalculate attendance for this date to update overtime hours to 0
+            $attendance = \App\Models\Attendance::where('employee_id', $overtime->employee_id)
+                ->whereDate('date', $overtime->overtime_date)
+                ->first();
+            
+            if ($attendance) {
+                $calculationService = app(\App\Services\AttendanceCalculationService::class);
+                $calculationService->calculateAttendance($attendance);
+            }
+
             // Log activity
             activity()
                 ->performedOn($overtime)
@@ -480,7 +500,7 @@ class EmployeeOvertimeController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Overtime request rejected.');
+            return back()->with('success', 'Overtime request rejected. Attendance updated.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -514,6 +534,16 @@ class EmployeeOvertimeController extends Controller
                 'remarks' => $validated['remarks'],
             ]);
 
+            // Recalculate attendance for this date to update overtime hours to 0
+            $attendance = \App\Models\Attendance::where('employee_id', $overtime->employee_id)
+                ->whereDate('date', $overtime->overtime_date)
+                ->first();
+            
+            if ($attendance) {
+                $calculationService = app(\App\Services\AttendanceCalculationService::class);
+                $calculationService->calculateAttendance($attendance);
+            }
+
             // Log activity
             activity()
                 ->performedOn($overtime)
@@ -522,7 +552,7 @@ class EmployeeOvertimeController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Overtime request cancelled successfully.');
+            return back()->with('success', 'Overtime request cancelled. Attendance updated.');
 
         } catch (\Exception $e) {
             DB::rollBack();

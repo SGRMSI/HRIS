@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Attendance extends Model
 {
     protected $primaryKey = 'attendance_id';
+    
+    /**
+     * Flag to prevent infinite loops during calculation
+     */
+    public static $skipCalculation = false;
 
     protected $fillable = [
         'employee_id',
@@ -89,5 +94,39 @@ class Attendance extends Model
     public function leave()
     {
         return $this->belongsTo(EmployeeLeave::class, 'leave_id');
+    }
+    
+    /**
+     * Boot method to automatically calculate attendance metrics
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // After saving an attendance record, calculate its metrics
+        static::saved(function ($attendance) {
+            // Skip if calculation is explicitly disabled (to avoid infinite loops)
+            if (static::$skipCalculation) {
+                return;
+            }
+            
+            // Only calculate if record has required data
+            if ($attendance->shift_id && $attendance->clock_in && $attendance->clock_out) {
+                // Set flag to prevent infinite loop
+                static::$skipCalculation = true;
+                
+                try {
+                    // Get the calculation service and calculate
+                    $service = app(\App\Services\AttendanceCalculationService::class);
+                    $service->calculateAttendance($attendance);
+                } catch (\Exception $e) {
+                    // Log error but don't fail the save operation
+                    \Log::error('Attendance auto-calculation failed: ' . $e->getMessage());
+                } finally {
+                    // Reset flag
+                    static::$skipCalculation = false;
+                }
+            }
+        });
     }
 }

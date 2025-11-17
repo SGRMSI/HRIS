@@ -21,5 +21,10 @@ public function run(): void
         EmployeeOvertimeSeeder::class,
         EmployeePayrollSettingsSeeder::class,
     ]);
+    
+    // Recalculate all attendance records after seeding
+    $this->command->info('Recalculating attendance records...');
+    \Artisan::call('attendance:recalculate', ['--all' => true]);
+    $this->command->info('Attendance recalculation complete.');
 }
 }

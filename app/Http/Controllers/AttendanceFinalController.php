@@ -524,6 +524,24 @@ class AttendanceFinalController extends Controller
             $attendance->refresh();
             $this->attendanceCalculationService->calculateAttendance($attendance);
 
+            // Recalculate any payroll records that include this attendance date
+            $payrollRecords = \App\Models\PayrollRecord::whereHas('period', function ($query) use ($attendance) {
+                    $attendanceDate = $attendance->date instanceof Carbon 
+                        ? $attendance->date 
+                        : Carbon::parse($attendance->date);
+                    
+                    $query->where('period_start', '<=', $attendanceDate)
+                          ->where('period_end', '>=', $attendanceDate)
+                          ->where('status', 'draft'); // Only recalculate draft payrolls
+                })
+                ->where('employee_id', $attendance->employee_id)
+                ->get();
+
+            foreach ($payrollRecords as $payrollRecord) {
+                $payrollService = app(\App\Services\PayrollService::class);
+                $payrollService->recalculateRecord($payrollRecord);
+            }
+
             // Record the changes in activity log
             activity()
                 ->performedOn($attendance)
@@ -537,7 +555,12 @@ class AttendanceFinalController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Attendance record updated successfully.');
+            $message = 'Attendance record updated successfully.';
+            if ($payrollRecords->isNotEmpty()) {
+                $message .= ' Payroll records recalculated: ' . $payrollRecords->count();
+            }
+
+            return back()->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
