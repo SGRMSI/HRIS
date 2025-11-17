@@ -184,8 +184,8 @@ class PayrollService
                 $query->where('company_id', $employee->company_id)
                       ->orWhereNull('company_id');
             })
-            ->where(DB::raw('DATE(date)'), '>=', $period->date_from)
-            ->where(DB::raw('DATE(date)'), '<=', $period->date_to)
+            ->whereDate('date', '>=', $period->date_from)
+            ->whereDate('date', '<=', $period->date_to)
             ->get();
 
         $totalHolidayPay = 0;

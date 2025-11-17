@@ -9,7 +9,7 @@ import { PayrollPeriod, PayrollRecord } from '@/types/payroll';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { ArrowLeft, Calculator, Download, Save } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useEffect, useRef } from 'react';
 
 interface Holiday {
     holiday_id: number;
@@ -76,6 +76,9 @@ export default function Edit({ period, record, holidays }: Props) {
         remarks: (record.remarks || '') as string,
     });
 
+    // Track if auto-recalculation has already been triggered
+    const hasAutoRecalculated = useRef(false);
+
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
         put(route('payroll.records.update', [period.period_id, record.final_id || record.payroll_id]));
@@ -87,13 +90,45 @@ export default function Edit({ period, record, holidays }: Props) {
                 route('payroll.records.recalculate', [period.period_id, record.final_id || record.payroll_id]),
                 {},
                 {
+                    preserveScroll: true,
                     onSuccess: () => {
-                        router.reload();
+                        // Inertia automatically reloads the page with redirect()->back()
+                        // No need for manual reload
                     },
                 },
             );
         }
     };
+
+    // Auto-recalculate on initial page load only (for draft periods)
+    useEffect(() => {
+        if (period.status === 'draft' && !hasAutoRecalculated.current) {
+            hasAutoRecalculated.current = true;
+            router.post(
+                route('payroll.records.recalculate', [period.period_id, record.final_id || record.payroll_id]),
+                {},
+                {
+                    preserveScroll: true,
+                    preserveState: false,
+                    onSuccess: () => {
+                        // Data automatically refreshed by redirect()->back()
+                    },
+                },
+            );
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run only once on mount
+
+    // Auto-refresh when window regains focus (e.g., after editing in another tab)
+    useEffect(() => {
+        const handleFocus = () => {
+            // Auto-reload data when window regains focus
+            router.reload({ only: ['record', 'holidays'] });
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-PH', {

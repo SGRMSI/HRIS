@@ -110,11 +110,11 @@ class PayrollController extends Controller
                     ->with('success', "Payroll period created with {$result['created']} employees. " . 
                            ($result['skipped'] > 0 ? "{$result['skipped']} skipped." : ""));
             } else {
-                return back()->with('error', 'Failed to add any employees to payroll period.');
+                return redirect()->back()->with('error', 'Failed to add any employees to payroll period.');
             }
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to create payroll period: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create payroll period: ' . $e->getMessage());
         }
     }
 
@@ -175,8 +175,8 @@ class PayrollController extends Controller
                 $query->where('company_id', $record->employee->company_id)
                       ->orWhereNull('company_id');
             })
-            ->where(DB::raw('DATE(date)'), '>=', $period->date_from)
-            ->where(DB::raw('DATE(date)'), '<=', $period->date_to)
+            ->whereDate('date', '>=', $period->date_from)
+            ->whereDate('date', '<=', $period->date_to)
             ->orderBy('date')
             ->get(['holiday_id', 'name', 'date', 'type', 'pay_percentage']);
 
@@ -193,11 +193,11 @@ class PayrollController extends Controller
     public function update(Request $request, PayrollPeriod $period, PayrollRecord $record)
     {
         if ($record->period_id !== $period->period_id) {
-            return back()->with('error', 'Record not found in this payroll period.');
+            return redirect()->back()->with('error', 'Record not found in this payroll period.');
         }
 
         if (!$record->is_editable) {
-            return back()->with('error', 'This payroll record is locked and cannot be edited.');
+            return redirect()->back()->with('error', 'This payroll record is locked and cannot be edited.');
         }
 
         $request->validate([
@@ -247,7 +247,7 @@ class PayrollController extends Controller
                 ->with('success', 'Payroll record updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to update payroll: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update payroll: ' . $e->getMessage());
         }
     }
 
@@ -257,11 +257,11 @@ class PayrollController extends Controller
     public function recalculate(PayrollPeriod $period, PayrollRecord $record)
     {
         if ($record->period_id !== $period->period_id) {
-            return back()->with('error', 'Record not found in this payroll period.');
+            return redirect()->back()->with('error', 'Record not found in this payroll period.');
         }
 
         if (!$record->is_editable) {
-            return back()->with('error', 'This payroll record is locked.');
+            return redirect()->back()->with('error', 'This payroll record is locked.');
         }
 
         DB::beginTransaction();
@@ -280,10 +280,10 @@ class PayrollController extends Controller
                 ])
                 ->log('payroll_recalculated');
 
-            return back()->with('success', 'Payroll recalculated from attendance data.');
+            return redirect()->back()->with('success', 'Payroll recalculated from attendance data.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to recalculate: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to recalculate: ' . $e->getMessage());
         }
     }
 
@@ -293,7 +293,7 @@ class PayrollController extends Controller
     public function approve(PayrollPeriod $period)
     {
         if ($period->status !== 'draft') {
-            return back()->with('error', 'Only draft payrolls can be approved.');
+            return redirect()->back()->with('error', 'Only draft payrolls can be approved.');
         }
 
         DB::beginTransaction();
@@ -322,10 +322,10 @@ class PayrollController extends Controller
                 ])
                 ->log('payroll_approved');
 
-            return back()->with('success', 'Payroll approved successfully.');
+            return redirect()->back()->with('success', 'Payroll approved successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to approve payroll: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to approve payroll: ' . $e->getMessage());
         }
     }
 
@@ -335,7 +335,7 @@ class PayrollController extends Controller
     public function markPaid(PayrollPeriod $period)
     {
         if ($period->status !== 'approved') {
-            return back()->with('error', 'Only approved payrolls can be marked as paid.');
+            return redirect()->back()->with('error', 'Only approved payrolls can be marked as paid.');
         }
 
         DB::beginTransaction();
@@ -360,10 +360,10 @@ class PayrollController extends Controller
                 ])
                 ->log('payroll_paid');
 
-            return back()->with('success', 'Payroll marked as paid.');
+            return redirect()->back()->with('success', 'Payroll marked as paid.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to mark as paid: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to mark as paid: ' . $e->getMessage());
         }
     }
 
@@ -387,7 +387,7 @@ class PayrollController extends Controller
             ->get();
 
         if ($records->isEmpty()) {
-            return back()->with('error', 'No payroll records found for this period.');
+            return redirect()->back()->with('error', 'No payroll records found for this period.');
         }
 
         // Create a temporary directory for PDFs
@@ -474,7 +474,7 @@ class PayrollController extends Controller
     public function destroy(PayrollPeriod $period)
     {
         if ($period->status !== 'draft') {
-            return back()->with('error', 'Only draft payrolls can be deleted.');
+            return redirect()->back()->with('error', 'Only draft payrolls can be deleted.');
         }
 
         DB::beginTransaction();
@@ -495,7 +495,7 @@ class PayrollController extends Controller
                 ->with('success', 'Payroll period deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Failed to delete payroll: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete payroll: ' . $e->getMessage());
         }
     }
 
