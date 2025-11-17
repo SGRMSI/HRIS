@@ -6,7 +6,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Users, Warehouse } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -29,11 +29,14 @@ interface Props {
 
 
 export default function Employee({ employees, flash }: Props) {
+    // State to track the currently displayed (filtered) employees
+    const [displayedEmployees, setDisplayedEmployees] = useState<Employee[]>(employees);
 
-    const uniqueCompanies = [...new Set(employees.map((emp) => emp.company).filter(Boolean))];
+    // Calculate stats from displayed employees (filtered data)
+    const uniqueCompanies = [...new Set(displayedEmployees.map((emp) => emp.company).filter(Boolean))];
 
     // Calculate status counts
-    const statusCounts = employees.reduce((acc, employee) => {
+    const statusCounts = displayedEmployees.reduce((acc, employee) => {
         const status = employee.employment_status || 'Unknown';
         acc[status] = (acc[status] || 0) + 1;
         return acc;
@@ -41,7 +44,7 @@ export default function Employee({ employees, flash }: Props) {
 
     // Calculate evaluation warnings for Probationary and Trainee
     const evaluationWarnings = ['Probationary', 'Trainee'].map(status => {
-        const employeesWithStatus = employees.filter(emp => 
+        const employeesWithStatus = displayedEmployees.filter(emp => 
             emp.employment_status === status && 
             emp.evaluation_end_date
         );
@@ -111,7 +114,7 @@ export default function Employee({ employees, flash }: Props) {
                             </div>
                         </CardHeader>
                         <div className="px-6 pb-6">
-                            <div className="text-3xl font-bold">{employees.length}</div>
+                            <div className="text-3xl font-bold">{displayedEmployees.length}</div>
                             <p className="mt-1 text-xs text-muted-foreground">All active employees</p>
                         </div>
                     </Card>
@@ -122,7 +125,11 @@ export default function Employee({ employees, flash }: Props) {
                 </div>
 
                 {/* Employee Data Table */}
-                <EmployeeDataTable columns={columns} data={employees} />
+                <EmployeeDataTable 
+                    columns={columns} 
+                    data={employees}
+                    onFilteredDataChange={setDisplayedEmployees}
+                />
             </div>
         </AppLayout>
     );

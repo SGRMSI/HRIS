@@ -20,9 +20,10 @@ import { EmployeeImportCsv } from './employee-import-csv';
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
+    onFilteredDataChange?: (filteredData: TData[]) => void;
 }
 
-export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
+export function EmployeeDataTable<TData, TValue>({ columns, data, onFilteredDataChange }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
     const [recentlyAddedFilter, setRecentlyAddedFilter] = React.useState<string>('newest');
@@ -123,6 +124,11 @@ export function EmployeeDataTable<TData, TValue>({ columns, data }: DataTablePro
 
         return filtered;
     }, [data, recentlyAddedFilter, columnFilters, evaluationFilter]);
+
+    // Notify parent component when filtered data changes
+    React.useEffect(() => {
+        onFilteredDataChange?.(filteredData);
+    }, [filteredData, onFilteredDataChange]);
 
     const table = useReactTable({
         data: filteredData,
