@@ -14,7 +14,9 @@ class Shift extends Model
         'time_out',
         'break_start',
         'break_end',
-        'grace_period',
+        'include_saturday',
+        'include_sunday',
+        'late_rules',
         'description',
     ];
 
@@ -23,7 +25,9 @@ class Shift extends Model
         'time_out' => 'datetime:H:i',
         'break_start' => 'datetime:H:i',
         'break_end' => 'datetime:H:i',
-        'grace_period' => 'integer',
+        'include_saturday' => 'boolean',
+        'include_sunday' => 'boolean',
+        'late_rules' => 'array',
     ];
 
     // Relationships
@@ -102,12 +106,39 @@ class Shift extends Model
     }
 
     /**
-     * Get late threshold time with grace period
+     * Calculate late deduction based on late rules
+     * 
+     * @param int $lateMinutes The number of minutes the employee is late
+     * @return int The deduction in minutes
      */
-    public function getLateThreshold(): string
+    public function calculateLateDeduction(int $lateMinutes): int
     {
-        return \Carbon\Carbon::parse($this->time_in)
-            ->addMinutes($this->grace_period ?? 0)
-            ->format('H:i:s');
+        if ($lateMinutes <= 0 || !$this->late_rules) {
+            return 0;
+        }
+
+        // Sort rules by threshold ascending to apply the correct rule
+        $rules = collect($this->late_rules)->sortBy('threshold_minutes');
+        
+        $deduction = 0;
+        foreach ($rules as $rule) {
+            if ($lateMinutes >= ($rule['threshold_minutes'] ?? 0)) {
+                $deduction = $rule['deduction_minutes'] ?? 0;
+            }
+        }
+        
+        return $deduction;
+    }
+
+    /**
+     * Check if employee should be marked absent based on late minutes
+     * 
+     * @param int $lateMinutes
+     * @return bool
+     */
+    public function shouldBeAbsent(int $lateMinutes): bool
+    {
+        // If 2 hours or more late, mark as absent
+        return $lateMinutes >= 120;
     }
 }

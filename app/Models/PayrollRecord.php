@@ -92,7 +92,7 @@ class PayrollRecord extends Model
      */
     public function calculateBasicPay(): void
     {
-        $this->basic_pay = round($this->daily_rate * $this->days_worked, 2);
+        $this->setAttribute('basic_pay', round($this->daily_rate * $this->days_worked, 2));
     }
 
     /**
@@ -100,7 +100,7 @@ class PayrollRecord extends Model
      */
     public function calculateGrossPay(): void
     {
-        $this->gross_pay = round(
+        $this->setAttribute('gross_pay', round(
             $this->basic_pay +
             $this->overtime +
             $this->night_differential +
@@ -114,7 +114,7 @@ class PayrollRecord extends Model
             $this->attendance_incentive +
             $this->adjustments,
             2
-        );
+        ));
     }
 
     /**
@@ -122,7 +122,7 @@ class PayrollRecord extends Model
      */
     public function calculateTotalDeductions(): void
     {
-        $this->total_deductions = round(
+        $this->setAttribute('total_deductions', round(
             $this->sss_contribution +
             $this->phic_contribution +
             $this->hdmf_contribution +
@@ -130,7 +130,7 @@ class PayrollRecord extends Model
             $this->undertime_amount +
             $this->cash_advance,
             2
-        );
+        ));
     }
 
     /**
@@ -138,7 +138,7 @@ class PayrollRecord extends Model
      */
     public function calculateNetPay(): void
     {
-        $this->net_pay = round($this->gross_pay - $this->total_deductions, 2);
+        $this->setAttribute('net_pay', round($this->gross_pay - $this->total_deductions, 2));
     }
 
     /**

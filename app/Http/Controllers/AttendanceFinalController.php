@@ -326,6 +326,19 @@ class AttendanceFinalController extends Controller
             // Generate dates for this schedule
             $currentDate = $start->copy();
             while ($currentDate->lte($end)) {
+                // Skip weekends if shift doesn't include them
+                $dayOfWeek = $currentDate->dayOfWeek; // 0 = Sunday, 6 = Saturday
+                if ($dayOfWeek === 6 && !$schedule->shift->include_saturday) {
+                    // Saturday not included in shift
+                    $currentDate->addDay();
+                    continue;
+                }
+                if ($dayOfWeek === 0 && !$schedule->shift->include_sunday) {
+                    // Sunday not included in shift
+                    $currentDate->addDay();
+                    continue;
+                }
+
                 // Check if there's an attendance record for this date
                 $attendanceRecord = Attendance::with('approvedBy')
                     ->where('employee_id', $schedule->employee_id)

@@ -86,7 +86,7 @@ class PayrollService
         $record->daily_rate = $settings->daily_rate ?? 0;
 
         // Calculate days worked from attendance
-        $record->days_worked = $this->calculateDaysWorked($employee, $period);
+        $record->setAttribute('days_worked', $this->calculateDaysWorked($employee, $period));
 
         // Set allowances from employee_payroll_settings
         $record->clothing_allowance = $settings->clothing_allowance ?? 0;
@@ -156,22 +156,22 @@ class PayrollService
         });
 
         $overtimeHours = $totalOvertimeMinutes / 60;
-        $record->overtime_hours = round($overtimeHours, 2);
-        $record->overtime = round($hourlyRate * $overtimeHours * 1.25, 2);
+        $record->setAttribute('overtime_hours', round($overtimeHours, 2));
+        $record->setAttribute('overtime', round($hourlyRate * $overtimeHours * 1.25, 2));
 
         // Night Differential (10% of hourly rate, would need time tracking)
-        $record->night_differential = 0;
+        $record->setAttribute('night_differential', 0);
 
         // Holiday pay
         $specialHolidays = $attendances->filter(function ($att) {
             return $att->holiday_id && $att->holiday && $att->holiday->type === 'special';
         });
-        $record->special_holiday = round($hourlyRate * $specialHolidays->sum('total_hours') * 0.30, 2);
+        $record->setAttribute('special_holiday', round($hourlyRate * $specialHolidays->sum('total_hours') * 0.30, 2));
 
         $legalHolidays = $attendances->filter(function ($att) {
             return $att->holiday_id && $att->holiday && $att->holiday->type === 'regular';
         });
-        $record->legal_holiday = round($hourlyRate * $legalHolidays->sum('total_hours') * 1.0, 2);
+        $record->setAttribute('legal_holiday', round($hourlyRate * $legalHolidays->sum('total_hours') * 1.0, 2));
     }
 
     /**
@@ -184,8 +184,8 @@ class PayrollService
                 $query->where('company_id', $employee->company_id)
                       ->orWhereNull('company_id');
             })
-            ->whereDate('date', '>=', $period->date_from)
-            ->whereDate('date', '<=', $period->date_to)
+            ->where(DB::raw('DATE(date)'), '>=', $period->date_from)
+            ->where(DB::raw('DATE(date)'), '<=', $period->date_to)
             ->get();
 
         $totalHolidayPay = 0;
@@ -209,7 +209,7 @@ class PayrollService
             }
         }
 
-        $record->holiday_pay = round($totalHolidayPay, 2);
+        $record->setAttribute('holiday_pay', round($totalHolidayPay, 2));
     }
 
     /**
@@ -231,11 +231,11 @@ class PayrollService
 
         // Late deduction
         $record->late_undertime_minutes = (int) $totalLateMinutes;
-        $record->late_undertime_amount = round($minuteRate * $totalLateMinutes, 2);
+        $record->setAttribute('late_undertime_amount', round($minuteRate * $totalLateMinutes, 2));
 
         // Undertime deduction
         $record->undertime_minutes = (int) $totalUndertimeMinutes;
-        $record->undertime_amount = round($minuteRate * $totalUndertimeMinutes, 2);
+        $record->setAttribute('undertime_amount', round($minuteRate * $totalUndertimeMinutes, 2));
     }
 
     /**
@@ -249,13 +249,13 @@ class PayrollService
         // These are now set from employee_payroll_settings
         // Only calculate if not already set
         if (!$record->sss_contribution) {
-            $record->sss_contribution = $this->calculateSSS($monthlyGross);
+            $record->setAttribute('sss_contribution', $this->calculateSSS($monthlyGross));
         }
         if (!$record->phic_contribution) {
-            $record->phic_contribution = $this->calculatePhilHealth($monthlyGross);
+            $record->setAttribute('phic_contribution', $this->calculatePhilHealth($monthlyGross));
         }
         if (!$record->hdmf_contribution) {
-            $record->hdmf_contribution = $this->calculatePagIBIG($monthlyGross);
+            $record->setAttribute('hdmf_contribution', $this->calculatePagIBIG($monthlyGross));
         }
     }
 
@@ -346,7 +346,7 @@ class PayrollService
         $record->hdmf_contribution = $settings->hdmf_contribution ?? 0;
 
         // Recalculate days worked from attendance
-        $record->days_worked = $this->calculateDaysWorked($employee, $period);
+        $record->setAttribute('days_worked', $this->calculateDaysWorked($employee, $period));
 
         // Recalculate overtime and earnings from attendance
         $this->calculateEarnings($record, $employee, $period);

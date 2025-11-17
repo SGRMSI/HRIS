@@ -33,6 +33,11 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Edit, Trash2, Moon, Clock, Users, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface LateRule {
+    threshold_minutes: number;
+    deduction_minutes: number;
+}
+
 interface Shift {
     id: number;
     name: string;
@@ -43,7 +48,9 @@ interface Shift {
         break_start: string | null;
         break_end: string | null;
     };
-    grace_period: number;
+    include_saturday: boolean;
+    include_sunday: boolean;
+    late_rules: LateRule[];
     working_hours: number;
     is_overnight: boolean;
     schedules_count: number;
@@ -192,7 +199,8 @@ export default function ShiftsIndex({ shifts, filters, flash }: Props) {
                                             <TableHead>Time In</TableHead>
                                             <TableHead>Time Out</TableHead>
                                             <TableHead>Break</TableHead>
-                                            <TableHead>Grace Period</TableHead>
+                                            <TableHead>Late Rules</TableHead>
+                                            <TableHead>Weekend</TableHead>
                                             <TableHead>Working Hours</TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>Usage</TableHead>
@@ -236,9 +244,32 @@ export default function ShiftsIndex({ shifts, filters, flash }: Props) {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="text-sm text-gray-600">
-                                                        {shift.grace_period} min
-                                                    </span>
+                                                    <div className="space-y-1">
+                                                        {shift.late_rules && shift.late_rules.length > 0 ? (
+                                                            <div className="text-xs space-y-0.5">
+                                                                {shift.late_rules.map((rule, i) => (
+                                                                    <div key={i} className="text-gray-600">
+                                                                        {rule.threshold_minutes}min → {rule.deduction_minutes}min
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400">No rules</span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="space-y-1">
+                                                        {shift.include_saturday && (
+                                                            <Badge variant="secondary" className="text-xs">Sat</Badge>
+                                                        )}
+                                                        {shift.include_sunday && (
+                                                            <Badge variant="secondary" className="text-xs ml-1">Sun</Badge>
+                                                        )}
+                                                        {!shift.include_saturday && !shift.include_sunday && (
+                                                            <span className="text-xs text-gray-400">Weekdays only</span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="font-medium">

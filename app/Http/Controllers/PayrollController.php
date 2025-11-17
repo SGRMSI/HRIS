@@ -175,8 +175,8 @@ class PayrollController extends Controller
                 $query->where('company_id', $record->employee->company_id)
                       ->orWhereNull('company_id');
             })
-            ->whereDate('date', '>=', $period->date_from)
-            ->whereDate('date', '<=', $period->date_to)
+            ->where(DB::raw('DATE(date)'), '>=', $period->date_from)
+            ->where(DB::raw('DATE(date)'), '<=', $period->date_to)
             ->orderBy('date')
             ->get(['holiday_id', 'name', 'date', 'type', 'pay_percentage']);
 
@@ -356,7 +356,7 @@ class PayrollController extends Controller
                 ->causedBy(auth()->user())
                 ->withProperties([
                     'period_name' => $period->period_name,
-                    'payment_date' => $period->payment_date->format('Y-m-d'),
+                    'payment_date' => $period->payment_date,
                 ])
                 ->log('payroll_paid');
 

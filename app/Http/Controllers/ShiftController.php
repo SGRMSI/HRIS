@@ -55,7 +55,9 @@ class ShiftController extends Controller
                         'break_start' => $shift->break_start?->format('H:i'),
                         'break_end' => $shift->break_end?->format('H:i'),
                     ],
-                    'grace_period' => $shift->grace_period,
+                    'include_saturday' => $shift->include_saturday,
+                    'include_sunday' => $shift->include_sunday,
+                    'late_rules' => $shift->late_rules ?? [],
                     'working_hours' => $shift->getWorkingHours(),
                     'is_overnight' => $shift->isOvernight(),
                     'schedules_count' => $shift->schedules_count,
@@ -80,7 +82,10 @@ class ShiftController extends Controller
     public function create()
     {
         return Inertia::render('Attendance/Shifts/Create', [
-            'defaultGracePeriod' => 15 // 15 minutes default
+            'defaultLateRules' => [
+                ['threshold_minutes' => 15, 'deduction_minutes' => 30],
+                ['threshold_minutes' => 60, 'deduction_minutes' => 120],
+            ]
         ]);
     }
 
@@ -99,7 +104,11 @@ class ShiftController extends Controller
             'time_out' => ['required', 'date_format:H:i'],
             'break_start' => ['nullable', 'date_format:H:i'],
             'break_end' => ['nullable', 'date_format:H:i', 'required_with:break_start'],
-            'grace_period' => ['nullable', 'integer', 'min:0', 'max:60']
+            'include_saturday' => ['boolean'],
+            'include_sunday' => ['boolean'],
+            'late_rules' => ['nullable', 'array'],
+            'late_rules.*.threshold_minutes' => ['required', 'integer', 'min:1'],
+            'late_rules.*.deduction_minutes' => ['required', 'integer', 'min:1'],
         ]);
 
         // Additional validation
@@ -120,7 +129,9 @@ class ShiftController extends Controller
                 'break_end' => isset($validated['break_end']) 
                     ? Carbon::createFromFormat('H:i', $validated['break_end']) 
                     : null,
-                'grace_period' => $validated['grace_period'] ?? 0
+                'include_saturday' => $validated['include_saturday'] ?? false,
+                'include_sunday' => $validated['include_sunday'] ?? false,
+                'late_rules' => $validated['late_rules'] ?? null,
             ]);
 
             // Log the creation
@@ -177,7 +188,9 @@ class ShiftController extends Controller
                 'time_out' => $shift->time_out?->format('H:i'),
                 'break_start' => $shift->break_start?->format('H:i'),
                 'break_end' => $shift->break_end?->format('H:i'),
-                'grace_period' => $shift->grace_period,
+                'include_saturday' => $shift->include_saturday,
+                'include_sunday' => $shift->include_sunday,
+                'late_rules' => $shift->late_rules ?? [],
                 'working_hours' => $shift->getWorkingHours(),
                 'is_overnight' => $shift->isOvernight()
             ],
@@ -205,7 +218,11 @@ class ShiftController extends Controller
             'time_out' => ['required', 'date_format:H:i'],
             'break_start' => ['nullable', 'date_format:H:i'],
             'break_end' => ['nullable', 'date_format:H:i', 'required_with:break_start'],
-            'grace_period' => ['nullable', 'integer', 'min:0', 'max:60']
+            'include_saturday' => ['boolean'],
+            'include_sunday' => ['boolean'],
+            'late_rules' => ['nullable', 'array'],
+            'late_rules.*.threshold_minutes' => ['required', 'integer', 'min:1'],
+            'late_rules.*.deduction_minutes' => ['required', 'integer', 'min:1'],
         ]);
 
         // Additional validation
@@ -229,7 +246,9 @@ class ShiftController extends Controller
                 'break_end' => isset($validated['break_end']) 
                     ? Carbon::createFromFormat('H:i', $validated['break_end']) 
                     : null,
-                'grace_period' => $validated['grace_period'] ?? 0
+                'include_saturday' => $validated['include_saturday'] ?? false,
+                'include_sunday' => $validated['include_sunday'] ?? false,
+                'late_rules' => $validated['late_rules'] ?? null,
             ]);
 
             // Log the update with changes

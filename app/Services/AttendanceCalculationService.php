@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Employee;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AttendanceCalculationService
 {
@@ -80,11 +81,21 @@ class AttendanceCalculationService
         $totalRenderedMinutes = min($shiftDurationMinutes - $shiftBreakMinutes, 8 * 60);
         $totalRenderedHours = round($totalRenderedMinutes / 60, 2);
         
-        // Calculate late minutes
+        // Calculate late minutes (no grace period - late is late)
         $lateMinutes = 0;
         if ($clockIn->gt($shiftStart)) {
-            $graceMinutes = $shift->grace_period ?? 0;
-            $lateMinutes = max(0, $clockIn->diffInMinutes($shiftStart) - $graceMinutes);
+            $lateMinutes = $clockIn->diffInMinutes($shiftStart);
+        }
+        
+        // Check if should be marked as absent (2+ hours late)
+        if ($shift->shouldBeAbsent($lateMinutes)) {
+            // Mark as absent by setting status
+            $attendance->update([
+                'status' => 'absent',
+                'late_minutes' => $lateMinutes,
+                'remarks' => 'Auto-marked absent: ' . ($lateMinutes) . ' minutes late (2+ hours)',
+            ]);
+            return; // Don't continue with other calculations
         }
         
         // Calculate overtime
@@ -140,8 +151,8 @@ class AttendanceCalculationService
      */
     public function recalculateAttendanceRange(string $dateFrom, string $dateTo): int
     {
-        $attendances = Attendance::whereDate('date', '>=', $dateFrom)
-            ->whereDate('date', '<=', $dateTo)
+        $attendances = Attendance::where(DB::raw('DATE(date)'), '>=', $dateFrom)
+            ->where(DB::raw('DATE(date)'), '<=', $dateTo)
             ->whereNotNull('shift_id')
             ->whereNotNull('clock_in')
             ->whereNotNull('clock_out')

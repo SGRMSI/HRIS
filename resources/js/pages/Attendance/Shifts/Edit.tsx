@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Save, X, Moon, Clock, AlertTriangle, Users, FileText } from 'lucide-react';
 import { FormEventHandler, useEffect, useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+
+interface LateRule {
+    threshold_minutes: number;
+    deduction_minutes: number;
+}
 
 interface Shift {
     id: number;
@@ -17,7 +23,9 @@ interface Shift {
     time_out: string;
     break_start: string | null;
     break_end: string | null;
-    grace_period: number;
+    include_saturday: boolean;
+    include_sunday: boolean;
+    late_rules: LateRule[];
     working_hours: number;
     is_overnight: boolean;
 }
@@ -33,6 +41,17 @@ interface Props {
     impact: Impact;
 }
 
+interface ShiftFormData {
+    name: string;
+    description: string;
+    time_in: string;
+    time_out: string;
+    break_start: string;
+    break_end: string;
+    include_saturday: boolean;
+    include_sunday: boolean;
+}
+
 export default function ShiftsEdit({ shift, impact }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         name: shift.name || '',
@@ -41,9 +60,11 @@ export default function ShiftsEdit({ shift, impact }: Props) {
         time_out: shift.time_out || '',
         break_start: shift.break_start || '',
         break_end: shift.break_end || '',
-        grace_period: shift.grace_period?.toString() || '0',
+        include_saturday: shift.include_saturday || false,
+        include_sunday: shift.include_sunday || false,
     });
 
+    const [lateRules, setLateRules] = useState<LateRule[]>(shift.late_rules || []);
     const [isOvernight, setIsOvernight] = useState(shift.is_overnight);
     const [workingHours, setWorkingHours] = useState<number | null>(shift.working_hours);
     const [breakDuration, setBreakDuration] = useState<number | null>(null);
@@ -85,7 +106,14 @@ export default function ShiftsEdit({ shift, impact }: Props) {
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        put(route('attendance.shifts.update', shift.id));
+        router.put(route('attendance.shifts.update', shift.id), {
+            ...data,
+            late_rules: lateRules,
+        } as any, {
+            onSuccess: () => {
+                // Optional success handling
+            }
+        });
     };
 
     return (
@@ -250,23 +278,122 @@ export default function ShiftsEdit({ shift, impact }: Props) {
                                         )}
                                     </div>
 
-                                    {/* Grace Period */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="grace_period">Grace Period (minutes)</Label>
-                                        <Input
-                                            id="grace_period"
-                                            type="number"
-                                            min="0"
-                                            max="60"
-                                            value={data.grace_period}
-                                            onChange={(e) => setData('grace_period', e.target.value)}
-                                            className={errors.grace_period ? 'border-red-500' : ''}
-                                        />
+                                    {/* Weekend Inclusion */}
+                                    <div className="space-y-4">
+                                        <Label>Weekend Coverage</Label>
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="include_saturday"
+                                                    checked={data.include_saturday as boolean}
+                                                    onCheckedChange={(checked) => 
+                                                        setData('include_saturday', !!checked as any)
+                                                    }
+                                                />
+                                                <Label 
+                                                    htmlFor="include_saturday" 
+                                                    className="text-sm font-normal cursor-pointer"
+                                                >
+                                                    Include Saturday
+                                                </Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="include_sunday"
+                                                    checked={data.include_sunday as boolean}
+                                                    onCheckedChange={(checked) => 
+                                                        setData('include_sunday', !!checked as any)
+                                                    }
+                                                />
+                                                <Label 
+                                                    htmlFor="include_sunday" 
+                                                    className="text-sm font-normal cursor-pointer"
+                                                >
+                                                    Include Sunday
+                                                </Label>
+                                            </div>
+                                        </div>
                                         <p className="text-sm text-muted-foreground">
-                                            Late threshold after clock-in time (0-60 minutes)
+                                            Check the days this shift covers
                                         </p>
-                                        {errors.grace_period && (
-                                            <p className="text-sm text-red-500">{errors.grace_period}</p>
+                                    </div>
+
+                                    {/* Late Rules */}
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <Label>Late Deduction Rules</Label>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setLateRules([
+                                                    ...lateRules,
+                                                    { threshold_minutes: 1, deduction_minutes: 1 }
+                                                ])}
+                                            >
+                                                Add Rule
+                                            </Button>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Define deductions for late arrivals. Employees 2+ hours late are automatically marked absent.
+                                        </p>
+                                        
+                                        {lateRules.length > 0 && (
+                                            <div className="space-y-3">
+                                                {lateRules.map((rule, index) => (
+                                                    <div key={index} className="flex items-end gap-3">
+                                                        <div className="flex-1">
+                                                            <Label htmlFor={`threshold_${index}`} className="text-xs">
+                                                                If late by (minutes)
+                                                            </Label>
+                                                            <Input
+                                                                id={`threshold_${index}`}
+                                                                type="number"
+                                                                min="1"
+                                                                value={rule.threshold_minutes}
+                                                                onChange={(e) => {
+                                                                    const newRules = [...lateRules];
+                                                                    newRules[index].threshold_minutes = parseInt(e.target.value) || 1;
+                                                                    setLateRules(newRules);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <Label htmlFor={`deduction_${index}`} className="text-xs">
+                                                                Deduct (minutes)
+                                                            </Label>
+                                                            <Input
+                                                                id={`deduction_${index}`}
+                                                                type="number"
+                                                                min="1"
+                                                                value={rule.deduction_minutes}
+                                                                onChange={(e) => {
+                                                                    const newRules = [...lateRules];
+                                                                    newRules[index].deduction_minutes = parseInt(e.target.value) || 1;
+                                                                    setLateRules(newRules);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => {
+                                                                const newRules = lateRules.filter((_, i) => i !== index);
+                                                                setLateRules(newRules);
+                                                            }}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        
+                                        {lateRules.length === 0 && (
+                                            <div className="text-sm text-muted-foreground text-center py-4 border-2 border-dashed rounded-lg">
+                                                No late rules defined. Click "Add Rule" to create one.
+                                            </div>
                                         )}
                                     </div>
 
@@ -331,10 +458,30 @@ export default function ShiftsEdit({ shift, impact }: Props) {
                                                 {workingHours.toFixed(2)} hrs
                                             </span>
                                         </div>
-                                        {data.grace_period && parseInt(data.grace_period) > 0 && (
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-muted-foreground">Grace Period:</span>
-                                                <span className="font-medium">{data.grace_period} min</span>
+                                        {(data.include_saturday || data.include_sunday) && (
+                                            <div className="border-t pt-3">
+                                                <span className="text-sm text-muted-foreground">Weekend:</span>
+                                                <div className="flex gap-2 mt-1">
+                                                    {data.include_saturday && (
+                                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Sat</span>
+                                                    )}
+                                                    {data.include_sunday && (
+                                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Sun</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {lateRules.length > 0 && (
+                                            <div className="border-t pt-3">
+                                                <span className="text-sm text-muted-foreground">Late Rules:</span>
+                                                <div className="mt-2 space-y-1">
+                                                    {lateRules.map((rule, i) => (
+                                                        <div key={i} className="text-xs flex justify-between">
+                                                            <span>{rule.threshold_minutes} min late →</span>
+                                                            <span className="font-medium">{rule.deduction_minutes} min deduction</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </CardContent>
