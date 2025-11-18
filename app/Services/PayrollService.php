@@ -144,20 +144,12 @@ class PayrollService
 
         $hourlyRate = $record->daily_rate / 8; // 8 hours per day
 
-        // Overtime: Use approved EmployeeOvertime records only
+        // Overtime: Use calculated overtime_hours from attendance records
+        // This already considers the minimum of approved vs actual worked time
         // Formula: (daily_rate / 8) * 1.25 * total_overtime_hours
-        $approvedOvertimes = \App\Models\EmployeeOvertime::where('employee_id', $employee->employee_id)
-            ->whereBetween('overtime_date', [$period->date_from, $period->date_to])
-            ->where('status', 'approved')
-            ->get();
-
-        $totalOvertimeMinutes = $approvedOvertimes->sum(function ($ot) {
-            return ($ot->duration_hours * 60) + $ot->duration_minutes;
-        });
-
-        $overtimeHours = $totalOvertimeMinutes / 60;
-        $record->setAttribute('overtime_hours', round($overtimeHours, 2));
-        $record->setAttribute('overtime', round($hourlyRate * $overtimeHours * 1.25, 2));
+        $totalOvertimeHours = $attendances->sum('overtime_hours');
+        $record->setAttribute('overtime_hours', round($totalOvertimeHours, 2));
+        $record->setAttribute('overtime', round($hourlyRate * $totalOvertimeHours * 1.25, 2));
 
         // Night Differential: (daily_rate / 8) * total_night_diff_hours * 10%
         $totalNightDiffHours = $attendances->sum('night_diff_hours');
