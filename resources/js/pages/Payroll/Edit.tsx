@@ -9,7 +9,7 @@ import { PayrollPeriod, PayrollRecord } from '@/types/payroll';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { format } from 'date-fns';
 import { ArrowLeft, Calculator, Download, Save } from 'lucide-react';
-import { FormEventHandler, useEffect, useRef } from 'react';
+import { FormEventHandler, useEffect } from 'react';
 
 interface Holiday {
     holiday_id: number;
@@ -59,6 +59,8 @@ export default function Edit({ period, record, holidays }: Props) {
         basic_pay: Number(record.basic_pay) || 0,
         overtime: Number(record.overtime) || 0,
         overtime_hours: Number(record.overtime_hours) || 0,
+        night_differential: Number(record.night_differential) || 0,
+        night_diff_hours: Number(record.night_diff_hours) || 0,
         holiday_pay: Number(record.holiday_pay) || 0,
         clothing_allowance: Number(record.clothing_allowance) || 0,
         rice_allowance: Number(record.rice_allowance) || 0,
@@ -76,9 +78,6 @@ export default function Edit({ period, record, holidays }: Props) {
         remarks: (record.remarks || '') as string,
     });
 
-    // Track if auto-recalculation has already been triggered
-    const hasAutoRecalculated = useRef(false);
-
     const handleSubmit: FormEventHandler = (e) => {
         e.preventDefault();
         put(route('payroll.records.update', [period.period_id, record.final_id || record.payroll_id]));
@@ -90,34 +89,15 @@ export default function Edit({ period, record, holidays }: Props) {
                 route('payroll.records.recalculate', [period.period_id, record.final_id || record.payroll_id]),
                 {},
                 {
-                    preserveScroll: true,
+                    preserveScroll: false, // Allow scroll to top after reload
                     onSuccess: () => {
-                        // Inertia automatically reloads the page with redirect()->back()
-                        // No need for manual reload
+                        // Force a full page reload to ensure all data is fresh
+                        window.location.reload();
                     },
                 },
             );
         }
     };
-
-    // Auto-recalculate on initial page load only (for draft periods)
-    useEffect(() => {
-        if (period.status === 'draft' && !hasAutoRecalculated.current) {
-            hasAutoRecalculated.current = true;
-            router.post(
-                route('payroll.records.recalculate', [period.period_id, record.final_id || record.payroll_id]),
-                {},
-                {
-                    preserveScroll: true,
-                    preserveState: false,
-                    onSuccess: () => {
-                        // Data automatically refreshed by redirect()->back()
-                    },
-                },
-            );
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run only once on mount
 
     // Auto-refresh when window regains focus (e.g., after editing in another tab)
     useEffect(() => {
@@ -140,6 +120,7 @@ export default function Edit({ period, record, holidays }: Props) {
     // Calculate totals
     const basicPay = Number(data.basic_pay);
     const overtime = Number(data.overtime);
+    const nightDifferential = Number(data.night_differential);
     const holidayPay = Number(data.holiday_pay);
     const totalAllowances =
         Number(data.clothing_allowance) +
@@ -148,7 +129,7 @@ export default function Edit({ period, record, holidays }: Props) {
         Number(data.program_allowance) +
         Number(data.attendance_incentive);
 
-    const grossPay = basicPay + overtime + holidayPay + totalAllowances + Number(data.adjustments);
+    const grossPay = basicPay + overtime + nightDifferential + holidayPay + totalAllowances + Number(data.adjustments);
     const totalDeductions =
         Number(data.sss_contribution) +
         Number(data.phic_contribution) +
@@ -303,6 +284,34 @@ export default function Edit({ period, record, holidays }: Props) {
                                                 disabled={period.status !== 'draft'}
                                             />
                                             <p className="text-xs text-muted-foreground">Auto-calculated (editable)</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="mb-3 text-sm font-medium">Night Differential</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Total Night Diff Hours</Label>
+                                            <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm font-medium">
+                                                {Number(data.night_diff_hours).toFixed(2)} hours ({(Number(data.night_diff_hours) * 60).toFixed(0)}{' '}
+                                                minutes)
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">10 PM - 6 AM work hours</p>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="night_differential">Night Differential Pay</Label>
+                                            <Input
+                                                id="night_differential"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.night_differential}
+                                                onChange={(e) => setData('night_differential', parseFloat(e.target.value) || 0)}
+                                                disabled={period.status !== 'draft'}
+                                            />
+                                            <p className="text-xs text-muted-foreground">(Daily Rate / 8 * Hours * 10%)</p>
                                         </div>
                                     </div>
                                 </div>
@@ -599,6 +608,10 @@ export default function Edit({ period, record, holidays }: Props) {
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Overtime:</span>
                                         <span className="font-medium">{formatCurrency(overtime)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b pb-2">
+                                        <span className="text-muted-foreground">Night Differential:</span>
+                                        <span className="font-medium">{formatCurrency(nightDifferential)}</span>
                                     </div>
                                     <div className="flex justify-between border-b pb-2">
                                         <span className="text-muted-foreground">Holiday Pay:</span>

@@ -140,13 +140,13 @@
         <tbody>
             @if($record->overtime > 0)
             <tr>
-                <td>Overtime:</td>
+                <td>Overtime ({{ number_format($record->overtime_hours ?? 0, 2) }} hrs):</td>
                 <td class="amount">PHP {{ number_format($record->overtime, 2) }}</td>
             </tr>
             @endif
             @if($record->night_differential > 0)
             <tr>
-                <td>Night Differential:</td>
+                <td>Night Differential ({{ number_format($record->night_diff_hours ?? 0, 2) }} hrs):</td>
                 <td class="amount">PHP {{ number_format($record->night_differential, 2) }}</td>
             </tr>
             @endif

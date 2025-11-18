@@ -159,8 +159,10 @@ class PayrollService
         $record->setAttribute('overtime_hours', round($overtimeHours, 2));
         $record->setAttribute('overtime', round($hourlyRate * $overtimeHours * 1.25, 2));
 
-        // Night Differential (10% of hourly rate, would need time tracking)
-        $record->setAttribute('night_differential', 0);
+        // Night Differential: (daily_rate / 8) * total_night_diff_hours * 10%
+        $totalNightDiffHours = $attendances->sum('night_diff_hours');
+        $record->setAttribute('night_diff_hours', round($totalNightDiffHours, 2));
+        $record->setAttribute('night_differential', round($hourlyRate * $totalNightDiffHours * 0.10, 2));
 
         // Holiday pay
         $specialHolidays = $attendances->filter(function ($att) {

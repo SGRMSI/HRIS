@@ -104,6 +104,16 @@ class AttendanceCalculationService
         // Calculate overtime
         $overtimeHours = $this->calculateOvertime($attendance, $clockOut, $shiftEnd);
         
+        // Calculate night differential hours (10pm - 6am)
+        // Use actual work period (shift start to shift end, minus break) + approved overtime
+        $nightDiffHours = $this->calculateNightDifferential(
+            $actualStart, 
+            $actualEnd, 
+            $shiftBreakMinutes,
+            $overtimeHours,
+            $shiftEnd
+        );
+        
         // Calculate undertime
         $undertimeHours = 0;
         if ($clockOut->lt($shiftEnd)) {
@@ -125,6 +135,7 @@ class AttendanceCalculationService
             'break_minutes' => $actualBreakMinutes,
             'late_minutes' => $lateMinutes,
             'overtime_hours' => $overtimeHours,
+            'night_diff_hours' => $nightDiffHours,
             'undertime_hours' => $undertimeHours,
         ]);
         Attendance::$skipCalculation = false;
@@ -171,6 +182,107 @@ class AttendanceCalculationService
         $overtimeHours = min($actualOvertimeHours, $approvedHours);
         
         return round($overtimeHours, 2);
+    }
+    
+    /**
+     * Calculate night differential hours (10 PM to 6 AM)
+     * 
+     * Logic:
+     * 1. Calculate night hours within regular shift (actualStart to actualEnd)
+     * 2. Subtract break time proportionally from night hours
+     * 3. Add approved overtime hours that fall in night period
+     * 
+     * This ensures night diff aligns with total rendered hours calculation
+     */
+    private function calculateNightDifferential(
+        Carbon $actualStart, 
+        Carbon $actualEnd, 
+        int $breakMinutes,
+        float $approvedOvertimeHours,
+        Carbon $shiftEnd
+    ): float {
+        $nightDiffMinutes = 0;
+        
+        // Define night period: 10:00 PM to 6:00 AM
+        $nightStartHour = 22; // 10 PM
+        $nightEndHour = 6;    // 6 AM
+        
+        // Make copies to avoid modifying original times
+        $workStart = $actualStart->copy();
+        $workEnd = $actualEnd->copy();
+        
+        // Handle case where work_end appears before work_start (overnight shift)
+        if ($workEnd->lt($workStart)) {
+            $workEnd->addDay();
+        }
+        
+        // === STEP 1: Calculate night hours for regular shift (actualStart to actualEnd) ===
+        $currentDate = $workStart->copy()->startOfDay();
+        $endDate = $workEnd->copy()->startOfDay();
+        
+        // Check each 24-hour period
+        while ($currentDate->lte($endDate)) {
+            // Night period for this date: 10 PM to 6 AM next day
+            $nightStart = $currentDate->copy()->setTime($nightStartHour, 0, 0);
+            $nightEnd = $currentDate->copy()->addDay()->setTime($nightEndHour, 0, 0);
+            
+            // Calculate overlap between work period and night period
+            if ($workEnd->gt($nightStart) && $workStart->lt($nightEnd)) {
+                $overlapStart = $workStart->gt($nightStart) ? $workStart : $nightStart;
+                $overlapEnd = $workEnd->lt($nightEnd) ? $workEnd : $nightEnd;
+                
+                if ($overlapEnd->gt($overlapStart)) {
+                    $nightDiffMinutes += $overlapStart->diffInMinutes($overlapEnd);
+                }
+            }
+            
+            $currentDate->addDay();
+        }
+        
+        // === STEP 2: Subtract break time ===
+        // Night differential should only count hours WORKED, not break time
+        // Simply subtract the break minutes from night differential
+        // This assumes break is taken uniformly across the shift
+        $nightDiffMinutes = max(0, $nightDiffMinutes - $breakMinutes);
+        
+        // === STEP 3: Add approved overtime hours that fall in night period ===
+        if ($approvedOvertimeHours > 0) {
+            // Overtime starts after shift end
+            $overtimeStart = $shiftEnd->copy();
+            $overtimeEnd = $overtimeStart->copy()->addMinutes($approvedOvertimeHours * 60);
+            
+            // Handle overnight: if overtime_end appears before overtime_start, add a day
+            if ($overtimeEnd->lt($overtimeStart)) {
+                $overtimeEnd->addDay();
+            }
+            
+            // Check if overtime falls within night period
+            // For overnight shifts, we need to check night periods that could overlap with OT
+            // Night period: 22:00 to 06:00 next day
+            // If OT is at 04:00-06:00, that's part of the previous day's night period
+            // So we need to start checking from the previous day
+            $currentDate = $overtimeStart->copy()->startOfDay()->subDay(); // Start from previous day
+            $endDate = $overtimeEnd->copy()->startOfDay()->addDay(); // Check one more day to be safe
+            
+            while ($currentDate->lte($endDate)) {
+                // Night period for this date: 10 PM to 6 AM next day
+                $nightStart = $currentDate->copy()->setTime($nightStartHour, 0, 0);
+                $nightEnd = $currentDate->copy()->addDay()->setTime($nightEndHour, 0, 0);
+                
+                if ($overtimeEnd->gt($nightStart) && $overtimeStart->lt($nightEnd)) {
+                    $overlapStart = $overtimeStart->gt($nightStart) ? $overtimeStart : $nightStart;
+                    $overlapEnd = $overtimeEnd->lt($nightEnd) ? $overtimeEnd : $nightEnd;
+                    
+                    if ($overlapEnd->gt($overlapStart)) {
+                        $nightDiffMinutes += $overlapStart->diffInMinutes($overlapEnd);
+                    }
+                }
+                
+                $currentDate->addDay();
+            }
+        }
+        
+        return round($nightDiffMinutes / 60, 2);
     }
     
     /**
