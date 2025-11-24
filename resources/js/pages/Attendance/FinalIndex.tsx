@@ -1,49 +1,40 @@
-import { useState, useEffect } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { 
-    CheckCircle2, 
-    XCircle, 
-    Clock, 
-    Calendar as CalendarIcon,
-    User,
-    Filter,
-    Download,
-    Eye,
-    CheckSquare,
-    AlertCircle,
-    Building2,
-    Edit,
-    Square,
-    CheckCheck,
-    UserCheck,
-    UserX,
-    Hourglass,
-    PartyPopper
-} from 'lucide-react';
-import { StatsDashboard } from '@/components/attendance/StatsDashboard';
-import { BulkActionBar } from '@/components/attendance/BulkActionBar';
 import { AbsencesTable } from '@/components/attendance/AbsencesTable';
 import { ExportDialog } from '@/components/attendance/ExportDialog';
+import { StatsDashboard } from '@/components/attendance/StatsDashboard';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import { Head, router, usePage } from '@inertiajs/react';
+import {
+    AlertCircle,
+    Building2,
+    Calendar as CalendarIcon,
+    CheckCheck,
+    CheckCircle2,
+    CheckSquare,
+    Clock,
+    Download,
+    Edit,
+    Eye,
+    Filter,
+    Hourglass,
+    PartyPopper,
+    Square,
+    User,
+    UserCheck,
+    UserX,
+    XCircle,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface Employee {
     id: number;
@@ -180,51 +171,114 @@ interface Props {
 
 function getStatusBadge(status: string, approved: boolean) {
     if (approved) {
-        return <Badge variant="default" className="bg-green-600">Approved</Badge>;
+        return (
+            <Badge variant="default" className="bg-green-600">
+                Approved
+            </Badge>
+        );
     }
 
     switch (status.toLowerCase()) {
         case 'present':
             return <Badge variant="default">Present</Badge>;
         case 'late':
-            return <Badge variant="default" className="bg-yellow-600">Late</Badge>;
+            return (
+                <Badge variant="default" className="bg-yellow-600">
+                    Late
+                </Badge>
+            );
         case 'undertime':
-            return <Badge variant="default" className="bg-orange-600">Undertime</Badge>;
+            return (
+                <Badge variant="default" className="bg-orange-600">
+                    Undertime
+                </Badge>
+            );
         case 'absent':
             return <Badge variant="destructive">Absent</Badge>;
         case 'leave':
-            return <Badge variant="outline" className="border-blue-600 text-blue-600">On Leave</Badge>;
+            return (
+                <Badge variant="outline" className="border-blue-600 text-blue-600">
+                    On Leave
+                </Badge>
+            );
         case 'holiday':
-            return <Badge variant="outline" className="border-purple-600 text-purple-600">Holiday</Badge>;
+            return (
+                <Badge variant="outline" className="border-purple-600 text-purple-600">
+                    Holiday
+                </Badge>
+            );
         default:
             return <Badge variant="secondary">{status}</Badge>;
     }
 }
 
-export default function FinalIndex({ 
-    attendances = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0, links: [] }, 
-    absences = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0 }, 
-    leaves = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0 }, 
-    stats = { total: 0, present: 0, late: 0, undertime: 0, absent: 0, on_leave: 0, pending_approval: 0, pending_absences: 0, approved: 0 }, 
-    pendingCount = 0, 
-    filteredPendingCount = 0, 
-    filters = {}, 
-    companies = [], 
-    employees = [], 
-    statuses = [] 
+export default function FinalIndex({
+    attendances = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0, links: [] },
+    absences = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0 },
+    leaves = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0 },
+    stats = { total: 0, present: 0, late: 0, undertime: 0, absent: 0, on_leave: 0, pending_approval: 0, pending_absences: 0, approved: 0 },
+    pendingCount = 0,
+    filteredPendingCount = 0,
+    filters = {},
+    companies = [],
+    employees = [],
+    statuses = [],
 }: Props) {
-    const { flash } = usePage().props as any;
+    const { flash } = usePage().props as { flash?: { success?: string; error?: string } };
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [selectedAbsences, setSelectedAbsences] = useState<{employee_id: number; date: string; shift_id: number | null}[]>([]);
     const [bulkProcessing, setBulkProcessing] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
-    const [showAbsenceApproveModal, setShowAbsenceApproveModal] = useState(false);
     const [approvalType, setApprovalType] = useState<'bulk' | 'single'>('bulk');
     const [singleApprovalId, setSingleApprovalId] = useState<number | null>(null);
-    const [singleAbsenceData, setSingleAbsenceData] = useState<{employee_id: number; date: string; shift_id: number | null} | null>(null);
-    const [absenceApprovalType, setAbsenceApprovalType] = useState<'approve' | 'deny'>('approve');
-    const [activeTab, setActiveTab] = useState<string>('attendance');
     const [exportDialogOpen, setExportDialogOpen] = useState(false);
+    const [localFilters, setLocalFilters] = useState({
+        search: filters.search || '',
+        date_from: filters.date_from || '',
+        date_to: filters.date_to || '',
+        status: filters.status || '',
+        company_id: filters.company_id?.toString() || '',
+        employee_id: filters.employee_id?.toString() || '',
+    });
+
+    // Determine which count to show (use filtered if filters are active, otherwise use total)
+    const hasActiveFilters = !!(
+        filters.search ||
+        filters.date_from ||
+        filters.date_to ||
+        filters.status ||
+        filters.company_id ||
+        filters.employee_id
+    );
+    const displayPendingCount = hasActiveFilters ? filteredPendingCount || 0 : pendingCount || 0;
+
+    const handleLocalFilterChange = (key: string, value: string) => {
+        setLocalFilters((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const handleApplyFilters = () => {
+        const appliedFilters: Record<string, string | undefined> = {};
+
+        if (localFilters.search) appliedFilters.search = localFilters.search;
+        if (localFilters.date_from) appliedFilters.date_from = localFilters.date_from;
+        if (localFilters.date_to) appliedFilters.date_to = localFilters.date_to;
+        if (localFilters.status && localFilters.status !== 'all') appliedFilters.status = localFilters.status;
+        if (localFilters.company_id && localFilters.company_id !== 'all') appliedFilters.company_id = localFilters.company_id;
+        if (localFilters.employee_id && localFilters.employee_id !== 'all') appliedFilters.employee_id = localFilters.employee_id;
+
+        router.get(route('attendance.final.index'), appliedFilters, { preserveState: true, replace: true });
+    };
+
+    const handleClearFilters = () => {
+        setLocalFilters({
+            search: '',
+            date_from: '',
+            date_to: '',
+            status: '',
+            company_id: '',
+            employee_id: '',
+        });
+        router.get(route('attendance.final.index'), {}, { preserveState: true, replace: true });
+    };
 
     // Show toast notifications
     useEffect(() => {
@@ -236,29 +290,8 @@ export default function FinalIndex({
         }
     }, [flash]);
 
-    // Filter employees based on selected company
-    const filteredEmployees = filters.company_id 
-        ? employees.filter(emp => emp.company_id === filters.company_id)
-        : employees;
-
-    // Determine which count to show (use filtered if filters are active, otherwise use total)
-    const hasActiveFilters = !!(filters.search || filters.date_from || filters.date_to || 
-                                 filters.status || filters.company_id || filters.employee_id);
-    const displayPendingCount = hasActiveFilters ? (filteredPendingCount || 0) : (pendingCount || 0);
-
-    const handleFilter = (key: string, value: string) => {
-        const filterValue = value === 'all' ? undefined : value;
-        router.get(
-            route('attendance.final.index'),
-            { ...filters, [key]: filterValue || undefined },
-            { preserveState: true, replace: true }
-        );
-    };
-
     const handleSelectAllPending = () => {
-        const pendingIds = (attendances?.data || [])
-            .filter(a => !a.approved_by && a.can_approve)
-            .map(a => a.id);
+        const pendingIds = (attendances?.data || []).filter((a) => !a.approved_by && a.can_approve).map((a) => a.id);
         setSelectedIds(pendingIds);
     };
 
@@ -266,19 +299,20 @@ export default function FinalIndex({
         // Fetch all pending IDs across all pages
         router.get(
             route('attendance.final.index'),
-            { 
-                ...filters, 
-                get_all_pending_ids: true 
+            {
+                ...filters,
+                get_all_pending_ids: true,
             },
             {
                 preserveState: true,
                 only: ['pendingIds'],
-                onSuccess: (page: any) => {
-                    if (page.props.pendingIds) {
-                        setSelectedIds(page.props.pendingIds);
+                onSuccess: (page) => {
+                    const props = page.props as { pendingIds?: number[] };
+                    if (props.pendingIds) {
+                        setSelectedIds(props.pendingIds);
                     }
-                }
-            }
+                },
+            },
         );
     };
 
@@ -290,7 +324,7 @@ export default function FinalIndex({
         if (checked) {
             setSelectedIds([...selectedIds, id]);
         } else {
-            setSelectedIds(selectedIds.filter(selectedId => selectedId !== id));
+            setSelectedIds(selectedIds.filter((selectedId) => selectedId !== id));
         }
     };
 
@@ -312,7 +346,7 @@ export default function FinalIndex({
 
     const handleApproveConfirm = () => {
         const idsToApprove = approvalType === 'bulk' ? selectedIds : [singleApprovalId!];
-        
+
         setBulkProcessing(true);
         router.post(
             route('attendance.final.bulk-approve'),
@@ -328,97 +362,12 @@ export default function FinalIndex({
                     }
                     setSingleApprovalId(null);
                 },
-            }
+            },
         );
     };
 
     const handleExport = () => {
         setExportDialogOpen(true);
-    };
-
-    // Absence approval handlers
-    const handleSelectAllAbsences = () => {
-        const allAbsences = absences.data
-            .filter(a => a.can_approve)
-            .map(a => ({ employee_id: a.employee_id, date: a.date, shift_id: a.shift_id }));
-        setSelectedAbsences(allAbsences);
-    };
-
-    const handleBulkApproveAbsences = () => {
-        if (selectedAbsences.length === 0) {
-            toast.error('Please select absences to approve');
-            return;
-        }
-        setAbsenceApprovalType('approve');
-        setShowAbsenceApproveModal(true);
-    };
-
-    const handleApproveAbsence = (employee_id: number, date: string, shift_id: number | null) => {
-        setSingleAbsenceData({ employee_id, date, shift_id });
-        setAbsenceApprovalType('approve');
-        setShowAbsenceApproveModal(true);
-    };
-
-    const handleDenyAbsence = (employee_id: number, date: string) => {
-        router.post(
-            route('attendance.final.absences.deny'),
-            { employee_id, date },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                onSuccess: () => {
-                    toast.success('Absence denied successfully');
-                },
-            }
-        );
-    };
-
-    const handleAbsenceApprovalConfirm = () => {
-        setBulkProcessing(true);
-        
-        if (singleAbsenceData) {
-            // Single approval
-            router.post(
-                route('attendance.final.absences.approve'),
-                singleAbsenceData,
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onFinish: () => {
-                        setBulkProcessing(false);
-                        setShowAbsenceApproveModal(false);
-                        setSingleAbsenceData(null);
-                    },
-                }
-            );
-        } else {
-            // Bulk approval
-            router.post(
-                route('attendance.final.absences.bulk-approve'),
-                { absences: selectedAbsences },
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    onFinish: () => {
-                        setBulkProcessing(false);
-                        setShowAbsenceApproveModal(false);
-                        setSelectedAbsences([]);
-                    },
-                }
-            );
-        }
-    };
-
-    const formatTime = (datetime: string | null) => {
-        if (!datetime) return '-';
-        try {
-            const [hours, minutes] = datetime.split(':');
-            const hour12 = parseInt(hours) % 12 || 12;
-            const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
-            return `${hour12}:${minutes} ${ampm}`;
-        } catch {
-            return '-';
-        }
     };
 
     const formatDate = (date: string) => {
@@ -443,28 +392,28 @@ export default function FinalIndex({
             title: 'Present',
             value: stats?.present || 0,
             icon: UserCheck,
-            description: `${((stats?.total || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.present || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% attendance rate`,
+            description: `${(stats?.total || 0) + (stats?.absent || 0) > 0 ? Math.round(((stats?.present || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% attendance rate`,
             variant: 'success' as const,
         },
         {
             title: 'Late',
             value: stats?.late || 0,
             icon: Clock,
-            description: `${((stats?.total || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.late || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% late rate`,
+            description: `${(stats?.total || 0) + (stats?.absent || 0) > 0 ? Math.round(((stats?.late || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% late rate`,
             variant: 'warning' as const,
         },
         {
             title: 'Undertime',
             value: stats?.undertime || 0,
             icon: Hourglass,
-            description: `${((stats?.total || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.undertime || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% undertime`,
+            description: `${(stats?.total || 0) + (stats?.absent || 0) > 0 ? Math.round(((stats?.undertime || 0) / ((stats?.total || 0) + (stats?.absent || 0))) * 100) : 0}% undertime`,
             variant: 'warning' as const,
         },
         {
             title: 'Absent',
             value: stats?.absent || 0,
             icon: UserX,
-            description: `${((stats?.present || 0) + (stats?.absent || 0)) > 0 ? Math.round(((stats?.absent || 0) / ((stats?.present || 0) + (stats?.absent || 0))) * 100) : 0}% absent rate`,
+            description: `${(stats?.present || 0) + (stats?.absent || 0) > 0 ? Math.round(((stats?.absent || 0) / ((stats?.present || 0) + (stats?.absent || 0))) * 100) : 0}% absent rate`,
             variant: 'danger' as const,
         },
         {
@@ -504,13 +453,11 @@ export default function FinalIndex({
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">Final Attendance</h1>
-                        <p className="text-muted-foreground mt-1">
-                            Review, approve, and manage attendance records
-                        </p>
+                        <p className="mt-1 text-muted-foreground">Review, approve, and manage attendance records</p>
                     </div>
                     <div className="flex gap-2">
                         <Button onClick={handleExport} variant="outline">
-                            <Download className="h-4 w-4 mr-2" />
+                            <Download className="mr-2 h-4 w-4" />
                             Export
                         </Button>
                     </div>
@@ -521,20 +468,16 @@ export default function FinalIndex({
 
                 {/* Flash Messages */}
                 {flash?.success && (
-                    <Alert className="bg-green-50 border-green-200">
+                    <Alert className="border-green-200 bg-green-50">
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        <AlertDescription className="text-green-800">
-                            {flash.success}
-                        </AlertDescription>
+                        <AlertDescription className="text-green-800">{flash.success}</AlertDescription>
                     </Alert>
                 )}
 
                 {flash?.error && (
-                    <Alert className="bg-red-50 border-red-200">
+                    <Alert className="border-red-200 bg-red-50">
                         <XCircle className="h-4 w-4 text-red-600" />
-                        <AlertDescription className="text-red-800">
-                            {flash.error}
-                        </AlertDescription>
+                        <AlertDescription className="text-red-800">{flash.error}</AlertDescription>
                     </Alert>
                 )}
 
@@ -547,7 +490,7 @@ export default function FinalIndex({
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
                             {/* Search */}
                             <div>
                                 <Label htmlFor="search">Search Employee</Label>
@@ -555,8 +498,8 @@ export default function FinalIndex({
                                     id="search"
                                     type="text"
                                     placeholder="Name or ID..."
-                                    value={filters.search || ''}
-                                    onChange={(e) => handleFilter('search', e.target.value)}
+                                    value={localFilters.search}
+                                    onChange={(e) => handleLocalFilterChange('search', e.target.value)}
                                 />
                             </div>
 
@@ -566,8 +509,8 @@ export default function FinalIndex({
                                 <Input
                                     id="date_from"
                                     type="date"
-                                    value={filters.date_from || ''}
-                                    onChange={(e) => handleFilter('date_from', e.target.value)}
+                                    value={localFilters.date_from}
+                                    onChange={(e) => handleLocalFilterChange('date_from', e.target.value)}
                                 />
                             </div>
 
@@ -577,8 +520,8 @@ export default function FinalIndex({
                                 <Input
                                     id="date_to"
                                     type="date"
-                                    value={filters.date_to || ''}
-                                    onChange={(e) => handleFilter('date_to', e.target.value)}
+                                    value={localFilters.date_to}
+                                    onChange={(e) => handleLocalFilterChange('date_to', e.target.value)}
                                 />
                             </div>
 
@@ -586,8 +529,13 @@ export default function FinalIndex({
                             <div>
                                 <Label htmlFor="company">Company</Label>
                                 <Select
-                                    value={filters.company_id?.toString() || 'all'}
-                                    onValueChange={(value) => handleFilter('company_id', value)}
+                                    value={localFilters.company_id || 'all'}
+                                    onValueChange={(value) => {
+                                        handleLocalFilterChange('company_id', value);
+                                        if (value === 'all' || value !== localFilters.company_id) {
+                                            handleLocalFilterChange('employee_id', '');
+                                        }
+                                    }}
                                 >
                                     <SelectTrigger id="company">
                                         <SelectValue placeholder="All Companies" />
@@ -607,15 +555,18 @@ export default function FinalIndex({
                             <div>
                                 <Label htmlFor="employee">Employee</Label>
                                 <Select
-                                    value={filters.employee_id?.toString() || 'all'}
-                                    onValueChange={(value) => handleFilter('employee_id', value)}
+                                    value={localFilters.employee_id || 'all'}
+                                    onValueChange={(value) => handleLocalFilterChange('employee_id', value)}
                                 >
                                     <SelectTrigger id="employee">
                                         <SelectValue placeholder="All Employees" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Employees</SelectItem>
-                                        {filteredEmployees.map((emp) => (
+                                        {(localFilters.company_id && localFilters.company_id !== 'all'
+                                            ? employees.filter((emp) => emp.company_id.toString() === localFilters.company_id)
+                                            : employees
+                                        ).map((emp) => (
                                             <SelectItem key={emp.id} value={emp.id.toString()}>
                                                 {emp.name}
                                             </SelectItem>
@@ -627,10 +578,7 @@ export default function FinalIndex({
                             {/* Status */}
                             <div>
                                 <Label htmlFor="status">Status</Label>
-                                <Select
-                                    value={filters.status || 'all'}
-                                    onValueChange={(value) => handleFilter('status', value)}
-                                >
+                                <Select value={localFilters.status || 'all'} onValueChange={(value) => handleLocalFilterChange('status', value)}>
                                     <SelectTrigger id="status">
                                         <SelectValue placeholder="All Statuses" />
                                     </SelectTrigger>
@@ -645,84 +593,87 @@ export default function FinalIndex({
                                 </Select>
                             </div>
                         </div>
+                        <div className="mt-4 flex justify-end gap-2">
+                            <Button onClick={handleClearFilters} variant="outline" size="sm">
+                                Clear Filters
+                            </Button>
+                            <Button onClick={handleApplyFilters} size="sm">
+                                <Filter className="mr-2 h-4 w-4" />
+                                Apply Filters
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
 
                 {/* Bulk Actions Bar */}
                 {selectedIds.length > 0 ? (
-                    <div className="border border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm rounded-lg p-3">
+                    <div className="rounded-lg border border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-blue-200">
+                                <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-1.5">
                                     <CheckSquare className="h-4 w-4 text-blue-600" />
                                     <span className="text-sm font-semibold text-blue-900">
                                         {selectedIds.length} record{selectedIds.length !== 1 ? 's' : ''} selected
                                     </span>
                                 </div>
-                                <Button
-                                    onClick={handleDeselectAll}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-gray-600 hover:text-gray-900 h-8"
-                                >
-                                    <Square className="h-4 w-4 mr-1" />
+                                <Button onClick={handleDeselectAll} variant="ghost" size="sm" className="h-8 text-gray-600 hover:text-gray-900">
+                                    <Square className="mr-1 h-4 w-4" />
                                     Deselect All
                                 </Button>
                             </div>
                             <Button
                                 onClick={handleBulkApprove}
                                 disabled={bulkProcessing}
-                                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg h-9"
+                                className="h-9 bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg hover:from-green-700 hover:to-emerald-700"
                             >
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
                                 {bulkProcessing ? 'Approving...' : `Approve ${selectedIds.length} Record${selectedIds.length !== 1 ? 's' : ''}`}
                             </Button>
                         </div>
                     </div>
-                ) : displayPendingCount > 0 && (
-                    <div className="border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <AlertCircle className="h-4 w-4 text-orange-600" />
-                                <div>
-                                    <p className="text-sm font-medium text-orange-900">
-                                        {displayPendingCount} record{displayPendingCount !== 1 ? 's' : ''} pending approval
-                                        {hasActiveFilters && pendingCount !== filteredPendingCount && (
-                                            <span className="text-xs ml-2 text-orange-700">
-                                                ({pendingCount} total in system)
-                                            </span>
-                                        )}
-                                    </p>
-                                    <p className="text-xs text-orange-700 mt-0.5">
-                                        {hasActiveFilters 
-                                            ? 'Showing pending records matching current filters'
-                                            : 'Select records to approve or use quick selection'
-                                        }
-                                    </p>
+                ) : (
+                    displayPendingCount > 0 && (
+                        <div className="rounded-lg border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                                    <div>
+                                        <p className="text-sm font-medium text-orange-900">
+                                            {displayPendingCount} record{displayPendingCount !== 1 ? 's' : ''} pending approval
+                                            {hasActiveFilters && pendingCount !== filteredPendingCount && (
+                                                <span className="ml-2 text-xs text-orange-700">({pendingCount} total in system)</span>
+                                            )}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-orange-700">
+                                            {hasActiveFilters
+                                                ? 'Showing pending records matching current filters'
+                                                : 'Select records to approve or use quick selection'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={handleSelectAllPending}
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 border-orange-300 text-orange-700 hover:bg-orange-100 hover:text-orange-900"
+                                    >
+                                        <CheckCheck className="mr-1 h-4 w-4" />
+                                        This Page
+                                    </Button>
+                                    <Button
+                                        onClick={handleSelectAllPendingAcrossPages}
+                                        variant="default"
+                                        size="sm"
+                                        className="h-8 bg-orange-600 text-white hover:bg-orange-700"
+                                    >
+                                        <CheckSquare className="mr-1 h-4 w-4" />
+                                        All {displayPendingCount} Records
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    onClick={handleSelectAllPending}
-                                    variant="outline"
-                                    size="sm"
-                                    className="border-orange-300 text-orange-700 hover:bg-orange-100 hover:text-orange-900 h-8"
-                                >
-                                    <CheckCheck className="h-4 w-4 mr-1" />
-                                    This Page
-                                </Button>
-                                <Button
-                                    onClick={handleSelectAllPendingAcrossPages}
-                                    variant="default"
-                                    size="sm"
-                                    className="bg-orange-600 hover:bg-orange-700 text-white h-8"
-                                >
-                                    <CheckSquare className="h-4 w-4 mr-1" />
-                                    All {displayPendingCount} Records
-                                </Button>
-                            </div>
                         </div>
-                    </div>
+                    )
                 )}
 
                 {/* Attendance Table */}
@@ -730,17 +681,15 @@ export default function FinalIndex({
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <CardTitle>Attendance Records</CardTitle>
-                            <CardDescription>
-                                {attendances?.total || 0} total record(s)
-                            </CardDescription>
+                            <CardDescription>{attendances?.total || 0} total record(s)</CardDescription>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
                         {!attendances?.data || attendances.data.length === 0 ? (
                             <div className="py-12 text-center text-gray-500">
-                                <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                <CalendarIcon className="mx-auto mb-4 h-12 w-12 opacity-50" />
                                 <p>No attendance records found</p>
-                                <p className="text-sm mt-2">Try adjusting your filters</p>
+                                <p className="mt-2 text-sm">Try adjusting your filters</p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
@@ -774,7 +723,7 @@ export default function FinalIndex({
                                                 <TableCell>
                                                     <div>
                                                         <p className="font-medium">{record.employee.name}</p>
-                                                        <div className="flex gap-2 mt-1">
+                                                        <div className="mt-1 flex gap-2">
                                                             <Badge variant="outline" className="text-xs">
                                                                 {record.employee.id_number}
                                                             </Badge>
@@ -793,8 +742,8 @@ export default function FinalIndex({
                                                 <TableCell>
                                                     {record.shift ? (
                                                         <div>
-                                                            <p className="font-medium text-sm">{record.shift.name}</p>
-                                                            <Badge variant="outline" className="text-xs mt-1">
+                                                            <p className="text-sm font-medium">{record.shift.name}</p>
+                                                            <Badge variant="outline" className="mt-1 text-xs">
                                                                 {record.shift.time_in} - {record.shift.time_out}
                                                             </Badge>
                                                         </div>
@@ -817,9 +766,11 @@ export default function FinalIndex({
                                                 <TableCell>
                                                     {record.total_hours !== null ? (
                                                         record.total_minutes !== null ? (
-                                                            <span className="font-medium text-sm">{record.total_hours}h {record.total_minutes}m</span>
+                                                            <span className="text-sm font-medium">
+                                                                {record.total_hours}h {record.total_minutes}m
+                                                            </span>
                                                         ) : (
-                                                            <span className="font-medium text-sm">{record.total_hours}h</span>
+                                                            <span className="text-sm font-medium">{record.total_hours}h</span>
                                                         )
                                                     ) : (
                                                         <span className="text-gray-400">-</span>
@@ -827,7 +778,9 @@ export default function FinalIndex({
                                                 </TableCell>
                                                 <TableCell>
                                                     <span className="text-sm">
-                                                        {record.break_minutes !== null && record.break_minutes !== undefined ? `${record.break_minutes} min` : '-'}
+                                                        {record.break_minutes !== null && record.break_minutes !== undefined
+                                                            ? `${record.break_minutes} min`
+                                                            : '-'}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>
@@ -837,11 +790,11 @@ export default function FinalIndex({
                                                                 Late
                                                             </Badge>
                                                         ) : record.status === 'undertime' ? (
-                                                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
+                                                            <Badge variant="outline" className="border-orange-600 text-xs text-orange-600">
                                                                 Undertime
                                                             </Badge>
                                                         ) : record.status === 'present' ? (
-                                                            <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                                                            <Badge variant="default" className="bg-green-100 text-xs text-green-800">
                                                                 Present
                                                             </Badge>
                                                         ) : (
@@ -850,7 +803,7 @@ export default function FinalIndex({
                                                             </Badge>
                                                         )}
                                                         {record.is_holiday && (
-                                                            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                                                            <Badge variant="secondary" className="bg-purple-100 text-xs text-purple-800">
                                                                 Holiday Worked
                                                             </Badge>
                                                         )}
@@ -859,19 +812,19 @@ export default function FinalIndex({
                                                 <TableCell>
                                                     {record.approved_by ? (
                                                         <div>
-                                                            <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                                                            <Badge variant="secondary" className="bg-green-100 text-xs text-green-800">
                                                                 Approved
                                                             </Badge>
-                                                            <p className="text-xs text-gray-500 mt-1">{record.approved_by}</p>
+                                                            <p className="mt-1 text-xs text-gray-500">{record.approved_by}</p>
                                                         </div>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-xs text-orange-600 border-orange-600">
+                                                        <Badge variant="outline" className="border-orange-600 text-xs text-orange-600">
                                                             Pending
                                                         </Badge>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
+                                                    <div className="flex justify-end gap-2">
                                                         {!record.approved_by ? (
                                                             <>
                                                                 <Button
@@ -879,7 +832,7 @@ export default function FinalIndex({
                                                                     size="sm"
                                                                     onClick={() => router.visit(route('attendance.final.show', record.id))}
                                                                 >
-                                                                    <Edit className="h-4 w-4 mr-1" />
+                                                                    <Edit className="mr-1 h-4 w-4" />
                                                                     Edit
                                                                 </Button>
                                                                 <Button
@@ -888,7 +841,7 @@ export default function FinalIndex({
                                                                     onClick={() => handleApprove(record.id)}
                                                                     className="bg-green-600 hover:bg-green-700"
                                                                 >
-                                                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                                                    <CheckCircle2 className="mr-1 h-4 w-4" />
                                                                     Approve
                                                                 </Button>
                                                             </>
@@ -898,7 +851,7 @@ export default function FinalIndex({
                                                                 size="sm"
                                                                 onClick={() => router.visit(route('attendance.final.show', record.id))}
                                                             >
-                                                                <Eye className="h-4 w-4 mr-1" />
+                                                                <Eye className="mr-1 h-4 w-4" />
                                                                 View
                                                             </Button>
                                                         )}
@@ -917,19 +870,20 @@ export default function FinalIndex({
                 {attendances?.last_page > 1 && (
                     <div className="flex items-center justify-between px-2 py-4">
                         <p className="text-sm text-muted-foreground">
-                            Showing {((attendances.current_page - 1) * attendances.per_page) + 1} to{' '}
-                            {Math.min(attendances.current_page * attendances.per_page, attendances.total)} of{' '}
-                            {attendances.total} records
+                            Showing {(attendances.current_page - 1) * attendances.per_page + 1} to{' '}
+                            {Math.min(attendances.current_page * attendances.per_page, attendances.total)} of {attendances.total} records
                         </p>
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
                                 disabled={attendances.current_page === 1}
-                                onClick={() => router.get(route('attendance.final.index'), {
-                                    ...filters,
-                                    page: attendances.current_page - 1
-                                })}
+                                onClick={() =>
+                                    router.get(route('attendance.final.index'), {
+                                        ...filters,
+                                        page: attendances.current_page - 1,
+                                    })
+                                }
                             >
                                 Previous
                             </Button>
@@ -940,10 +894,12 @@ export default function FinalIndex({
                                 variant="outline"
                                 size="sm"
                                 disabled={attendances.current_page === attendances.last_page}
-                                onClick={() => router.get(route('attendance.final.index'), {
-                                    ...filters,
-                                    page: attendances.current_page + 1
-                                })}
+                                onClick={() =>
+                                    router.get(route('attendance.final.index'), {
+                                        ...filters,
+                                        page: attendances.current_page + 1,
+                                    })
+                                }
                             >
                                 Next
                             </Button>
@@ -985,11 +941,11 @@ export default function FinalIndex({
                                                             <User className="h-4 w-4 text-gray-400" />
                                                             <span className="font-medium">{leave.employee.name}</span>
                                                         </div>
-                                                        <div className="text-xs text-gray-500 mt-1 ml-6">
+                                                        <div className="mt-1 ml-6 text-xs text-gray-500">
                                                             {leave.employee.id_number} • {leave.employee.department}
                                                         </div>
-                                                        <div className="text-xs text-gray-400 ml-6">
-                                                            <Building2 className="h-3 w-3 inline mr-1" />
+                                                        <div className="ml-6 text-xs text-gray-400">
+                                                            <Building2 className="mr-1 inline h-3 w-3" />
                                                             {leave.employee.company}
                                                         </div>
                                                     </div>
@@ -1004,13 +960,15 @@ export default function FinalIndex({
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="text-sm">{leave.days_count} day{leave.days_count !== 1 ? 's' : ''}</span>
+                                                    <span className="text-sm">
+                                                        {leave.days_count} day{leave.days_count !== 1 ? 's' : ''}
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="default" className="bg-green-600">Approved</Badge>
-                                                    {leave.approved_by && (
-                                                        <p className="text-xs text-gray-500 mt-1">by {leave.approved_by}</p>
-                                                    )}
+                                                    <Badge variant="default" className="bg-green-600">
+                                                        Approved
+                                                    </Badge>
+                                                    {leave.approved_by && <p className="mt-1 text-xs text-gray-500">by {leave.approved_by}</p>}
                                                 </TableCell>
                                                 <TableCell className="text-center">
                                                     {leave.has_document ? (
@@ -1035,18 +993,19 @@ export default function FinalIndex({
                 {leaves?.data && leaves.data.length > 0 && leaves.last_page > 1 && (
                     <div className="flex items-center justify-between px-2 py-4">
                         <div className="text-sm text-muted-foreground">
-                            Showing {((leaves.current_page - 1) * leaves.per_page) + 1} to{' '}
-                            {Math.min(leaves.current_page * leaves.per_page, leaves.total)} of{' '}
-                            {leaves.total} leaves
+                            Showing {(leaves.current_page - 1) * leaves.per_page + 1} to{' '}
+                            {Math.min(leaves.current_page * leaves.per_page, leaves.total)} of {leaves.total} leaves
                         </div>
                         <div className="flex items-center space-x-2">
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => router.get(route('attendance.final.index'), {
-                                    ...filters,
-                                    leaves_page: leaves.current_page - 1
-                                })}
+                                onClick={() =>
+                                    router.get(route('attendance.final.index'), {
+                                        ...filters,
+                                        leaves_page: leaves.current_page - 1,
+                                    })
+                                }
                                 disabled={leaves.current_page === 1}
                             >
                                 Previous
@@ -1057,10 +1016,12 @@ export default function FinalIndex({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => router.get(route('attendance.final.index'), {
-                                    ...filters,
-                                    leaves_page: leaves.current_page + 1
-                                })}
+                                onClick={() =>
+                                    router.get(route('attendance.final.index'), {
+                                        ...filters,
+                                        leaves_page: leaves.current_page + 1,
+                                    })
+                                }
                                 disabled={leaves.current_page === leaves.last_page}
                             >
                                 Next
@@ -1073,14 +1034,11 @@ export default function FinalIndex({
                 <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>
-                                {approvalType === 'bulk' ? 'Approve Multiple Records' : 'Approve Attendance Record'}
-                            </DialogTitle>
+                            <DialogTitle>{approvalType === 'bulk' ? 'Approve Multiple Records' : 'Approve Attendance Record'}</DialogTitle>
                             <DialogDescription>
-                                {approvalType === 'bulk' 
+                                {approvalType === 'bulk'
                                     ? `Are you sure you want to approve ${selectedIds.length} attendance record(s)? This action cannot be undone.`
-                                    : 'Are you sure you want to approve this attendance record? This action cannot be undone.'
-                                }
+                                    : 'Are you sure you want to approve this attendance record? This action cannot be undone.'}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
@@ -1096,48 +1054,41 @@ export default function FinalIndex({
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {singleApprovalId && (() => {
-                                        const record = (attendances?.data || []).find(a => a.id === singleApprovalId);
-                                        return record ? (
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Employee:</span>
-                                                    <span className="font-medium">{record.employee.name}</span>
+                                    {singleApprovalId &&
+                                        (() => {
+                                            const record = (attendances?.data || []).find((a) => a.id === singleApprovalId);
+                                            return record ? (
+                                                <div className="space-y-2 text-sm">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">Employee:</span>
+                                                        <span className="font-medium">{record.employee.name}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">Date:</span>
+                                                        <span className="font-medium">{formatDate(record.date)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">Total Hours:</span>
+                                                        <span className="font-medium">
+                                                            {record.total_hours}h {record.total_minutes}m
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">Status:</span>
+                                                        <span>{getStatusBadge(record.status, false)}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Date:</span>
-                                                    <span className="font-medium">{formatDate(record.date)}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Total Hours:</span>
-                                                    <span className="font-medium">
-                                                        {record.total_hours}h {record.total_minutes}m
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Status:</span>
-                                                    <span>{getStatusBadge(record.status, false)}</span>
-                                                </div>
-                                            </div>
-                                        ) : null;
-                                    })()}
+                                            ) : null;
+                                        })()}
                                 </div>
                             )}
                         </div>
                         <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowApproveModal(false)}
-                                disabled={bulkProcessing}
-                            >
+                            <Button variant="outline" onClick={() => setShowApproveModal(false)} disabled={bulkProcessing}>
                                 Cancel
                             </Button>
-                            <Button
-                                onClick={handleApproveConfirm}
-                                disabled={bulkProcessing}
-                                className="bg-green-600 hover:bg-green-700"
-                            >
-                                <CheckCircle2 className="h-4 w-4 mr-2" />
+                            <Button onClick={handleApproveConfirm} disabled={bulkProcessing} className="bg-green-600 hover:bg-green-700">
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
                                 {bulkProcessing ? 'Approving...' : 'Approve'}
                             </Button>
                         </DialogFooter>
