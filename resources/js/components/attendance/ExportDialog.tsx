@@ -1,18 +1,10 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { useState } from 'react';
 
 interface Company {
     id: number;
@@ -40,14 +32,7 @@ interface ExportDialogProps {
     };
 }
 
-export function ExportDialog({
-    open,
-    onOpenChange,
-    exportRoute,
-    companies = [],
-    employees = [],
-    currentFilters = {},
-}: ExportDialogProps) {
+export function ExportDialog({ open, onOpenChange, exportRoute, companies = [], employees = [], currentFilters = {} }: ExportDialogProps) {
     const [filters, setFilters] = useState({
         date_from: currentFilters.date_from || '',
         date_to: currentFilters.date_to || '',
@@ -55,31 +40,26 @@ export function ExportDialog({
         employee_id: currentFilters.employee_id || '',
     });
 
-    const filteredEmployees = filters.company_id
-        ? employees.filter(emp => emp.company_id === Number(filters.company_id))
-        : employees;
+    const filteredEmployees = filters.company_id ? employees.filter((emp) => emp.company_id === Number(filters.company_id)) : employees;
 
     const handleExport = () => {
-        const exportFilters: any = {};
-        
+        const exportFilters: Record<string, string> = {};
+
         if (filters.date_from) exportFilters.date_from = filters.date_from;
         if (filters.date_to) exportFilters.date_to = filters.date_to;
-        if (filters.company_id && filters.company_id !== 'all') exportFilters.company_id = filters.company_id;
-        if (filters.employee_id && filters.employee_id !== 'all') exportFilters.employee_id = filters.employee_id;
+        if (filters.company_id && filters.company_id !== 'all') exportFilters.company_id = filters.company_id.toString();
+        if (filters.employee_id && filters.employee_id !== 'all') exportFilters.employee_id = filters.employee_id.toString();
 
         // Navigate to export route with filters as query params
         window.location.href = exportRoute + '?' + new URLSearchParams(exportFilters).toString();
         onOpenChange(false);
     };
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>Export Attendance Data</DialogTitle>
-                    <DialogDescription>
-                        Select filters to customize your export. Leave filters empty to export all data.
-                    </DialogDescription>
+                    <DialogDescription>Select filters to customize your export. Leave filters empty to export all data.</DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-4 py-4">
@@ -109,11 +89,13 @@ export function ExportDialog({
                             <Label htmlFor="company">Company</Label>
                             <Select
                                 value={filters.company_id?.toString() || 'all'}
-                                onValueChange={(value) => setFilters({ 
-                                    ...filters, 
-                                    company_id: value === 'all' ? '' : value,
-                                    employee_id: '' // Reset employee when company changes
-                                })}
+                                onValueChange={(value) =>
+                                    setFilters({
+                                        ...filters,
+                                        company_id: value === 'all' ? '' : value,
+                                        employee_id: '', // Reset employee when company changes
+                                    })
+                                }
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="All Companies" />
@@ -135,15 +117,17 @@ export function ExportDialog({
                             <Label htmlFor="employee">Employee</Label>
                             <Select
                                 value={filters.employee_id?.toString() || 'all'}
-                                onValueChange={(value) => setFilters({ 
-                                    ...filters, 
-                                    employee_id: value === 'all' ? '' : value 
-                                })}
+                                onValueChange={(value) =>
+                                    setFilters({
+                                        ...filters,
+                                        employee_id: value === 'all' ? '' : value,
+                                    })
+                                }
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="All Employees" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="max-h-[300px]">
                                     <SelectItem value="all">All Employees</SelectItem>
                                     {filteredEmployees.map((emp) => (
                                         <SelectItem key={emp.id} value={emp.id.toString()}>
@@ -161,7 +145,7 @@ export function ExportDialog({
                         Cancel
                     </Button>
                     <Button onClick={handleExport}>
-                        <Download className="h-4 w-4 mr-2" />
+                        <Download className="mr-2 h-4 w-4" />
                         Export
                     </Button>
                 </DialogFooter>
