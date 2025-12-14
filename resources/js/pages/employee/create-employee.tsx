@@ -85,47 +85,57 @@ export default function CreateEmployee({ companies, departments, positions, acco
     const filteredAccounts = accounts.filter((acc) => acc.company_id === selectedCompany);
 
     const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    console.log('Form submission started');
-    console.log('Form data:', JSON.stringify(data, null, 2));
-    
-    // Check if required fields are filled
-    const requiredFields = ['first_name', 'last_name', 'gender', 'birth_date', 'civil_status', 'address', 'contact_number', 'employment_status', 'date_hired'];
-    
-    const missingFields = requiredFields.filter(field => !data[field as keyof typeof data]);
-    
-    if (missingFields.length > 0) {
-        console.error('Missing required fields:', missingFields);
-        return;
-    }
-    
-    console.log('All required fields present, submitting...');
-    
-    post(route('employee.store'), {
-        onBefore: () => {
-            console.log('Before request');
-        },
-        onStart: () => {
-            console.log('Request started');
-        },
-        onProgress: (progress) => {
-            console.log('Progress:', progress);
-        },
-        onSuccess: (page) => {
-            console.log('Success:', page);
-        },
-        onError: (errors) => {
-            console.error('Validation errors:', errors);
-        },
-        onCancel: () => {
-            console.log('Request cancelled');
-        },
-        onFinish: () => {
-            console.log('Request finished');
+        e.preventDefault();
+
+        console.log('Form submission started');
+        console.log('Form data:', JSON.stringify(data, null, 2));
+
+        // Check if required fields are filled
+        const requiredFields = [
+            'first_name',
+            'last_name',
+            'gender',
+            'birth_date',
+            'civil_status',
+            'address',
+            'contact_number',
+            'employment_status',
+            'date_hired',
+        ];
+
+        const missingFields = requiredFields.filter((field) => !data[field as keyof typeof data]);
+
+        if (missingFields.length > 0) {
+            console.error('Missing required fields:', missingFields);
+            return;
         }
-    });
-};
+
+        console.log('All required fields present, submitting...');
+
+        post(route('employee.store'), {
+            onBefore: () => {
+                console.log('Before request');
+            },
+            onStart: () => {
+                console.log('Request started');
+            },
+            onProgress: (progress) => {
+                console.log('Progress:', progress);
+            },
+            onSuccess: (page) => {
+                console.log('Success:', page);
+            },
+            onError: (errors) => {
+                console.error('Validation errors:', errors);
+            },
+            onCancel: () => {
+                console.log('Request cancelled');
+            },
+            onFinish: () => {
+                console.log('Request finished');
+            },
+        });
+    };
 
     const handleCompanyChange = (value: string) => {
         setData('company_id', value);
@@ -168,21 +178,9 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                             id="id_number"
                                             value="Auto-generated"
                                             disabled
-                                            className="bg-muted text-muted-foreground cursor-not-allowed"
+                                            className="cursor-not-allowed bg-muted text-muted-foreground"
                                         />
                                         <p className="text-xs text-muted-foreground">ID will be automatically assigned</p>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="first_name">First Name *</Label>
-                                        <Input
-                                            id="first_name"
-                                            value={data.first_name}
-                                            onChange={(e) => setData('first_name', e.target.value)}
-                                            className={errors.first_name ? 'border-red-500' : ''}
-                                            required
-                                        />
-                                        {errors.first_name && <p className="text-sm text-red-500">{errors.first_name}</p>}
                                     </div>
 
                                     <div className="space-y-2">
@@ -195,6 +193,18 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                             required
                                         />
                                         {errors.last_name && <p className="text-sm text-red-500">{errors.last_name}</p>}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="first_name">First Name *</Label>
+                                        <Input
+                                            id="first_name"
+                                            value={data.first_name}
+                                            onChange={(e) => setData('first_name', e.target.value)}
+                                            className={errors.first_name ? 'border-red-500' : ''}
+                                            required
+                                        />
+                                        {errors.first_name && <p className="text-sm text-red-500">{errors.first_name}</p>}
                                     </div>
                                 </div>
 
@@ -424,17 +434,15 @@ export default function CreateEmployee({ companies, departments, positions, acco
                                                 className={errors.evaluation_end_date ? 'border-red-500' : ''}
                                             />
                                             {errors.evaluation_end_date && <p className="text-sm text-red-500">{errors.evaluation_end_date}</p>}
-                                            <p className="text-xs text-muted-foreground">
-                                                You will be notified 3 days before this date
-                                            </p>
+                                            <p className="text-xs text-muted-foreground">You will be notified 3 days before this date</p>
                                         </div>
                                     </div>
                                 )}
 
                                 <div className="rounded-md bg-blue-50 p-4 dark:bg-blue-950/20">
                                     <p className="text-sm text-blue-800 dark:text-blue-200">
-                                        <strong>Note:</strong> Work schedules are now managed through the Attendance module. 
-                                        After creating the employee, you can assign their shift schedule in <strong>Attendance → Schedules</strong>.
+                                        <strong>Note:</strong> Work schedules are now managed through the Attendance module. After creating the
+                                        employee, you can assign their shift schedule in <strong>Attendance → Schedules</strong>.
                                     </p>
                                 </div>
                             </div>
