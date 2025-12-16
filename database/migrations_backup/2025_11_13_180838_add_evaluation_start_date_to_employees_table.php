@@ -12,8 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            // Don't use after() since 'infractions' column doesn't exist
-            $table->timestamp('infractions_last_reset_at')->nullable();
+            $table->date('evaluation_start_date')->nullable()->after('date_hired');
         });
     }
 
@@ -23,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            $table->dropColumn('infractions_last_reset_at');
+            $table->dropColumn('evaluation_start_date');
         });
     }
 };

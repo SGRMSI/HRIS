@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            // Don't use after() since 'infractions' column doesn't exist
-            $table->timestamp('infractions_last_reset_at')->nullable();
+        Schema::table('attendance_processed', function (Blueprint $table) {
+            $table->string('status_message')->nullable()->after('status');
         });
     }
 
@@ -22,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            $table->dropColumn('infractions_last_reset_at');
+        Schema::table('attendance_processed', function (Blueprint $table) {
+            $table->dropColumn('status_message');
         });
     }
 };

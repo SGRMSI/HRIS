@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('holidays', function (Blueprint $table) {
+            $table->id('holiday_id');
+            $table->string('name');
+            $table->date('date');
+            $table->string('type')->comment('"Regular", "Special"');
+            $table->boolean('is_double_pay')->default(false)->comment('If true, pay is daily_rate * 2');
+            $table->foreignId('company_id')->nullable()->constrained('companies', 'company_id');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('holidays');
+    }
+};

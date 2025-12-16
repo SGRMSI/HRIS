@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            // Don't use after() since 'infractions' column doesn't exist
-            $table->timestamp('infractions_last_reset_at')->nullable();
+        Schema::table('payroll_records', function (Blueprint $table) {
+            $table->decimal('night_diff_hours', 5, 2)->default(0.00)->after('night_differential')->comment('Total night differential hours');
         });
     }
 
@@ -22,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            $table->dropColumn('infractions_last_reset_at');
+        Schema::table('payroll_records', function (Blueprint $table) {
+            $table->dropColumn('night_diff_hours');
         });
     }
 };
