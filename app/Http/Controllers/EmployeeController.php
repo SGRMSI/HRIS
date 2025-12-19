@@ -616,13 +616,6 @@ class EmployeeController extends Controller
             if ($documentCount > 0) {
                 $constraints[] = "Documents: $documentCount";
             }
-            
-            $userAccount = DB::table('users')
-                ->where('employee_id', $employee->employee_id)
-                ->first();
-            if ($userAccount) {
-                $constraints[] = "User Account: {$userAccount->email}";
-            }
 
             if (!empty($constraints)) {
                 $constraintList = implode(", ", $constraints);
@@ -631,28 +624,46 @@ class EmployeeController extends Controller
                 );
             }
 
-            if ($employee->profile_picture) {
-                try {
-                    $this->employeeService->deleteProfilePicture($employee->profile_picture);
-                } catch (\Exception $e) {
-                    \Log::error('Failed to delete profile picture', [
-                        'employee_id' => $employee->employee_id,
-                        'error' => $e->getMessage()
-                    ]);
+            // Start transaction to ensure all operations succeed or fail together
+            DB::beginTransaction();
+            
+            try {
+                // Unlink user account from employee (set employee_id to NULL)
+                DB::table('users')
+                    ->where('employee_id', $employee->employee_id)
+                    ->update(['employee_id' => null]);
+
+                // Delete profile picture if exists
+                if ($employee->profile_picture) {
+                    try {
+                        $this->employeeService->deleteProfilePicture($employee->profile_picture);
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to delete profile picture', [
+                            'employee_id' => $employee->employee_id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
                 }
+
+                // Log activity BEFORE deletion - track who deleted the employee
+                activity()
+                    ->performedOn($employee)
+                    ->causedBy(auth()->user())
+                    ->withProperties($employeeData)
+                    ->log('Employee deleted');
+
+                // Delete the employee record
+                $employee->delete();
+                
+                DB::commit();
+                
+                return redirect()->route('employee.index')
+                    ->with('success', "Employee '{$employeeName}' has been deleted successfully!");
+                    
+            } catch (\Exception $innerException) {
+                DB::rollBack();
+                throw $innerException;
             }
-
-            // **FIX: Log activity BEFORE deletion and BEFORE redirect**
-            activity()
-                ->performedOn($employee)
-                ->causedBy(auth()->user())
-                ->withProperties($employeeData)
-                ->log('Employee deleted');
-
-            $employee->delete();
-
-            return redirect()->route('employee.index')
-                ->with('success', "Employee '{$employeeName}' has been deleted successfully!");
 
         } catch (\Illuminate\Database\QueryException $e) {
             \Log::error('Database constraint error during employee deletion', [
