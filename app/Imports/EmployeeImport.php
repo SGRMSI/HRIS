@@ -10,6 +10,7 @@ use App\Models\Account;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class EmployeeImport implements ToCollection, WithHeadingRow
 {
@@ -17,17 +18,44 @@ class EmployeeImport implements ToCollection, WithHeadingRow
     private $failureCount = 0;
     private $errors = [];
 
+    // Valid values mapping
+    private const CIVIL_STATUS_MAP = [
+        'SINGLE' => 'Single',
+        'MARRIED' => 'Married',
+        'WIDOWED' => 'Widowed',
+        'DIVORCED' => 'Divorced',
+        'SEPARATED' => 'Separated',
+    ];
+
+    private const GENDER_MAP = [
+        'MALE' => 'Male',
+        'FEMALE' => 'Female',
+        'M' => 'Male',
+        'F' => 'Female',
+    ];
+
+    private const EMPLOYMENT_STATUS_MAP = [
+        'REGULAR' => 'Regular',
+        'PROBATIONARY' => 'Probationary',
+        'CONTRACTUAL' => 'Contractual',
+        'TRAINEE' => 'Trainee',
+        'PROJECT-BASED' => 'Project-Based',
+    ];
+
     public function collection(Collection $rows)
     {
         foreach ($rows as $index => $row) {
             try {
+                // Log the row being processed
+                \Log::info("Processing employee import row " . ($index + 2), $row->toArray());
+
                 // Initialize nullable fields
                 $company = null;
                 $department = null;
                 $position = null;
                 $account = null;
 
-                // Validate required fields
+                // Validate and normalize required fields
                 if (empty($row['first_name'])) {
                     throw new \Exception("First name is required");
                 }
@@ -55,6 +83,27 @@ class EmployeeImport implements ToCollection, WithHeadingRow
                 if (empty($row['date_hired'])) {
                     throw new \Exception("Date hired is required");
                 }
+
+                // Normalize civil_status
+                $civilStatus = strtoupper(trim($row['civil_status']));
+                if (!isset(self::CIVIL_STATUS_MAP[$civilStatus])) {
+                    throw new \Exception("Invalid civil status: '{$row['civil_status']}'. Must be one of: Single, Married, Widowed, Divorced, Separated");
+                }
+                $civilStatus = self::CIVIL_STATUS_MAP[$civilStatus];
+
+                // Normalize gender
+                $gender = strtoupper(trim($row['gender']));
+                if (!isset(self::GENDER_MAP[$gender])) {
+                    throw new \Exception("Invalid gender: '{$row['gender']}'. Must be Male or Female");
+                }
+                $gender = self::GENDER_MAP[$gender];
+
+                // Normalize employment_status
+                $employmentStatus = strtoupper(trim($row['employment_status']));
+                if (!isset(self::EMPLOYMENT_STATUS_MAP[$employmentStatus])) {
+                    throw new \Exception("Invalid employment status: '{$row['employment_status']}'. Must be one of: Regular, Probationary, Contractual, Trainee, Project-Based");
+                }
+                $employmentStatus = self::EMPLOYMENT_STATUS_MAP[$employmentStatus];
 
                 // Only look up company if provided
                 if (!empty($row['company'])) {
@@ -95,35 +144,96 @@ class EmployeeImport implements ToCollection, WithHeadingRow
                     }
                 }
 
+                // Parse dates (handle Excel serial numbers and string dates)
+                $birthDate = $this->parseDate($row['birth_date']);
+                $dateHired = $this->parseDate($row['date_hired']);
+                $dateRegularized = !empty($row['date_regularized']) 
+                    ? $this->parseDate($row['date_regularized']) 
+                    : null;
+
                 Employee::create([
-                    'first_name' => $row['first_name'],
-                    'last_name' => $row['last_name'],
-                    'middle_name' => $row['middle_name'] ?? null,
-                    'gender' => $row['gender'],
-                    'birth_date' => $row['birth_date'],
-                    'civil_status' => $row['civil_status'],
-                    'address' => $row['address'],
-                    'contact_number' => $row['contact_number'],
-                    'company_id' => $company ? $company->company_id : null,
-                    'department_id' => $department ? $department->department_id : null,
-                    'position_id' => $position ? $position->position_id : null,
-                    'account_id' => $account ? $account->account_id : null,
-                    'sss_number' => $row['sss_number'] ?? null,
-                    'phic_number' => $row['phic_number'] ?? null,
-                    'hdmf_number' => $row['hdmf_number'] ?? null,
-                    'tin_number' => $row['tin_number'] ?? null,
-                    'date_hired' => $row['date_hired'],
-                    'date_regularized' => !empty($row['date_regularized']) ? $row['date_regularized'] : null,
-                    'employment_status' => $row['employment_status'],
-                    'work_shift' => $row['work_shift'] ?? 'Dayshift',
-                    'remarks' => $row['remarks'] ?? null,
+                    'first_name' => trim($row['first_name']),
+                    'last_name' => trim($row['last_name']),
+                    'middle_name' => !empty($row['middle_name']) ? trim($row['middle_name']) : null,
+                    'gender' => $gender,
+                    'birth_date' => $birthDate,
+                    'civil_status' => $civilStatus,
+                    'address' => trim($row['address']),
+                    'contact_number' => trim($row['contact_number']),
+                    'company_id' => $company?->company_id,
+                    'department_id' => $department?->department_id,
+                    'position_id' => $position?->position_id,
+                    'account_id' => $account?->account_id,
+                    'sss_number' => !empty($row['sss_number']) ? trim($row['sss_number']) : null,
+                    'phic_number' => !empty($row['phic_number']) ? trim($row['phic_number']) : null,
+                    'hdmf_number' => !empty($row['hdmf_number']) ? trim($row['hdmf_number']) : null,
+                    'tin_number' => !empty($row['tin_number']) ? trim($row['tin_number']) : null,
+                    'date_hired' => $dateHired,
+                    'date_regularized' => $dateRegularized,
+                    'employment_status' => $employmentStatus,
+                    'work_shift' => !empty($row['work_shift']) ? trim($row['work_shift']) : 'Dayshift',
+                    'remarks' => !empty($row['remarks']) ? trim($row['remarks']) : null,
                 ]);
 
                 $this->successCount++;
+
+            } catch (\Illuminate\Database\QueryException $e) {
+                $this->failureCount++;
+                $errorMessage = $e->getMessage();
+                
+                // Parse specific constraint violations
+                if (str_contains($errorMessage, 'civil_status')) {
+                    $this->errors[] = "Row " . ($index + 2) . ": Invalid civil status value. Must be: Single, Married, Widowed, Divorced, or Separated";
+                } elseif (str_contains($errorMessage, 'gender')) {
+                    $this->errors[] = "Row " . ($index + 2) . ": Invalid gender value. Must be Male or Female";
+                } elseif (str_contains($errorMessage, 'employment_status')) {
+                    $this->errors[] = "Row " . ($index + 2) . ": Invalid employment status value";
+                } elseif (str_contains($errorMessage, 'Duplicate')) {
+                    $this->errors[] = "Row " . ($index + 2) . ": Duplicate employee record";
+                } else {
+                    $this->errors[] = "Row " . ($index + 2) . ": Database error - " . $errorMessage;
+                }
+
+                \Log::error("Employee import database error on row " . ($index + 2), [
+                    'error' => $errorMessage,
+                    'row_data' => $row->toArray(),
+                ]);
+
             } catch (\Exception $e) {
                 $this->failureCount++;
                 $this->errors[] = "Row " . ($index + 2) . ": " . $e->getMessage();
+                
+                \Log::error("Employee import error on row " . ($index + 2), [
+                    'error' => $e->getMessage(),
+                    'row_data' => $row->toArray(),
+                ]);
             }
+        }
+    }
+
+    /**
+     * Parse date from Excel format or string
+     */
+    private function parseDate($value)
+    {
+        if (empty($value)) {
+            return null;
+        }
+        
+        // If numeric, it's an Excel serial date
+        if (is_numeric($value)) {
+            try {
+                return ExcelDate::excelToDateTimeObject($value)->format('Y-m-d');
+            } catch (\Exception $e) {
+                throw new \Exception("Invalid date format: {$value}");
+            }
+        }
+        
+        // Otherwise try to parse as string
+        try {
+            return \Carbon\Carbon::parse($value)->format('Y-m-d');
+        } catch (\Exception $e) {
+            throw new \Exception("Invalid date format: {$value}");
         }
     }
 
